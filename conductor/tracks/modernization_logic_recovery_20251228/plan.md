@@ -17,14 +17,14 @@ Focus on the mathematical and state-management core of the bot.
 ## Phase 2: Exchange API Modernization (Poloniex & Bitfinex)
 Focus on the communication layer with exchanges.
 
-- [ ] Task: Analyze `old/modules/Poloniex.py` and `old/modules/Bitfinex.py` for API interaction logic and error handling.
-- [ ] Task: Review existing tests in `tests/` for `Poloniex.py` and `Bitfinex.py`. Identify gaps compared to legacy logic.
-- [ ] Task: Supplement unit tests in `tests/` to cover any missing legacy logic (Red Phase).
-- [ ] Task: Update/Refine `src/lendingbot/modules/Poloniex.py` to match modernized standards and pass all tests (Green Phase).
-- [ ] Task: Update/Refine `src/lendingbot/modules/Bitfinex.py` to match modernized standards and pass all tests (Green Phase).
-- [ ] Task: Verify documentation: Ensure API-specific nuances from legacy comments are preserved in the modernized code.
-- [ ] Task: Quality Gate: Run `uv run poe check-full` and ensure >80% coverage.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Exchange API Modernization' (Protocol in workflow.md)
+- [x] Task: Analyze `old/modules/Poloniex.py` and `old/modules/Bitfinex.py` for API interaction logic and error handling.
+- [x] Task: Review existing tests in `tests/` for `Poloniex.py` and `Bitfinex.py`. Identify gaps compared to legacy logic.
+- [x] Task: Supplement unit tests in `tests/` to cover any missing legacy logic (Red Phase).
+- [x] Task: Update/Refine `src/lendingbot/modules/Poloniex.py` to match modernized standards and pass all tests (Green Phase).
+- [x] Task: Update/Refine `src/lendingbot/modules/Bitfinex.py` to match modernized standards and pass all tests (Green Phase).
+- [x] Task: Verify documentation: Ensure API-specific nuances from legacy comments are preserved in the modernized code.
+- [x] Task: Quality Gate: Run `uv run poe check-full` and ensure >80% coverage.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Exchange API Modernization' (Protocol in workflow.md) [checkpoint: 65dcb48]
 
 ## Phase 3: Secondary Modules & Integration Audit
 Handle remaining dependencies and ensure the system integrates correctly.
