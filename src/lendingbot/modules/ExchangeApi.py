@@ -5,74 +5,81 @@ Exchange API Base class
 import abc
 import calendar
 import time
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 
-class ExchangeApi:
-    __metaclass__ = abc.ABCMeta
+F = TypeVar("F", bound=Callable[..., Any])
 
-    def __str__(self):
+
+class ExchangeApi(abc.ABC):
+    def __str__(self) -> str:
         return self.__class__.__name__.upper()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
     @staticmethod
-    def create_time_stamp(datestr, formatting="%Y-%m-%d %H:%M:%S"):
+    def create_time_stamp(datestr: str, formatting: str = "%Y-%m-%d %H:%M:%S") -> int:
         return calendar.timegm(time.strptime(datestr, formatting))
 
     @staticmethod
-    def synchronized(method):
-        """ Work with instance method only !!! """
+    def synchronized(method: F) -> F:
+        """Work with instance method only !!!"""
 
-        def new_method(self, *arg, **kws):
+        def new_method(self: Any, *arg: Any, **kws: Any) -> Any:
             with self.lock:
                 return method(self, *arg, **kws)
 
-        return new_method
+        return new_method  # type: ignore[return-value]
 
     @abc.abstractmethod
-    def __init__(self, cfg, log):
+    def __init__(self, cfg: Any, log: Any) -> None:
         """
         Constructor
         """
+        self.req_time_log: Any = []
+        self.req_per_period: int = 0
+        self.req_period: float = 0
+        self.default_req_period: float = 0
 
     @abc.abstractmethod
-    def limit_request_rate(self):
+    def limit_request_rate(self) -> None:
         now = time.time() * 1000  # milliseconds
         # Start throttling only when the queue is full
         if len(self.req_time_log) == self.req_per_period:
             time_since_oldest_req = now - self.req_time_log[0]
             if time_since_oldest_req < self.req_period:
-                sleep = (self.req_period - time_since_oldest_req) / 1000
+                sleep_time = (self.req_period - time_since_oldest_req) / 1000
                 self.req_time_log.append(now + self.req_period - time_since_oldest_req)
-                time.sleep(sleep)
+                time.sleep(sleep_time)
                 return
 
         self.req_time_log.append(now)
 
     @abc.abstractmethod
-    def increase_request_timer(self):
+    def increase_request_timer(self) -> None:
         if self.req_period <= self.default_req_period * 3.0:
             self.req_period += 500
 
     @abc.abstractmethod
-    def decrease_request_timer(self):
+    def decrease_request_timer(self) -> None:
         if self.req_period > self.default_req_period:
             self.req_period -= 1
 
     @abc.abstractmethod
-    def reset_request_timer(self):
+    def reset_request_timer(self) -> None:
         if self.req_period >= self.default_req_period * 1.5:
             self.req_period = self.default_req_period
 
     @abc.abstractmethod
-    def return_ticker(self):
+    def return_ticker(self) -> dict[str, dict[str, str]]:
         """
         Returns the ticker for all markets.
         """
 
     @abc.abstractmethod
-    def return_balances(self):
+    def return_balances(self) -> dict[str, str]:
         """
         Returns available exchange balances.
         Sample output:
@@ -80,7 +87,7 @@ class ExchangeApi:
         """
 
     @abc.abstractmethod
-    def return_available_account_balances(self, account):
+    def return_available_account_balances(self, account: str) -> dict[str, dict[str, str]]:
         """
         Returns balances sorted by account. You may optionally specify the
         "account" POST parameter if you wish to fetch only the balances of one
@@ -95,7 +102,9 @@ class ExchangeApi:
         """
 
     @abc.abstractmethod
-    def return_lending_history(self, start, stop, limit=500):
+    def return_lending_history(
+        self, start: int, stop: int, limit: int = 500
+    ) -> list[dict[str, Any]]:
         """
         Returns lending history within a time range specified by the "start" and
         "end" POST parameters as UNIX timestamps. "limit" may also be specified
@@ -108,7 +117,7 @@ class ExchangeApi:
         """
 
     @abc.abstractmethod
-    def return_loan_orders(self, currency, limit=0):
+    def return_loan_orders(self, currency: str, limit: int = 0) -> dict[str, list[dict[str, Any]]]:
         """
         Returns the list of loan offers and demands for a given currency,
         specified by the "currency". Sample output:
@@ -118,13 +127,13 @@ class ExchangeApi:
         """
 
     @abc.abstractmethod
-    def return_open_loan_offers(self):
+    def return_open_loan_offers(self) -> dict[str, list[dict[str, Any]]]:
         """
         Returns own open loan offers for each currency
         """
 
     @abc.abstractmethod
-    def return_active_loans(self):
+    def return_active_loans(self) -> dict[str, list[dict[str, Any]]]:
         """
         Returns your active loans for each currency. Sample output:
 
@@ -137,19 +146,23 @@ class ExchangeApi:
         """
 
     @abc.abstractmethod
-    def cancel_loan_offer(self, currency, order_number):
+    def cancel_loan_offer(self, currency: str, order_number: int) -> dict[str, Any]:
         """
         Cancels a loan offer specified by the "orderNumber"
         """
 
     @abc.abstractmethod
-    def create_loan_offer(self, currency, amount, duration, auto_renew, lending_rate):
+    def create_loan_offer(
+        self, currency: str, amount: float, duration: int, auto_renew: int, lending_rate: float
+    ) -> dict[str, Any]:
         """
         Creates a loan offer for a given currency.
         """
 
     @abc.abstractmethod
-    def transfer_balance(self, currency, amount, from_account, to_account):
+    def transfer_balance(
+        self, currency: str, amount: float, from_account: str, to_account: str
+    ) -> dict[str, Any]:
         """
         Transfers values from one account/wallet to another
         """

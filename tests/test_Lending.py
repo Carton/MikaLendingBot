@@ -2,35 +2,25 @@
 Tests for Lending module utility functions
 """
 
-import inspect
-import os
-import sys
-
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
-
-# Import only the pure functions we can test independently
-from modules.Lending import parse_xday_threshold
+from lendingbot.modules.Lending import parse_xday_threshold
 
 
 class TestParseXdayThreshold:
     """Tests for the parse_xday_threshold function"""
 
-    def test_parse_empty_threshold(self):
+    def test_parse_empty_threshold(self) -> None:
         """Test parsing empty threshold returns empty lists"""
         rates, xdays = parse_xday_threshold("")
         assert rates == []
         assert xdays == []
 
-    def test_parse_none_threshold(self):
+    def test_parse_none_threshold(self) -> None:
         """Test parsing None threshold returns empty lists"""
-        rates, xdays = parse_xday_threshold(None)
+        rates, xdays = parse_xday_threshold(None)  # type: ignore[arg-type]
         assert rates == []
         assert xdays == []
 
-    def test_parse_single_pair(self):
+    def test_parse_single_pair(self) -> None:
         """Test parsing a single rate:days pair"""
         rates, xdays = parse_xday_threshold("0.050:25")
         assert len(rates) == 1
@@ -39,7 +29,7 @@ class TestParseXdayThreshold:
         assert rates[0] == 0.00050
         assert xdays[0] == "25"
 
-    def test_parse_multiple_pairs(self):
+    def test_parse_multiple_pairs(self) -> None:
         """Test parsing multiple rate:days pairs"""
         threshold = "0.050:25,0.058:30,0.060:45,0.064:60,0.070:120"
         rates, xdays = parse_xday_threshold(threshold)
@@ -56,7 +46,7 @@ class TestParseXdayThreshold:
         expected_days = ["25", "30", "45", "60", "120"]
         assert xdays == expected_days
 
-    def test_parse_threshold_order_preserved(self):
+    def test_parse_threshold_order_preserved(self) -> None:
         """Test that order of pairs is preserved"""
         threshold = "0.070:120,0.050:25"  # Reverse order
         rates, xdays = parse_xday_threshold(threshold)
@@ -65,7 +55,7 @@ class TestParseXdayThreshold:
         assert xdays[0] == "120"
         assert xdays[1] == "25"
 
-    def test_parse_threshold_with_high_rates(self):
+    def test_parse_threshold_with_high_rates(self) -> None:
         """Test parsing thresholds with higher rates"""
         threshold = "1.0:60,2.5:90"
         rates, _xdays = parse_xday_threshold(threshold)

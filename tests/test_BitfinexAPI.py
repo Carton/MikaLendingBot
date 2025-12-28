@@ -1,61 +1,37 @@
-import inspect
-
-# Hack to get relative imports - probably need to fix the dir structure instead but we need this at the minute for
-# pytest to work
-import os
-import sys
-import time
-
-
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0, parentdir)
-
 import threading
+import time
+from unittest.mock import MagicMock, patch
 
-import modules.Configuration as Config
-from modules.Logger import Logger
-
-import modules.Data as Data
-from modules.Bitfinex import Bitfinex
+from lendingbot.modules.Bitfinex import Bitfinex
 
 
-Config.init("default.cfg", Data)
-api = Bitfinex(Config, Logger())
-start_time = time.time()
+def test_multiple_calls() -> None:
+    """Test fast api calls with mocks"""
+    mock_config = MagicMock()
+    mock_config.get.side_effect = (
+        lambda _cat, opt, _default=None, *_args, **_kwargs: "30" if opt == "timeout" else "dummy"
+    )
+    mock_config.getboolean.return_value = False
+    mock_config.get_all_currencies.return_value = ["BTC", "ETH"]
 
+    mock_log = MagicMock()
 
-def multiple_api_queries(n):
-    try:
-        for i in range(n):
-            print("Thread " + str(i + 1))
-            thread1 = threading.Thread(target=call_get_open_loan_offers, args=[(i + 1)])
-            thread1.start()
-    except Exception as e:
-        raise AssertionError("Thread " + str(i + 1) + ":" + str(e))
+    with patch.object(Bitfinex, "return_available_account_balances", return_value={}):
+        api = Bitfinex(mock_config, mock_log)
 
+    api.return_open_loan_offers = MagicMock(return_value={})  # type: ignore[method-assign]
 
-# Test fast api calls
-def test_multiple_calls():
-    multiple_api_queries(10)
+    start_time = time.time()
 
+    def call_get_open_loan_offers(i: int) -> None:
+        api.return_open_loan_offers()
+        print(f"API Call {i} sec: {time.time() - start_time}")
 
-def call_get_open_loan_offers(i):
-    api.return_open_loan_offers()
-    print("API Call " + str(i) + " sec:" + str(time.time() - start_time))
+    threads = []
+    for i in range(10):
+        t = threading.Thread(target=call_get_open_loan_offers, args=(i + 1,))
+        threads.append(t)
+        t.start()
 
-
-# def api_rate_limit(n, start):
-#     api.limit_request_rate()
-#     # verify that the (N % 6) th request is delayed by (N / 6) sec from the start time
-#     if n != 0 and n % 6 == 0:
-#         print 'limit request ' + str(n) + ' ' + str(start) + ' ' + str(time.time()) + '\n'
-#         assert time.time() - start >= int(n / 6), "rate limit failed"
-#
-#
-# # Test rate limiter
-# def test_rate_limiter():
-#     start = time.time()
-#     for i in xrange(20):
-#         thread1 = threading.Thread(target=api_rate_limit, args=(i, start))
-#         thread1.start()
+    for t in threads:
+        t.join()

@@ -55,15 +55,6 @@ packages = ["src/lendingbot"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = [
-    "tests/test_BitfinexAPI.py",
-    "tests/test_Data.py",
-    "tests/test_Lending.py",
-    "tests/test_MarketAnalysis.py",
-    "tests/test_PoloniexAPI.py",
-    "lendingbot_legacy.py",
-    "main_legacy.py",
-]
 
 [tool.ruff.lint]
 # Enabled rule sets
