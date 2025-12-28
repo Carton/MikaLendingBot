@@ -2,6 +2,7 @@
 """
 Tests for RingBuffer class
 """
+
 import os
 import sys
 import inspect
@@ -49,18 +50,18 @@ def test_ringbuffer_append_over_capacity():
 def test_ringbuffer_single_element():
     """Test RingBuffer with size 1"""
     rb = RingBuffer(1)
-    rb.append('a')
-    assert rb.get() == ['a']
-    rb.append('b')
-    assert rb.get() == ['b']
-    rb.append('c')
-    assert rb.get() == ['c']
+    rb.append("a")
+    assert rb.get() == ["a"]
+    rb.append("b")
+    assert rb.get() == ["b"]
+    rb.append("c")
+    assert rb.get() == ["c"]
 
 
 def test_ringbuffer_preserves_order():
     """Test that items are returned in insertion order"""
     rb = RingBuffer(10)
-    items = ['first', 'second', 'third', 'fourth', 'fifth']
+    items = ["first", "second", "third", "fourth", "fifth"]
     for item in items:
         rb.append(item)
     assert rb.get() == items
@@ -70,9 +71,9 @@ def test_ringbuffer_with_different_types():
     """Test RingBuffer with different data types"""
     rb = RingBuffer(3)
     rb.append(42)
-    rb.append('string')
-    rb.append({'key': 'value'})
+    rb.append("string")
+    rb.append({"key": "value"})
     result = rb.get()
     assert result[0] == 42
-    assert result[1] == 'string'
-    assert result[2] == {'key': 'value'}
+    assert result[1] == "string"
+    assert result[2] == {"key": "value"}

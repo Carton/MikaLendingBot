@@ -2,6 +2,7 @@
 """
 Tests for Data module utility functions
 """
+
 import os
 import sys
 import inspect
@@ -59,21 +60,21 @@ class TestGetMaxDuration:
 
     def test_get_max_duration_empty_date(self):
         """Test with empty end_date returns empty string"""
-        assert get_max_duration('', 'order') == ''
-        assert get_max_duration(None, 'order') == ''
-        assert get_max_duration(False, 'order') == ''
+        assert get_max_duration("", "order") == ""
+        assert get_max_duration(None, "order") == ""
+        assert get_max_duration(False, "order") == ""
 
     def test_get_max_duration_order_context(self):
         """Test get_max_duration with order context returns int"""
         # Use a date far in the future to ensure positive days
-        future_date = '2030,12,31'
-        result = get_max_duration(future_date, 'order')
+        future_date = "2030,12,31"
+        result = get_max_duration(future_date, "order")
         assert isinstance(result, int)
         assert result > 0
 
     def test_get_max_duration_status_context(self):
         """Test get_max_duration with status context returns string"""
-        future_date = '2030,12,31'
-        result = get_max_duration(future_date, 'status')
+        future_date = "2030,12,31"
+        result = get_max_duration(future_date, "status")
         assert isinstance(result, basestring)
-        assert 'Days Remaining' in result
+        assert "Days Remaining" in result

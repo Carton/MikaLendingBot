@@ -1,7 +1,200 @@
 [project]
-name = "lendingbot-py3"
+name = "lendingbot"
 version = "0.1.0"
-description = "Add your description here"
+description = "Cryptocurrency Lending Bot - Automated Lending Tool with Web Administration Interface"
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.12"
+authors = [
+    { name = "Carton He", email = "cartonhe@gmail.com" }
+]
+license = { text = "MIT" }
+keywords = ["lending", "bot", "cryptocurrency", "trading", "automation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial",
+]
+
+dependencies = [
+    "numpy>=2.0.0",
+    "pandas>=2.2.0",
+    "requests>=2.31.0",
+    "pytz>=2024.1",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.7.0",
+    "mypy>=1.8.0",
+    "poethepoet>=0.24.0",
+]
+
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "hypothesis>=6.100.0",
+]
+
+[project.scripts]
+lendingbot = "lendingbot.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lendingbot"]
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Ruff Configuration
+# ───────────────────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# Enabled rule sets
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate (commented-out code)
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignored rules
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "B008",    # do not perform function calls in argument defaults
+    "C901",    # too complex
+    "ARG001",  # unused function argument (needed during refactoring)
+]
+
+# Auto-fixable rules
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["ARG001", "S101"]  # Allow unused args and assert in test files
+
+[tool.ruff.lint.isort]
+known-first-party = ["lendingbot"]
+force-single-line = false
+lines-after-imports = 2
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# ───────────────────────────────────────────────────────────────────────────────
+# MyPy Configuration
+# ───────────────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+follow_imports = "normal"
+ignore_missing_imports = false
+
+[[tool.mypy.overrides]]
+module = [
+    "numpy.*",
+    "pandas.*",
+]
+ignore_missing_imports = true
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Pytest Configuration
+# ───────────────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src/lendingbot",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Coverage Configuration
+# ───────────────────────────────────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["src"]
+branch = true
+parallel = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "if typing.TYPE_CHECKING:",
+]
+
+# ───────────────────────────────────────────────────────────────────────────────
+# Poe Tasks Configuration
+# ───────────────────────────────────────────────────────────────────────────────
+[tool.poe.tasks]
+# ── Test Tasks ──────────────────────────────────────────────────────────────
+test = "pytest"
+test-coverage = "pytest --cov=src/lendingbot --cov-report=html --cov-report=term"
+test-verbose = "pytest -vv"
+
+# ── Code Quality Tasks ──────────────────────────────────────────────────────
+ruff-check = "ruff check src/ tests/"
+ruff-check-fix = "ruff check src/ tests/ --fix"
+ruff-format = "ruff format src/ tests/"
+ruff-format-check = "ruff format src/ tests/ --check"
+mypy = "mypy src/"
+
+# ── Combined Tasks ──────────────────────────────────────────────────────────
+check = ["ruff-format-check", "ruff-check"]
+fix = ["ruff-format", "ruff-check-fix"]
+check-full = ["ruff-format-check", "ruff-check", "mypy"]
+fix-full = ["ruff-format", "ruff-check-fix"]
+
+# ── Application Runner ──────────────────────────────────────────────────────
+run = "python -m lendingbot.main"
+run-dev = "python -m lendingbot.main --config=default.cfg"
+
+# ── Dependency Management ───────────────────────────────────────────────────
+deps-update = "uv sync --upgrade"
+deps-add = "uv add"
+deps-add-dev = "uv add --dev"
+
+# ── Build and Publish ───────────────────────────────────────────────────────
+build = "uv build"
+clean = "rm -rf dist/ build/ *.egg-info"
