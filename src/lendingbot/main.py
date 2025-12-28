@@ -11,11 +11,14 @@ This is the main entry point for the application, responsible for:
 from __future__ import annotations
 
 import argparse
+import http.client
 import os
 import socket
 import sys
 import time
 import traceback
+import urllib.error
+from pathlib import Path
 from typing import Any, NoReturn
 
 from .modules import Configuration as Config
@@ -71,6 +74,10 @@ def main() -> NoReturn:
     """
     LendingBot main entrance function
     """
+    # Allow running from different directories
+    if not Path("pyproject.toml").exists():
+        os.chdir(Path(sys.argv[0]).resolve().parent)
+
     # Parse command line arguments
     args = parse_arguments()
     dry_run = bool(args.dryrun)
@@ -186,24 +193,10 @@ def main() -> NoReturn:
                     sys.exit(1)
                 elif "timed out" in msg:
                     print(f"Timed out, will retry in {Lending.get_sleep_time()}sec")
-                elif "Error 429" in msg:
-                    add_sleep = max(130.0 - Lending.get_sleep_time(), 0)
-                    sum_sleep = add_sleep + Lending.get_sleep_time()
-                    log.log_error(
-                        f"IP has been banned due to many requests. Sleeping for {sum_sleep} seconds"
-                    )
-                    if Config.has_option("MarketAnalysis", "analyseCurrencies"):
-                        if api.req_period <= api.default_req_period * 1.5:
-                            api.req_period += 1000
-                        # Check debug log setting
-                        if Config.getboolean("MarketAnalysis", "ma_debug_log"):
-                            print(
-                                f"Caught ERR_RATE_LIMIT, sleeping capture and increasing request delay. Current {api.req_period}ms"
-                            )
-                            log.log_error(
-                                "Expect this 130s ban periodically when using MarketAnalysis, it will fix itself"
-                            )
-                    time.sleep(add_sleep)
+                elif isinstance(ex, http.client.BadStatusLine):
+                    print("Caught BadStatusLine exception from exchange, ignoring.")
+                elif isinstance(ex, urllib.error.URLError):
+                    print(f"Caught {ex} from exchange, ignoring.")
                 elif isinstance(ex, ApiError):
                     print(f"Caught {msg} reading from exchange API, ignoring.")
                 else:
