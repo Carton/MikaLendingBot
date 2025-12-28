@@ -418,7 +418,7 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
             if log:
                 log.log(f"Using custom mindailyrate {cur_min_daily_rate * 100}% for {cur}")
     if Analysis and cur in currencies_to_analyse:
-        # TODO: 这里看下建议的 rate 是怎么来的？
+        # TODO: Check how the suggested rate is calculated here.
         recommended_min = Analysis.get_rate_suggestion(cur, method=analysis_method)
         if cur_min_daily_rate < Decimal(str(recommended_min)) and log:
             log.log(
