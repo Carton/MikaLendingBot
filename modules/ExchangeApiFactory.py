@@ -2,13 +2,14 @@
 Factory to instanciate right API class
 '''
 
-from modules.Poloniex import Poloniex
 from modules.Bitfinex import Bitfinex
+from modules.Poloniex import Poloniex
+
 
 EXCHANGE = {'POLONIEX': Poloniex, 'BITFINEX': Bitfinex}
 
 
-class ExchangeApiFactory(object):
+class ExchangeApiFactory:
     @staticmethod
     def createApi(exchange, cfg, log):
         if exchange not in EXCHANGE:

@@ -1,12 +1,11 @@
-# coding=utf-8
 """
 Tests for Lending module utility functions
 """
 
+import inspect
 import os
 import sys
-import inspect
-from decimal import Decimal
+
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
@@ -69,7 +68,7 @@ class TestParseXdayThreshold:
     def test_parse_threshold_with_high_rates(self):
         """Test parsing thresholds with higher rates"""
         threshold = "1.0:60,2.5:90"
-        rates, xdays = parse_xday_threshold(threshold)
+        rates, _xdays = parse_xday_threshold(threshold)
 
         assert rates[0] == 0.01  # 1.0% -> 0.01
         assert rates[1] == 0.025  # 2.5% -> 0.025

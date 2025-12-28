@@ -14,6 +14,9 @@ import argparse
 import sys
 from typing import NoReturn
 
+from .modules import Configuration as Config
+from .modules.Logger import Logger
+
 
 # Add type hints and docstrings
 def parse_arguments() -> argparse.Namespace:
@@ -86,18 +89,17 @@ def main() -> NoReturn:
     # Parse command line arguments
     args = parse_arguments()
 
-    # TODO: Implement main logic
-    # 1. Load config: Config.init(args.config or 'default.cfg')
-    # 2. Setup logging: Logger.init()
-    # 3. Initialize exchange: ExchangeApiFactory.create()
-    # 4. Start lending engine: Lending.start()
-    # 5. Start Web server: WebServer.initialize()
+    # 1. Load config
+    config_file = args.config or "default.cfg"
+    Config.init(config_file)
 
-    print("LendingBot v0.1.0 - Python 3 version")
-    print(f"Config file: {args.config or 'default.cfg'}")
-    print(f"Dry run: {args.dryrun}")
-    print(f"Verbose output: {args.verbose}")
-    print("\n⚠️  Note: This is a modernized Python 3 scaffold, code migration is in progress...")
+    # 2. Setup logging
+    log = Logger()
+    log.log("LendingBot v0.1.0 - Python 3 version started")
+    log.log(f"Config file: {config_file}")
+    log.log(f"Dry run: {args.dryrun}")
+
+    print("⚠️  Note: This is a modernized Python 3 scaffold, code migration is in progress...")
     print("\n📚 Migration Guide:")
     print("   1. Migrate modules from modules/ directory to src/lendingbot/")
     print("   2. Migrate plugins from plugins/ directory to src/lendingbot/plugins/")

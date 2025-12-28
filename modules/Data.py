@@ -1,7 +1,8 @@
 import datetime
+import json
 from decimal import Decimal
 from urllib import urlopen
-import json
+
 
 api = None
 log = None
@@ -36,7 +37,7 @@ def get_max_duration(end_date, context):
             return " - Days Remaining: " + str(diff_days)  # Status needs string
     except Exception as ex:
         ex.message = ex.message if ex.message else str(ex)
-        print("ERROR: There is something wrong with your endDate option. Error: {0}".format(ex.message))
+        print(f"ERROR: There is something wrong with your endDate option. Error: {ex.message}")
         exit(1)
 
 
@@ -73,7 +74,7 @@ def stringify_total_lent(total_lent, rate_lent):
     result = 'Lent: '
     for key in sorted(total_lent):
         average_lending_rate = Decimal(rate_lent[key] * 100 / total_lent[key])
-        result += '[%.4f %s @ %.4f%%] ' % (Decimal(total_lent[key]), key, average_lending_rate)
+        result += f'[{Decimal(total_lent[key]):.4f} {key} @ {average_lending_rate:.4f}%] '
         log.updateStatusValue(key, "lentSum", total_lent[key])
         log.updateStatusValue(key, "averageLendingRate", average_lending_rate)
     return result
@@ -108,7 +109,7 @@ def update_conversion_rates(output_currency, json_output_enabled):
                     log.updateOutputCurrency('highestBid', ticker_response[couple]['highestBid'])
                     log.updateOutputCurrency('currency', output_currency)
         if not output_currency_found:  # fetch output currency rate from blockchain.info
-            url = "https://blockchain.info/tobtc?currency={0}&value=1".format(output_currency)
+            url = f"https://blockchain.info/tobtc?currency={output_currency}&value=1"
         try:
             response = urlopen(url).read()
             try:
@@ -123,7 +124,7 @@ def update_conversion_rates(output_currency, json_output_enabled):
                 except ValueError:
                     log.log_error("Failed to decode response as plain text or JSON")
         except Exception:
-            log.log_error("Can't connect to {0} using BTC as the output currency".format(url))
+            log.log_error(f"Can't connect to {url} using BTC as the output currency")
 
 def get_lending_currencies():
     currencies = []
@@ -139,10 +140,10 @@ def get_lending_currencies():
 def truncate(f, n):
     """Truncates/pads a float f to n decimal places without rounding"""
     # From https://stackoverflow.com/questions/783897/truncating-floats-in-python
-    s = '{}'.format(f)
+    s = f'{f}'
     if 'e' in s or 'E' in s:
         return float('{0:.{1}f}'.format(f, n))
-    i, p, d = s.partition('.')
+    i, _p, d = s.partition('.')
     return float('.'.join([i, (d + '0' * n)[:n]]))
 
 

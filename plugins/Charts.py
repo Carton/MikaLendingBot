@@ -1,15 +1,16 @@
-# coding=utf-8
-from plugins.Plugin import Plugin
-import os
 import json
+import os
 import sqlite3
+
+from plugins.Plugin import Plugin
+
 
 DB_PATH = "market_data/loan_history.sqlite3"
 
 class Charts(Plugin):
 
     def on_bot_init(self):
-        super(Charts, self).on_bot_init()
+        super().on_bot_init()
 
         # If there's no history database, can't use this
         if not os.path.isfile(DB_PATH):
@@ -49,7 +50,7 @@ class Charts(Plugin):
         placeholders = ', '.join(placeholder for unused in self.activeCurrencies)
 
         # Get distinct coins
-        query = "SELECT DISTINCT currency FROM history WHERE currency IN (%s) ORDER BY currency DESC" % placeholders
+        query = f"SELECT DISTINCT currency FROM history WHERE currency IN ({placeholders}) ORDER BY currency DESC"
         cursor.execute(query, self.activeCurrencies)
         for i in cursor:
             data[i[0]] = []
@@ -58,8 +59,8 @@ class Charts(Plugin):
         for coin in data:
             runningTotal = 0.0
 
-            cursor.execute("SELECT strftime('%%s', strftime('%%Y-%%m-%%d 00:00:00', close)) ts, round(SUM(earned), 8) i " \
-                           "FROM history WHERE currency = '%s' GROUP BY ts ORDER BY ts" % (coin));
+            cursor.execute("SELECT strftime('%s', strftime('%Y-%m-%d 00:00:00', close)) ts, round(SUM(earned), 8) i " \
+                           f"FROM history WHERE currency = '{coin}' GROUP BY ts ORDER BY ts")
             for row in cursor:
                 runningTotal += float(row[1])
                 data[coin].append([ int(row[0]), float(row[1]), float(runningTotal) ])

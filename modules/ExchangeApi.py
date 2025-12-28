@@ -7,7 +7,7 @@ import calendar
 import time
 
 
-class ExchangeApi(object):
+class ExchangeApi:
     __metaclass__ = abc.ABCMeta
 
     def __str__(self):

@@ -1,27 +1,29 @@
-from hypothesis import given, settings
-from hypothesis.strategies import floats, lists, integers, datetimes
-
-import csv
 import datetime
-import time
-import pytest
-import sqlite3 as sqlite
-from random import randint
-import pandas as pd
+import inspect
 
 # Hack to get relative imports - probably need to fix the dir structure instead but we need this at the minute for
 # pytest to work
-import os, sys, inspect
+import os
+import sqlite3 as sqlite
+import sys
+import time
+
+import pandas as pd
+import pytest
+from hypothesis import given
+from hypothesis.strategies import datetimes, floats, integers, lists
+
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
-from modules.MarketAnalysis import MarketAnalysis
-from modules.Configuration import get_all_currencies
-from modules.Poloniex import Poloniex
 import modules.Configuration as Config
+
 import modules.Data as Data
+from modules.MarketAnalysis import MarketAnalysis
+from modules.Poloniex import Poloniex
+
 
 Config.init("default.cfg", Data)
 api = Poloniex(Config, None)
@@ -60,10 +62,10 @@ def populated_db():
     inserted_rates = []
     for rate in rates:
         market_data = []
-        for level in range(price_levels):
-            market_data.append("{0:.8f}".format(rate))
-            market_data.append("{0:.2f}".format(rate))
-        percentile = "{0:.8f}".format(rate)
+        for _level in range(price_levels):
+            market_data.append(f"{rate:.8f}")
+            market_data.append(f"{rate:.2f}")
+        percentile = f"{rate:.8f}"
         market_data.append(percentile)
         MA.insert_into_db(db_con, market_data)
         market_data = [float(x) for x in market_data]
@@ -80,7 +82,7 @@ def test_insert_into_db(populated_db):
     query = "SELECT rate0, amnt0, rate1, amnt1, rate2, amnt2, percentile FROM loans;"
     db_rates = db_con.cursor().execute(query).fetchall()
     assert len(rates) == len(db_rates)
-    for db_rate, rate in zip(db_rates, rates):
+    for db_rate, rate in zip(db_rates, rates, strict=False):
         assert len(rate) == len(db_rate)
         assert len(rate) > 1
         for level in range(len(rate)):
@@ -90,13 +92,13 @@ def test_insert_into_db(populated_db):
 def test_get_rates_from_db(populated_db):
     db_con, rates = populated_db
     db_rates = MA.get_rates_from_db(db_con, from_date=time.time() - 10, price_levels=["rate0"])
-    for db_rate, rate in zip(db_rates, rates):
+    for db_rate, rate in zip(db_rates, rates, strict=False):
         assert len(db_rate) == 2
         assert db_rate[1] == float(rate[0])
 
 
 def test_get_rate_list(populated_db):
-    db_con, rates = populated_db
+    db_con, _rates = populated_db
     db_rates = MA.get_rate_list(db_con, 1)
     assert len(db_rates) == 1
 

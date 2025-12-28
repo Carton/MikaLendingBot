@@ -1,11 +1,10 @@
-# coding=utf-8
-import threading
-import os
 import json
-from decimal import Decimal
-from decimal import InvalidOperation
+import os
+import threading
+from decimal import Decimal, InvalidOperation
 
 import modules.Lending as Lending
+
 
 server = None
 web_server_ip = "0.0.0.0"
@@ -37,8 +36,8 @@ def initialize_web_server(config):
     # Check for custom web server template
     web_server_template = config.get('BOT', 'customWebServerTemplate', 'www')
 
-    print('Starting WebServer at {0} on port {1} with template {2}'
-          .format(web_server_ip, web_server_port, web_server_template))
+    print(f'Starting WebServer at {web_server_ip} on port {web_server_port} with template {web_server_template}'
+          )
 
     thread = threading.Thread(target=start_web_server)
     thread.deamon = True
@@ -49,9 +48,10 @@ def start_web_server():
     '''
     Start the web server
     '''
+    import socket
+
     import SimpleHTTPServer
     import SocketServer
-    import socket
 
     try:
         port = int(web_server_port)
@@ -131,14 +131,14 @@ def start_web_server():
             hosts = list(set(addresses))  # Make list unique
         else:
             hosts = [host]
-        serving_msg = "http://{0}:{1}/lendingbot.html".format(hosts[0], port)
+        serving_msg = f"http://{hosts[0]}:{port}/lendingbot.html"
         for host in hosts[1:]:
-            serving_msg += ", http://{0}:{1}/lendingbot.html".format(host, port)
-        print('Started WebServer, lendingbot status available at {0}'.format(serving_msg))
+            serving_msg += f", http://{host}:{port}/lendingbot.html"
+        print(f'Started WebServer, lendingbot status available at {serving_msg}')
         server.serve_forever()
     except Exception as ex:
         ex.message = ex.message if ex.message else str(ex)
-        print('Failed to start WebServer: {0}'.format(ex.message))
+        print(f'Failed to start WebServer: {ex.message}')
 
 
 def stop_web_server():
@@ -150,4 +150,4 @@ def stop_web_server():
         threading.Thread(target=server.shutdown).start()
     except Exception as ex:
         ex.message = ex.message if ex.message else str(ex)
-        print("Failed to stop WebServer: {0}".format(ex.message))
+        print(f"Failed to stop WebServer: {ex.message}")

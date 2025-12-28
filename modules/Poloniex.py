@@ -1,17 +1,16 @@
-# coding=utf-8
 import hashlib
 import hmac
 import json
 import socket
+import threading
 import time
 import urllib
-import urllib2
-import threading
-import modules.Configuration as Config
 
+import modules.Configuration as Config
+import urllib2
 from modules.RingBuffer import RingBuffer
-from modules.ExchangeApi import ExchangeApi
-from modules.ExchangeApi import ApiError
+
+from modules.ExchangeApi import ApiError, ExchangeApi
 
 
 def post_process(before):
@@ -30,7 +29,7 @@ def post_process(before):
 
 class Poloniex(ExchangeApi):
     def __init__(self, cfg, log):
-        super(Poloniex, self).__init__(cfg, log)
+        super().__init__(cfg, log)
         self.cfg = cfg
         self.log = log
         self.APIKey = self.cfg.get("API", "apikey", None)
@@ -44,16 +43,16 @@ class Poloniex(ExchangeApi):
         self.api_debug_log = self.cfg.getboolean("BOT", "api_debug_log")
 
     def limit_request_rate(self):
-        super(Poloniex, self).limit_request_rate()
+        super().limit_request_rate()
 
     def increase_request_timer(self):
-        super(Poloniex, self).increase_request_timer()
+        super().increase_request_timer()
 
     def decrease_request_timer(self):
-        super(Poloniex, self).decrease_request_timer()
+        super().decrease_request_timer()
 
     def reset_request_timer(self):
-        super(Poloniex, self).reset_request_timer()
+        super().reset_request_timer()
 
     @ExchangeApi.synchronized
     def api_query(self, command, req=None):
@@ -122,11 +121,11 @@ class Poloniex(ExchangeApi):
                 else:
                     polo_error_msg = raw_polo_response
             ex.message = ex.message if ex.message else str(ex)
-            ex.message = "{0} Requesting {1}.  Poloniex reports: '{2}'".format(ex.message, command, polo_error_msg)
+            ex.message = f"{ex.message} Requesting {command}.  Poloniex reports: '{polo_error_msg}'"
             raise ex
         except Exception as ex:
             ex.message = ex.message if ex.message else str(ex)
-            ex.message = "{0} Requesting {1}".format(ex.message, command)
+            ex.message = f"{ex.message} Requesting {command}"
             raise
 
     def return_ticker(self):

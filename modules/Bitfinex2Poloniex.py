@@ -3,10 +3,11 @@ Converts Bitfinex to Poloniex Api returns
 '''
 
 import datetime
+
 import pytz
 
 
-class Bitfinex2Poloniex(object):
+class Bitfinex2Poloniex:
     @staticmethod
     def convertTimestamp(timestamp):
         '''
@@ -71,7 +72,7 @@ class Bitfinex2Poloniex(object):
 
         for bid in bfxLendbook['bids']:
             plxOrders['demands'].append({
-                'rate': '{0:0.8f}'.format(float(bid['rate']) / 36500),
+                'rate': '{:0.8f}'.format(float(bid['rate']) / 36500),
                 'amount': bid['amount'],
                 'rangeMin': '2',
                 'rangeMax': bid['period']
@@ -79,7 +80,7 @@ class Bitfinex2Poloniex(object):
 
         for ask in bfxLendbook['asks']:
             plxOrders['offers'].append({
-                'rate': '{0:0.8f}'.format(float(ask['rate']) / 36500),
+                'rate': '{:0.8f}'.format(float(ask['rate']) / 36500),
                 'amount': ask['amount'],
                 'rangeMin': '2',
                 'rangeMax': ask['period']

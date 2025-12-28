@@ -1,5 +1,6 @@
 from plugins import *
 
+
 config = None
 api = None
 log = None
@@ -37,7 +38,7 @@ def init(cfg, api1, log1, notify_conf1):
             plugins.append(init_plugin(plugin_name))
             active_plugins.append(plugin_name)
         except Exception as ex:
-            log.log_error('Failed to load plugin {}: {}'.format(plugin_name, ex.message))
+            log.log_error(f'Failed to load plugin {plugin_name}: {ex.message}')
 
     log.addSectionLog("plugins", "enabled", active_plugins)
 

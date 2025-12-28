@@ -1,19 +1,18 @@
-# coding=utf-8
 """
 Tests for Data module utility functions
 """
 
+import inspect
 import os
 import sys
-import inspect
-import datetime
+
 
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir)
 
 # Import only the functions we can test independently (without API dependencies)
-from modules.Data import truncate, get_max_duration
+from modules.Data import get_max_duration, truncate
 
 
 class TestTruncate:

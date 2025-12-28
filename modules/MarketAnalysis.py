@@ -1,24 +1,27 @@
+import datetime
 import os
+import sqlite3 as sqlite
 import sys
 import threading
 import time
 import traceback
-import datetime
-import pandas as pd
-import sqlite3 as sqlite
 from sqlite3 import Error
-from modules.ExchangeApi import ApiError
 
 # Bot libs
 import modules.Configuration as Config
+import pandas as pd
+
 from modules.Data import truncate
+from modules.ExchangeApi import ApiError
+
+
 try:
     import numpy
     use_numpy = True
 except ImportError as ex:
     ex.message = ex.message if ex.message else str(ex)
     print("WARN: Module Numpy not found, using manual percentile method instead. "
-          "It is recommended to install Numpy. Error: {0}".format(ex.message))
+          f"It is recommended to install Numpy. Error: {ex.message}")
     use_numpy = False
 
 # Improvements
@@ -36,7 +39,7 @@ class MarketDataException(Exception):
     pass
 
 
-class MarketAnalysis(object):
+class MarketAnalysis:
     def __init__(self, config, api):
         self.currencies_to_analyse = config.get_currencies_list('analyseCurrencies', 'MarketAnalysis')
         self.update_interval = int(config.get('MarketAnalysis', 'analyseUpdateInterval', 10, 1, 3600))
@@ -81,8 +84,8 @@ class MarketAnalysis(object):
                 try:
                     self.api.return_loan_orders(currency, 5)
                 except Exception as cur_ex:
-                    raise Exception("ERROR: You entered an incorrect currency: '{0}' to analyse the market of, please "
-                                    "check your settings. Error message: {1}".format(currency, cur_ex))
+                    raise Exception(f"ERROR: You entered an incorrect currency: '{currency}' to analyse the market of, please "
+                                    f"check your settings. Error message: {cur_ex}")
                 time.sleep(2)
 
     def run(self):
@@ -126,25 +129,25 @@ class MarketAnalysis(object):
                 self.delete_old_data(db_con, seconds)
             except Exception as ex:
                 ex.message = ex.message if ex.message else str(ex)
-                print("Error in MarketAnalysis: {0}".format(ex.message))
+                print(f"Error in MarketAnalysis: {ex.message}")
                 traceback.print_exc()
             time.sleep(self.delete_thread_sleep)
 
     @staticmethod
     def print_traceback(ex, log_message):
         ex.message = ex.message if ex.message else str(ex)
-        print("{0}: {1}".format(log_message, ex.message))
+        print(f"{log_message}: {ex.message}")
         traceback.print_exc()
 
     @staticmethod
     def print_exception_error(ex, log_message, debug=False):
         ex.message = ex.message if ex.message else str(ex)
-        print("{0}: {1}".format(log_message, ex.message))
+        print(f"{log_message}: {ex.message}")
         if debug:
             import traceback
             ex_type, value, tb = sys.exc_info()
-            print("DEBUG: Class:{0} Args:{1}".format(ex.__class__, ex.args))
-            print("DEBUG: Type:{0} Value:{1} LineNo:{2}".format(ex_type, value, tb.tb_lineno))
+            print(f"DEBUG: Class:{ex.__class__} Args:{ex.args}")
+            print(f"DEBUG: Type:{ex_type} Value:{value} LineNo:{tb.tb_lineno}")
             traceback.print_exc()
 
     def update_market_thread(self, cur, levels=None):
@@ -165,7 +168,7 @@ class MarketAnalysis(object):
                 if '429' in str(ex):
                     if self.ma_debug_log:
                         print("Caught ERR_RATE_LIMIT, sleeping capture and increasing request delay. Current"
-                              " {0}ms".format(self.api.req_period))
+                              f" {self.api.req_period}ms")
                     time.sleep(130)
             except Exception as ex:
                 if self.ma_debug_log:
@@ -190,8 +193,8 @@ class MarketAnalysis(object):
                 levels = self.recorded_levels
             insert_sql = "INSERT INTO loans ("
             for level in xrange(levels):
-                insert_sql += "rate{0}, amnt{0}, ".format(level)
-            insert_sql += "percentile) VALUES ({0});".format(','.join(market_data))  # percentile = 0
+                insert_sql += f"rate{level}, amnt{level}, "
+            insert_sql += "percentile) VALUES ({});".format(','.join(market_data))  # percentile = 0
             with db_con:
                 try:
                     db_con.execute(insert_sql)
@@ -208,7 +211,7 @@ class MarketAnalysis(object):
         """
         del_time = int(time.time()) - seconds
         with db_con:
-            query = "DELETE FROM loans WHERE unixtime < {0};".format(del_time)
+            query = f"DELETE FROM loans WHERE unixtime < {del_time};"
             cursor = db_con.cursor()
             cursor.execute(query)
 
@@ -241,7 +244,7 @@ class MarketAnalysis(object):
             db_con = cur
         else:
             if cur not in full_list:
-                raise ValueError("{0} is not a valid currency, must be one of {1}".format(cur, full_list))
+                raise ValueError(f"{cur} is not a valid currency, must be one of {full_list}")
             if cur not in self.currencies_to_analyse:
                 return []
             db_con = self.create_connection(cur)
@@ -259,7 +262,7 @@ class MarketAnalysis(object):
             df.columns = columns
         except:
             if self.ma_debug_log:
-                print("DEBUG:get_rate_list: cols: {0} rates:{1} db:{2}".format(columns, rates, db_con))
+                print(f"DEBUG:get_rate_list: cols: {columns} rates:{rates} db:{db_con}")
             raise
 
         # convert unixtimes to datetimes so we can resample
@@ -304,20 +307,19 @@ class MarketAnalysis(object):
             if len(rates) == 0:
                 print("Rate list not populated")
                 if self.ma_debug_log:
-                    print("DEBUG:get_analysis_seconds: cur: {0} method:{1} rates:{2}".format(cur, method, rates))
+                    print(f"DEBUG:get_analysis_seconds: cur: {cur} method:{method} rates:{rates}")
                 return 0
             if method == 'percentile':
                 return self.get_percentile(rates.rate0.values.tolist(), self.lending_style)
             if method == 'MACD':
                 macd_rate = truncate(self.get_MACD_rate(cur, rates), 6)
                 if self.ma_debug_log:
-                    print("Cur:{0}, MACD:{1:.6f}, Perc:{2:.6f}, Best:{3:.6f}"
-                          .format(cur, macd_rate, self.get_percentile(rates.rate0.values.tolist(), self.lending_style),
-                                  rates.rate0.iloc[-1]))
+                    print(f"Cur:{cur}, MACD:{macd_rate:.6f}, Perc:{self.get_percentile(rates.rate0.values.tolist(), self.lending_style):.6f}, Best:{rates.rate0.iloc[-1]:.6f}"
+                          )
                 return macd_rate
         except MarketDataException:
             if method != 'percentile':
-                print("Caught exception during {0} analysis, using percentile for now".format(method))
+                print(f"Caught exception during {method} analysis, using percentile for now")
                 return self.get_percentile(rates.rate0.values.tolist(), self.lending_style)
             else:
                 raise
@@ -375,7 +377,7 @@ class MarketAnalysis(object):
         :retrun: A float of the suggested, calculated rate
         """
         if len(rates_df) < self.get_analysis_seconds('MACD') * (self.data_tolerance / 100):
-            print("{0} : Need more data for analysis, still collecting. I have {1}/{2} records"
+            print("{} : Need more data for analysis, still collecting. I have {}/{} records"
                   .format(cur, len(rates_df), int(self.get_analysis_seconds('MACD') * (self.data_tolerance / 100))))
             raise MarketDataException
 
@@ -404,7 +406,7 @@ class MarketAnalysis(object):
         """
         if db_path is None:
             prefix = Config.get_exchange()
-            db_path = os.path.join(self.db_dir, '{0}-{1}.db'.format(prefix, cur))
+            db_path = os.path.join(self.db_dir, f'{prefix}-{cur}.db')
         try:
             con = sqlite.connect(db_path)
             return con
@@ -424,13 +426,13 @@ class MarketAnalysis(object):
             create_table_sql = "CREATE TABLE IF NOT EXISTS loans (id INTEGER PRIMARY KEY AUTOINCREMENT," + \
                                "unixtime integer(4) not null default (strftime('%s','now')),"
             for level in xrange(levels):
-                create_table_sql += "rate{0} FLOAT, ".format(level)
-                create_table_sql += "amnt{0} FLOAT, ".format(level)
+                create_table_sql += f"rate{level} FLOAT, "
+                create_table_sql += f"amnt{level} FLOAT, "
             create_table_sql += "percentile FLOAT);"
             cursor.execute("PRAGMA journal_mode=wal")
             cursor.execute(create_table_sql)
 
-    def get_rates_from_db(self, db_con, from_date=None, price_levels=['rate0']):
+    def get_rates_from_db(self, db_con, from_date=None, price_levels=None):
         """
         Query the DB for all rates for a particular currency
 
@@ -439,11 +441,13 @@ class MarketAnalysis(object):
         :param from_date: The earliest data you want, specified in unix time (seconds since epoch)
         :price_level: We record multiple price levels in the DB, the best offer being rate0
         """
+        if price_levels is None:
+            price_levels = ['rate0']
         with db_con:
             cursor = db_con.cursor()
-            query = "SELECT unixtime, {0} FROM loans ".format(",".join(price_levels))
+            query = "SELECT unixtime, {} FROM loans ".format(",".join(price_levels))
             if from_date is not None:
-                query += "WHERE unixtime > {0}".format(from_date)
+                query += f"WHERE unixtime > {from_date}"
             query += ";"
             cursor.execute(query)
             return cursor.fetchall()

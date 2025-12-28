@@ -1,7 +1,6 @@
-# coding=utf-8
 
 
-class Plugin(object):
+class Plugin:
     """
     @type cfg1: modules.Configuration
     @type api1: modules.Poloniex.Poloniex

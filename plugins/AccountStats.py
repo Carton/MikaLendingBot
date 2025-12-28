@@ -1,6 +1,7 @@
-# coding=utf-8
-from plugins.Plugin import Plugin
 import sqlite3
+
+from plugins.Plugin import Plugin
+
 
 DB_VERSION = 2
 BITCOIN_GENESIS_BLOCK_DATE = "2009-01-03 18:15:05"
@@ -29,7 +30,7 @@ class AccountStats(Plugin):
     report_interval = 86400
 
     def on_bot_init(self):
-        super(AccountStats, self).on_bot_init()
+        super().on_bot_init()
         self.init_db()
         self.check_upgrade()
         self.report_interval = int(self.config.get("ACCOUNTSTATS", "ReportInterval", 86400))
@@ -183,4 +184,4 @@ class AccountStats(Plugin):
 
     @staticmethod
     def format_value(value):
-        return '{0:0.12f}'.format(float(value)).rstrip('0').rstrip('.')
+        return f'{float(value):0.12f}'.rstrip('0').rstrip('.')
