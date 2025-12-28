@@ -13,6 +13,13 @@ log: Logger | None = None
 
 
 def init(api1: Any, log1: Logger) -> None:
+    """
+    Initialize the Data module.
+
+    Args:
+        api1: The exchange API instance.
+        log1: The logger instance.
+    """
     global api, log
     api = api1
     log = log1
@@ -49,6 +56,14 @@ def get_max_duration(end_date: str, context: str) -> int | str:
 
 
 def get_total_lent() -> list[dict[str, Decimal]]:
+    """
+    Retrieves the total amount lent for each currency.
+
+    Returns:
+        A list containing two dictionaries:
+        - index 0: Total amount lent per currency.
+        - index 1: Total weighted rate per currency (rate * amount).
+    """
     crypto_lent = api.return_active_loans()
     total_lent: dict[str, Decimal] = {}
     rate_lent: dict[str, Decimal] = {}
@@ -73,6 +88,16 @@ def timestamp() -> str:
 
 
 def stringify_total_lent(total_lent: dict[str, Decimal], rate_lent: dict[str, Decimal]) -> str:
+    """
+    Formats the total lent data into a readable string.
+
+    Args:
+        total_lent: Dictionary of total amounts lent.
+        rate_lent: Dictionary of weighted rates.
+
+    Returns:
+        A formatted string describing the lent status.
+    """
     result = "Lent: "
     if log is None:
         return result

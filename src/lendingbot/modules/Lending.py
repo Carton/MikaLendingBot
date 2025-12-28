@@ -73,6 +73,19 @@ def init(
     analysis: Any,
     notify_conf1: dict[str, Any],
 ) -> None:
+    """
+    Initialize the Lending module with configuration, API, logger, and other dependencies.
+
+    Args:
+        cfg: The configuration object.
+        api1: The exchange API instance.
+        log1: The logger instance.
+        data: The Data module instance.
+        maxtolend: The MaxToLend module instance.
+        dry_run1: Boolean flag for dry run mode.
+        analysis: The MarketAnalysis module instance.
+        notify_conf1: Configuration dictionary for notifications.
+    """
     global Config, api, log, Data, MaxToLend, Analysis, notify_conf
     Config = cfg
     api = api1
@@ -511,6 +524,18 @@ def get_cur_spread(spread: int, cur_active_bal: Decimal, active_cur: str) -> int
 def construct_orders(
     cur: str, cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any
 ) -> dict[str, Any]:
+    """
+    Constructs a list of lend orders based on the configured spread and gap settings.
+
+    Args:
+        cur: The currency symbol.
+        cur_active_bal: The active balance available to lend.
+        cur_total_balance: The total balance of the currency.
+        ticker: The ticker data (used for rawbtc gap mode).
+
+    Returns:
+        A dictionary containing lists of 'amounts' and 'rates' for the orders.
+    """
     cur_spread = get_cur_spread(spread_lend, cur_active_bal, cur)
     if cur_spread == 1:
         # print('skip get_gap_mode_rates ...')
@@ -612,6 +637,18 @@ def get_gap_mode_rates(
 def lend_cur(
     active_cur: str, total_lent: dict[str, Decimal], lending_balances: dict[str, str], ticker: Any
 ) -> int:
+    """
+    Analyzes the market and places lend orders for a specific currency.
+
+    Args:
+        active_cur: The currency symbol to lend.
+        total_lent: Dictionary of total amounts already lent.
+        lending_balances: Dictionary of available lending balances.
+        ticker: The ticker data.
+
+    Returns:
+        1 if the currency was usable (orders placed or attempted), 0 otherwise.
+    """
     active_cur_total_balance = Decimal(str(lending_balances[active_cur]))
     if active_cur in total_lent:
         active_cur_total_balance += total_lent[active_cur]
