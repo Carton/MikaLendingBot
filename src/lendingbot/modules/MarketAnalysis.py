@@ -15,6 +15,17 @@ from .Data import truncate
 from .ExchangeApi import ApiError
 
 
+# Improvements
+# [ ] Provide something that takes into account dust offers. (The golden cross works well on BTC, not slower markets)
+# [ ] RE: above. Weighted rate.
+# [ ] Add docstring to everything
+# [ ] Unit tests
+
+# NOTES
+# * A possible solution for the dust problem is take the top 10 offers and if the offer amount is less than X% of the
+#   total available, ignore it as dust.
+
+
 try:
     import numpy as np
 

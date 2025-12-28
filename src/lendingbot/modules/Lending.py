@@ -163,10 +163,7 @@ def get_sleep_time() -> float:
 
 def set_sleep_time(usable: int) -> None:
     global sleep_time
-    if usable == 0:  # After loop, if no currencies had enough to lend, use inactive sleep time.
-        sleep_time = sleep_time_inactive
-    else:  # Else, use active sleep time.
-        sleep_time = sleep_time_active
+    sleep_time = sleep_time_inactive if usable == 0 else sleep_time_active
 
 
 def notify_summary(sleep_time_val: float) -> None:
@@ -421,7 +418,7 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
             if log:
                 log.log(f"Using custom mindailyrate {cur_min_daily_rate * 100}% for {cur}")
     if Analysis and cur in currencies_to_analyse:
-        # TODO: 这里看下建议의 rate 是怎么来的？
+        # TODO: 这里看下建议的 rate 是怎么来的？
         recommended_min = Analysis.get_rate_suggestion(cur, method=analysis_method)
         if cur_min_daily_rate < Decimal(str(recommended_min)) and log:
             log.log(
