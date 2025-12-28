@@ -1,4 +1,3 @@
-# coding=utf-8
 import atexit
 import datetime
 import io
@@ -12,7 +11,7 @@ from RingBuffer import RingBuffer
 from Notify import send_notification
 
 
-class ConsoleOutput(object):
+class ConsoleOutput:
     def __init__(self):
         self._status = ''
         atexit.register(self._exit)
@@ -41,7 +40,7 @@ class ConsoleOutput(object):
         sys.stderr.write(update)
 
 
-class JsonOutput(object):
+class JsonOutput:
     def __init__(self, file, logLimit, exchange=''):
         self.jsonOutputFile = file
         self.jsonOutput = {}
@@ -59,7 +58,7 @@ class JsonOutput(object):
         self.jsonOutputLog.append(line)
 
     def writeJsonFile(self):
-        with io.open(self.jsonOutputFile, 'w', encoding='utf-8') as f:
+        with open(self.jsonOutputFile, 'w', encoding='utf-8') as f:
             self.jsonOutput["log"] = self.jsonOutputLog.get()
             f.write(unicode(json.dumps(self.jsonOutput, ensure_ascii=True, sort_keys=True), errors='replace'))
             f.close()
@@ -86,7 +85,7 @@ class JsonOutput(object):
         self.jsonOutputCurrency[key] = str(value)
 
 
-class Logger(object):
+class Logger:
     def __init__(self, json_file='', json_log_size=-1, exchange=''):
         self._lent = ''
         self._daysRemaining = ''
@@ -102,15 +101,15 @@ class Logger(object):
         return datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 
     def log(self, msg):
-        log_message = "{0} {1}".format(self.timestamp(), msg)
+        log_message = f"{self.timestamp()} {msg}"
         self.output.printline(log_message)
         self.refreshStatus()
 
     def log_error(self, msg):
-        log_message = "{0} Error {1}".format(self.timestamp(), msg)
+        log_message = f"{self.timestamp()} Error {msg}"
         self.output.printline(log_message)
         if isinstance(self.output, JsonOutput):
-            print log_message
+            print(log_message)
         self.refreshStatus()
 
     def offer(self, amt, cur, rate, days, msg):

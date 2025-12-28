@@ -1,4 +1,3 @@
-# coding=utf-8
 import json
 import os
 from ConfigParser import SafeConfigParser
@@ -19,13 +18,13 @@ def init(file_location, data=None):
         # Copy default config file if not found
         try:
             shutil.copy('default.cfg.example', file_location)
-            print '\ndefault.cfg.example has been copied to ' + file_location + '\n' \
-                  'Edit it with your API key and custom settings.\n'
-            raw_input("Press Enter to acknowledge and exit...")
+            print('\ndefault.cfg.example has been copied to ' + file_location + '\n'
+                  'Edit it with your API key and custom settings.\n')
+            input("Press Enter to acknowledge and exit...")
             exit(1)
         except Exception as ex:
             ex.message = ex.message if ex.message else str(ex)
-            print("Failed to automatically copy config. Please do so manually. Error: {0}".format(ex.message))
+            print(f"Failed to automatically copy config. Please do so manually. Error: {ex.message}")
             exit(1)
     if config.has_option("BOT", "coinconfig"):
         print('\'coinconfig\' has been removed, please use section coin config instead.\n'
@@ -36,7 +35,7 @@ def init(file_location, data=None):
 
 def has_option(category, option):
     try:
-        return True if os.environ["{0}_{1}".format(category, option)] else _
+        return True if os.environ[f"{category}_{option}"] else _
     except (KeyError, NameError): # KeyError for no env var, NameError for _ (empty var) and then to continue
         return config.has_option(category, option)
 
@@ -44,7 +43,7 @@ def has_option(category, option):
 def getboolean(category, option, default_value=False):
     if has_option(category, option):
         try:
-            return bool(os.environ["{0}_{1}".format(category, option)])
+            return bool(os.environ[f"{category}_{option}"])
         except KeyError:
             return config.getboolean(category, option)
     else:
@@ -54,27 +53,25 @@ def getboolean(category, option, default_value=False):
 def get(category, option, default_value=False, lower_limit=False, upper_limit=False):
     if has_option(category, option):
         try:
-            value = os.environ["{0}_{1}".format(category, option)]
+            value = os.environ[f"{category}_{option}"]
         except KeyError:
             value = config.get(category, option)
         try:
             if lower_limit and float(value) < float(lower_limit):
-                print "WARN: [%s]-%s's value: '%s' is below the minimum limit: %s, which will be used instead." % \
-                      (category, option, value, lower_limit)
+                print(f"WARN: [{category}]-{option}'s value: '{value}' is below the minimum limit: {lower_limit}, which will be used instead.")
                 value = lower_limit
             if upper_limit and float(value) > float(upper_limit):
-                print "WARN: [%s]-%s's value: '%s' is above the maximum limit: %s, which will be used instead." % \
-                      (category, option, value, upper_limit)
+                print(f"WARN: [{category}]-{option}'s value: '{value}' is above the maximum limit: {upper_limit}, which will be used instead.")
                 value = upper_limit
             return value
         except ValueError:
             if default_value is None:
-                print "ERROR: [%s]-%s is not allowed to be left empty. Please check your config." % (category, option)
+                print(f"ERROR: [{category}]-{option} is not allowed to be left empty. Please check your config.")
                 exit(1)
             return default_value
     else:
         if default_value is None:
-            print "ERROR: [%s]-%s is not allowed to be left unset. Please check your config." % (category, option)
+            print(f"ERROR: [{category}]-{option} is not allowed to be left unset. Please check your config.")
             exit(1)
         return default_value
 
@@ -112,7 +109,7 @@ def get_coin_cfg():
             except Exception as ex:
                 ex.message = ex.message if ex.message else str(ex)
                 print("Coin Config for " + cur + " parsed incorrectly, please refer to the documentation. "
-                      "Error: {0}".format(ex.message))
+                      f"Error: {ex.message}")
                 # Need to raise this exception otherwise the bot will continue if you configured one cur correctly
                 raise
     return coin_cfg
@@ -127,7 +124,7 @@ def get_min_loan_sizes():
             except Exception as ex:
                 ex.message = ex.message if ex.message else str(ex)
                 print("minloansize for " + cur + " parsed incorrectly, please refer to the documentation. "
-                      "Error: {0}".format(ex.message))
+                      f"Error: {ex.message}")
                 # Bomb out if something isn't configured correctly
                 raise
     return min_loan_sizes
@@ -157,8 +154,7 @@ def get_gap_mode(category, option):
         full_list = ['raw', 'rawbtc', 'relative']
         value = get(category, 'gapmode', False).lower().strip(" ")
         if value not in full_list:
-            print "ERROR: Invalid entry '%s' for [%s]-gapMode. Please check your config. Allowed values are: %s" % \
-                  (value, category, ", ".join(full_list))
+            print("ERROR: Invalid entry '{}' for [{}]-gapMode. Please check your config. Allowed values are: {}".format(value, category, ", ".join(full_list)))
             exit(1)
         return value.lower()
     else:

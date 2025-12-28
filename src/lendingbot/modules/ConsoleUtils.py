@@ -1,9 +1,9 @@
-# coding=utf-8
 import os
+import platform
 import shlex
 import struct
-import platform
 import subprocess
+
 
 def get_terminal_size():
     """ getTerminalSize()
@@ -28,7 +28,7 @@ def get_terminal_size():
 
 def _get_terminal_size_windows():
     try:
-        from ctypes import windll, create_string_buffer
+        from ctypes import create_string_buffer, windll
         # stdin handle is -10
         # stdout handle is -11
         # stderr handle is -12
@@ -36,9 +36,9 @@ def _get_terminal_size_windows():
         csbi = create_string_buffer(22)
         res = windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
         if res:
-            (bufx, bufy, curx, cury, wattr,
+            (_bufx, _bufy, _curx, _cury, _wattr,
              left, top, right, bottom,
-             maxx, maxy) = struct.unpack("hhhhHhhhhhh", csbi.raw)
+             _maxx, _maxy) = struct.unpack("hhhhHhhhhhh", csbi.raw)
             sizex = right - left + 1
             sizey = bottom - top + 1
             return sizex, sizey
