@@ -1,6 +1,5 @@
 from hypothesis import given, settings
-from hypothesis.strategies import floats, lists, integers
-from hypothesis.extra.datetime import datetimes
+from hypothesis.strategies import floats, lists, integers, datetimes
 
 import csv
 import datetime

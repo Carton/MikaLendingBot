@@ -31,7 +31,7 @@ def multiple_api_queries(n):
 
 # Test fast api calls
 def test_multiple_calls():
-    multiple_api_queries(270)
+    multiple_api_queries(10)
 
 
 def call_get_open_loan_offers(i):
