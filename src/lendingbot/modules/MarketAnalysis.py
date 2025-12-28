@@ -10,7 +10,6 @@ from typing import Any
 
 import pandas as pd
 
-from . import Configuration as Config
 from .Data import truncate
 from .ExchangeApi import ApiError
 
@@ -42,34 +41,41 @@ class MarketDataException(Exception):
 
 
 class MarketAnalysis:
-    def __init__(self, config: Any, api: Any) -> None:
-        self.currencies_to_analyse = config.get_currencies_list(
+    def __init__(self, config: Any, api: Any, db_dir: Path | None = None) -> None:
+        self.config = config
+        self.api = api
+        self.currencies_to_analyse = self.config.get_currencies_list(
             "analyseCurrencies", "MarketAnalysis"
         )
         self.update_interval = int(
-            config.get("MarketAnalysis", "analyseUpdateInterval", 10, 1, 3600)
+            self.config.get("MarketAnalysis", "analyseUpdateInterval", 10, 1, 3600)
         )
-        self.api = api
-        self.lending_style = int(config.get("MarketAnalysis", "lendingStyle", 75, 1, 99))
+        self.lending_style = int(self.config.get("MarketAnalysis", "lendingStyle", 75, 1, 99))
         self.recorded_levels = 10
 
         self.modules_dir = Path(__file__).resolve().parent
         self.top_dir = self.modules_dir.parent
-        self.db_dir = self.top_dir / "market_data"
-        self.recorded_levels = int(config.get("MarketAnalysis", "recorded_levels", 3, 1, 100))
-        self.data_tolerance = float(config.get("MarketAnalysis", "data_tolerance", 15, 10, 90))
-        self.ma_debug_log = config.getboolean("MarketAnalysis", "ma_debug_log")
+        if db_dir:
+            self.db_dir = db_dir
+        else:
+            self.db_dir = self.top_dir / "market_data"
+
+        self.recorded_levels = int(self.config.get("MarketAnalysis", "recorded_levels", 3, 1, 100))
+        self.data_tolerance = float(self.config.get("MarketAnalysis", "data_tolerance", 15, 10, 90))
+        self.ma_debug_log = self.config.getboolean("MarketAnalysis", "ma_debug_log")
         self.MACD_long_win_seconds = int(
-            config.get("MarketAnalysis", "MACD_long_win_seconds", 60 * 30, 60, 60 * 60 * 24 * 7)
+            self.config.get(
+                "MarketAnalysis", "MACD_long_win_seconds", 60 * 30, 60, 60 * 60 * 24 * 7
+            )
         )
         self.percentile_seconds = int(
-            config.get(
+            self.config.get(
                 "MarketAnalysis", "percentile_seconds", 60 * 60 * 24, 60 * 60, 60 * 60 * 24 * 14
             )
         )
         keep_sec = max(self.MACD_long_win_seconds, self.percentile_seconds)
         self.keep_history_seconds = int(
-            config.get(
+            self.config.get(
                 "MarketAnalysis",
                 "keep_history_seconds",
                 int(keep_sec * 1.1),
@@ -78,7 +84,7 @@ class MarketAnalysis:
             )
         )
         self.MACD_short_win_seconds = int(
-            config.get(
+            self.config.get(
                 "MarketAnalysis",
                 "MACD_short_win_seconds",
                 int(self.MACD_long_win_seconds / 12),
@@ -86,9 +92,9 @@ class MarketAnalysis:
                 self.MACD_long_win_seconds / 2,
             )
         )
-        self.daily_min_multiplier = float(config.get("Daily_min", "multiplier", 1.05, 1))
+        self.daily_min_multiplier = float(self.config.get("Daily_min", "multiplier", 1.05, 1))
         self.delete_thread_sleep = float(
-            config.get(
+            self.config.get(
                 "MarketAnalysis",
                 "delete_thread_sleep",
                 self.keep_history_seconds / 2,
@@ -96,7 +102,7 @@ class MarketAnalysis:
                 60 * 60 * 2,
             )
         )
-        self.exchange = config.get_exchange()
+        self.exchange = self.config.get_exchange()
 
         if len(self.currencies_to_analyse) != 0:
             for currency in self.currencies_to_analyse:
@@ -146,15 +152,21 @@ class MarketAnalysis:
         Thread to clean the DB.
         """
         while True:
-            try:
-                db_con = self.create_connection(cur)
-                if db_con:
-                    self.delete_old_data(db_con, seconds)
-                    db_con.close()
-            except Exception as ex:
-                print(f"Error in MarketAnalysis: {ex}")
-                traceback.print_exc()
+            self.delete_old_data_once(cur, seconds)
             time.sleep(self.delete_thread_sleep)
+
+    def delete_old_data_once(self, cur: str, seconds: int) -> None:
+        """
+        Perform a single cleanup of old data for a currency.
+        """
+        try:
+            db_con = self.create_connection(cur)
+            if db_con:
+                self.delete_old_data(db_con, seconds)
+                db_con.close()
+        except Exception as ex:
+            print(f"Error in MarketAnalysis cleanup: {ex}")
+            traceback.print_exc()
 
     @staticmethod
     def print_traceback(ex: Exception, log_message: str) -> None:
@@ -180,36 +192,42 @@ class MarketAnalysis:
         if not db_con:
             return
         while True:
-            try:
-                raw_data = self.api.return_loan_orders(cur, levels)["offers"]
-            except ApiError as ex:
-                if "429" in str(ex):
-                    if self.ma_debug_log:
-                        print(
-                            "Caught ERR_RATE_LIMIT, sleeping capture and increasing request delay. "
-                            f"Current {self.api.req_period}ms"
-                        )
-                    time.sleep(130)
-                continue
-            except Exception as ex:
-                if self.ma_debug_log:
-                    self.print_traceback(ex, "Error in returning data from exchange")
-                else:
-                    print("Error in returning data from exchange, ignoring")
-                time.sleep(5)
-                continue
-
-            market_data = []
-            for i in range(levels):
-                try:
-                    market_data.append(str(raw_data[i]["rate"]))
-                    market_data.append(str(raw_data[i]["amount"]))
-                except IndexError:
-                    market_data.append("5")
-                    market_data.append("0.1")
-            market_data.append("0")  # Percentile field not being filled yet.
-            self.insert_into_db(db_con, market_data, levels)
+            self.update_market_once(cur, levels, db_con)
             time.sleep(5)
+
+    def update_market_once(self, cur: str, levels: int, db_con: sqlite.Connection) -> None:
+        """
+        Perform a single market data update for a currency.
+        """
+        try:
+            raw_data = self.api.return_loan_orders(cur, levels)["offers"]
+        except ApiError as ex:
+            if "429" in str(ex):
+                if self.ma_debug_log:
+                    print(
+                        "Caught ERR_RATE_LIMIT, sleeping capture and increasing request delay. "
+                        f"Current {self.api.req_period}ms"
+                    )
+                time.sleep(130)
+            return
+        except Exception as ex:
+            if self.ma_debug_log:
+                self.print_traceback(ex, "Error in returning data from exchange")
+            else:
+                print("Error in returning data from exchange, ignoring")
+            time.sleep(5)
+            return
+
+        market_data = []
+        for i in range(levels):
+            try:
+                market_data.append(str(raw_data[i]["rate"]))
+                market_data.append(str(raw_data[i]["amount"]))
+            except IndexError:
+                market_data.append("5")
+                market_data.append("0.1")
+        market_data.append("0")  # Percentile field not being filled yet.
+        self.insert_into_db(db_con, market_data, levels)
 
     def insert_into_db(
         self, db_con: sqlite.Connection, market_data: list[str], levels: int | None = None
@@ -251,7 +269,7 @@ class MarketAnalysis:
         Query the database (cur) for rates that are within the supplied number of seconds and now.
         """
         request_seconds = int(seconds * 1.1)
-        full_list = Config.get_all_currencies()
+        full_list = self.config.get_all_currencies()
         if isinstance(cur, sqlite.Connection):
             db_con = cur
         else:
@@ -307,6 +325,17 @@ class MarketAnalysis:
     def get_rate_suggestion(
         self, cur: str, rates: pd.DataFrame | None = None, method: str = "percentile"
     ) -> float:
+        """
+        Analyses the market data and suggests a lending rate.
+
+        Args:
+            cur: The currency to analyse.
+            rates: Optional pre-fetched market data.
+            method: The analysis method ('percentile' or 'MACD').
+
+        Returns:
+            The suggested daily lending rate as a float.
+        """
         error_msg = (
             "WARN: Exception found when analysing markets, if this happens for more than a couple minutes "
             "please create a Github issue so we can fix it. Otherwise, you can ignore it. Error"
@@ -353,6 +382,17 @@ class MarketAnalysis:
 
     @staticmethod
     def percentile(N: list[float], percent: float, key: Any = lambda x: x) -> float:
+        """
+        Calculates the percentile value from a list of numbers (Manual implementation).
+
+        Args:
+            N: Sorted list of data points.
+            percent: The percentile to calculate (0.0 to 1.0).
+            key: Optional function to extract value from elements.
+
+        Returns:
+            The interpolated percentile value.
+        """
         if not N:
             return 0.0
         k = (len(N) - 1) * percent
@@ -367,6 +407,17 @@ class MarketAnalysis:
     def get_percentile(
         self, rates: list[float], lending_style: float, use_numpy_val: bool = use_numpy
     ) -> float:
+        """
+        Convenience wrapper to get percentile using either Numpy or manual implementation.
+
+        Args:
+            rates: List of daily rates.
+            lending_style: The percentile to target (1-99).
+            use_numpy_val: Whether to use Numpy for calculation.
+
+        Returns:
+            The calculated percentile rate, truncated to 6 decimals.
+        """
         if use_numpy_val:
             result = float(np.percentile(rates, int(lending_style)))
         else:
@@ -374,6 +425,19 @@ class MarketAnalysis:
         return float(truncate(result, 6))
 
     def get_MACD_rate(self, cur: str, rates_df: pd.DataFrame) -> float:
+        """
+        Calculates a suggested rate using a simplified MACD (Moving Average Convergence Divergence) strategy.
+
+        Args:
+            cur: The currency symbol.
+            rates_df: DataFrame containing market data.
+
+        Returns:
+            The suggested rate based on short and long moving average comparison.
+
+        Raises:
+            MarketDataException: If there isn't enough data to perform analysis.
+        """
         analysis_seconds = self.get_analysis_seconds("MACD")
         if len(rates_df) < analysis_seconds * (self.data_tolerance / 100):
             print(
@@ -400,7 +464,7 @@ class MarketAnalysis:
 
     def create_connection(self, cur: str, db_path: str | None = None) -> sqlite.Connection | None:
         if db_path is None:
-            prefix = Config.get_exchange()
+            prefix = self.config.get_exchange()
 
             db_path_obj = self.db_dir / f"{prefix}-{cur}.db"
             db_path = str(db_path_obj)

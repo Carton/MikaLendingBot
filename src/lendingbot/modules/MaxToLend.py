@@ -13,6 +13,13 @@ log: Logger | None = None
 
 
 def init(config: Any, log1: Logger) -> None:
+    """
+    Initializes the MaxToLend module with configuration settings.
+
+    Args:
+        config: The configuration object.
+        log1: The logger instance.
+    """
     global coin_cfg, max_to_lend_rate, max_to_lend, max_percent_to_lend, min_loan_size, log
     coin_cfg = config.get_coin_cfg()
     max_to_lend = Decimal(config.get("BOT", "maxtolend", False, 0))
@@ -28,6 +35,18 @@ def amount_to_lend(
     lending_balance: Decimal,
     low_rate: Decimal,
 ) -> Decimal:
+    """
+    Calculates the actual amount to lend based on limits and market rates.
+
+    Args:
+        active_cur_test_balance: The total balance of the currency (lending + on-order).
+        active_cur: The currency symbol.
+        lending_balance: The available balance in the lending account.
+        low_rate: The lowest rate currently in the order book.
+
+    Returns:
+        Decimal: The amount calculated to be offered for lending.
+    """
     if log is None:
         return lending_balance
 

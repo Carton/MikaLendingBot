@@ -171,15 +171,33 @@ def init(
 
 
 def get_sleep_time() -> float:
+    """
+    Returns the current sleep time based on the bot's activity.
+
+    Returns:
+        float: The sleep time in seconds.
+    """
     return sleep_time
 
 
 def set_sleep_time(usable: int) -> None:
+    """
+    Updates the global sleep time based on whether any currency was lendable.
+
+    Args:
+        usable: The number of currencies that had enough balance to lend.
+    """
     global sleep_time
     sleep_time = sleep_time_inactive if usable == 0 else sleep_time_active
 
 
 def notify_summary(sleep_time_val: float) -> None:
+    """
+    Sends a summary notification of total lent assets and schedules the next one.
+
+    Args:
+        sleep_time_val: Interval in seconds for the next notification.
+    """
     try:
         if log:
             log.notify(Data.stringify_total_lent(*Data.get_total_lent()), notify_conf)
@@ -190,6 +208,12 @@ def notify_summary(sleep_time_val: float) -> None:
 
 
 def notify_new_loans(sleep_time_val: float) -> None:
+    """
+    Checks for newly filled loans and sends notifications if found.
+
+    Args:
+        sleep_time_val: Interval in seconds for the next check.
+    """
     global loans_provided
     try:
         new_provided = api.return_active_loans()["provided"]
@@ -221,6 +245,15 @@ def notify_new_loans(sleep_time_val: float) -> None:
 
 
 def get_min_loan_size(currency: str) -> Decimal:
+    """
+    Gets the minimum loan size for a specific currency.
+
+    Args:
+        currency: The currency symbol (e.g., 'BTC').
+
+    Returns:
+        Decimal: The minimum allowed amount for a lending offer.
+    """
     if currency not in min_loan_sizes:
         return min_loan_size
     return Decimal(min_loan_sizes[currency])
@@ -229,6 +262,15 @@ def get_min_loan_size(currency: str) -> Decimal:
 # parse config like "0.050:25,0.058:30,0.060:45,0.064:60,0.070:120", i.e. rate:days pairs,
 # and return the rates, days list
 def parse_xday_threshold(xday_threshold_str: str) -> tuple[list[float], list[str]]:
+    """
+    Parses the xdaythreshold config string into rates and days lists.
+
+    Args:
+        xday_threshold_str: A comma-separated string of 'rate:days' pairs.
+
+    Returns:
+        tuple: (list of rates as floats, list of days as strings).
+    """
     rates: list[float] = []
     xdays: list[str] = []
     if xday_threshold_str:
@@ -242,6 +284,15 @@ def parse_xday_threshold(xday_threshold_str: str) -> tuple[list[float], list[str
 def create_lend_offer(
     currency: str, amt: str | Decimal, rate: str | float | Decimal, days: str = "2"
 ) -> None:
+    """
+    Creates a new lending offer on the exchange.
+
+    Args:
+        currency: The currency to lend.
+        amt: The amount to lend.
+        rate: The daily interest rate (as a float or decimal).
+        days: The duration of the loan in days.
+    """
     rate_f = float(rate)
     if rate_f > 0.0001:
         rate_f = rate_f - 0.000001  # lend offer just below the competing one
@@ -298,6 +349,9 @@ def create_lend_offer(
 
 
 def cancel_all() -> None:
+    """
+    Cancels all open lending offers for active currencies.
+    """
     loan_offers = api.return_open_loan_offers()
     available_balances = api.return_available_account_balances("lending")
     for cur in loan_offers:
@@ -331,6 +385,9 @@ def cancel_all() -> None:
 
 
 def lend_all() -> None:
+    """
+    Main loop to attempt lending for all currencies with available balance.
+    """
     total_lent = Data.get_total_lent()[0]
     lending_balances = api.return_available_account_balances("lending")["lending"]
     if dry_run:  # just fake some numbers, if dryrun (testing)
@@ -418,6 +475,17 @@ def get_frr_or_min_daily_rate(cur: str) -> Decimal:
 
 
 def get_min_daily_rate(cur: str) -> Decimal | bool:
+    """
+    Determines the minimum daily lending rate for a currency, considering
+    user config, market analysis suggestions, and exchange-specific FRR.
+
+    Args:
+        cur: The currency symbol.
+
+    Returns:
+        Decimal: The minimum daily rate to use.
+        bool: False if the currency is disabled (maxactive == 0).
+    """
     cur_min_daily_rate = get_frr_or_min_daily_rate(cur)
     if cur in coin_cfg:
         if coin_cfg[cur]["maxactive"] == 0:
@@ -442,6 +510,16 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
 
 
 def construct_order_books(active_cur: str) -> bool | list[dict[str, Any]]:
+    """
+    Fetches the loan order book from the exchange and structures it.
+
+    Args:
+        active_cur: The currency to fetch orders for.
+
+    Returns:
+        list: [demand_book, offer_book] each containing 'rates', 'volumes', 'rangeMax'.
+        bool: False if no orders found.
+    """
     # make sure we have a request limit for this currency
     if active_cur not in loanOrdersRequestLimit:
         loanOrdersRequestLimit[active_cur] = defaultLoanOrdersRequestLimit
@@ -474,21 +552,20 @@ def get_gap_rate(
     raw: bool = False,
 ) -> Decimal:
     """
-    Calculates the gap rate for a given active currency.
+    Calculates the lending rate at a specific depth (gap) in the order book.
 
     Args:
-        active_cur (str): The active currency.
-        gap (float): The gap value.
-        order_book (dict): The order book containing volumes and rates.
-        cur_total_balance (Decimal): The current total balance.
-        raw (bool, optional): Whether to use the raw gap value. Defaults to False.
+        active_cur: The currency symbol.
+        gap: The depth to look for.
+        order_book: The processed offer book.
+        cur_total_balance: Total balance of the currency.
+        raw: If True, gap is treated as absolute amount instead of percentage.
 
     Returns:
-        float: The calculated gap rate.
+        Decimal: The rate found at the specified depth.
 
     Raises:
-        StopIteration: If there are not enough offers in the response.
-
+        StopIteration: If the gap depth exceeds the current fetched order book size.
     """
     gap_expected = gap if raw else gap * cur_total_balance / Decimal("100.0")
     gap_sum = Decimal(0)
@@ -512,6 +589,17 @@ def get_gap_rate(
 
 
 def get_cur_spread(spread: int, cur_active_bal: Decimal, active_cur: str) -> int:
+    """
+    Calculates the actual spread (number of orders) possible for a currency.
+
+    Args:
+        spread: The configured desired spread.
+        cur_active_bal: Available balance to lend.
+        active_cur: The currency symbol.
+
+    Returns:
+        int: The number of orders to split the balance into.
+    """
     cur_spread_lend = int(
         spread
     )  # Checks if active_bal can't be spread that many times, and may go down to 1.
@@ -534,7 +622,7 @@ def construct_orders(
         ticker: The ticker data (used for rawbtc gap mode).
 
     Returns:
-        A dictionary containing lists of 'amounts' and 'rates' for the orders.
+        dict: A dictionary containing lists of 'amounts' and 'rates' for the orders.
     """
     cur_spread = get_cur_spread(spread_lend, cur_active_bal, cur)
     if cur_spread == 1:
@@ -575,6 +663,18 @@ def construct_orders(
 def get_gap_mode_rates(
     cur: str, cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any
 ) -> list[Decimal]:
+    """
+    Calculates the top and bottom rates based on the configured gap mode.
+
+    Args:
+        cur: The currency symbol.
+        cur_active_bal: Current balance to lend.
+        cur_total_balance: Total balance of the currency.
+        ticker: Ticker data for price conversions.
+
+    Returns:
+        list: [top_rate, bottom_rate] as Decimals.
+    """
     global gap_mode_default, gap_bottom_default, gap_top_default  # To be able to change them later if needed.
     gap_mode, gap_bottom, gap_top = gap_mode_default, gap_bottom_default, gap_top_default
     use_gap_cfg = False

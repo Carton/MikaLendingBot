@@ -1,3 +1,4 @@
+import importlib.util
 import json
 import smtplib
 import urllib.parse
@@ -5,12 +6,7 @@ import urllib.request
 from typing import Any
 
 
-try:
-    from irc import client  # type: ignore
-
-    IRC_LOADED = True
-except ImportError:
-    IRC_LOADED = False
+IRC_LOADED = importlib.util.find_spec("irc") is not None
 
 IRC_CLIENT: Any | None = None
 IRC_SERVER: Any | None = None
@@ -29,6 +25,15 @@ def check_urllib_response(response: Any, platform: str) -> None:
 
 
 def post_to_slack(msg: str, channels: list[str], token: str, username: str) -> None:
+    """
+    Posts a message to one or more Slack channels.
+
+    Args:
+        msg: The message text.
+        channels: List of Slack channel names/IDs.
+        token: Slack API token.
+        username: The username to display the message as.
+    """
     for channel in channels:
         post_data = {"text": msg, "channel": channel, "token": token, "username": username}
         enc_post_data = urllib.parse.urlencode(post_data).encode("utf-8")
@@ -39,6 +44,14 @@ def post_to_slack(msg: str, channels: list[str], token: str, username: str) -> N
 
 
 def post_to_telegram(msg: str, chat_ids: list[str], bot_id: str) -> None:
+    """
+    Sends a message to one or more Telegram chat IDs.
+
+    Args:
+        msg: The message text.
+        chat_ids: List of Telegram chat IDs.
+        bot_id: The Telegram bot ID.
+    """
     for chat_id in chat_ids:
         post_data = {"chat_id": chat_id, "text": msg}
         enc_post_data = urllib.parse.urlencode(post_data).encode("utf-8")
@@ -61,7 +74,20 @@ def send_email(
     email_to_addresses: list[str],
     email_smtp_starttls: bool,
 ) -> None:
+    """
+    Sends an email notification via SMTP.
+
+    Args:
+        msg: The message body.
+        email_login_address: SMTP login username.
+        email_login_password: SMTP login password.
+        email_smtp_server: SMTP server address.
+        email_smtp_port: SMTP server port.
+        email_to_addresses: List of recipient addresses.
+        email_smtp_starttls: Whether to use STARTTLS.
+    """
     subject = "Lending bot"
+    # ... rest of function
 
     email_text = "\r\n".join(
         [
@@ -109,8 +135,23 @@ def post_to_irc(
 ) -> None:
     """
     Log into an IRC server and send a message to a channel.
+
+    Args:
+        msg: The message to send.
+        host: IRC server hostname.
+        port: IRC server port.
+        nick: IRC nickname.
+        ident: IRC identity.
+        realname: IRC real name.
+        target: Target channel or user.
     """
     global IRC_CLIENT, IRC_SERVER
+    if not IRC_LOADED:
+        print("IRC module not available, please run 'pip install irc'")
+        return
+
+    from irc import client  # Local import for testing
+
     if IRC_CLIENT is None:
         IRC_CLIENT = client.Reactor()
         IRC_SERVER = IRC_CLIENT.server()
@@ -124,6 +165,13 @@ def post_to_irc(
 
 
 def send_notification(_msg: str, notify_conf: dict[str, Any]) -> None:
+    """
+    Dispatches a notification message to all configured platforms.
+
+    Args:
+        _msg: The message to send.
+        notify_conf: Notification configuration dictionary.
+    """
     nc = notify_conf
     msg = _msg if ("notify_prefix" not in nc) else f"{nc['notify_prefix']} {_msg}"
 

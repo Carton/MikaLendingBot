@@ -43,12 +43,23 @@ class MockConfig:
 @pytest.fixture
 def lending_module():
     # Reset globals
+
     Lending.min_loan_sizes = {}
+
     Lending.min_loan_size = Decimal("0.01")
+
     Lending.loanOrdersRequestLimit = {}
+
     Lending.defaultLoanOrdersRequestLimit = 5
+
     Lending.max_daily_rate = Decimal("0.05")  # 5%
+
     Lending.log = MagicMock()
+
+    from lendingbot.modules import Data
+
+    Lending.Data = Data
+
     return Lending
 
 
