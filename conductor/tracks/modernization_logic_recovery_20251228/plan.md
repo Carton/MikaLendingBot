@@ -29,7 +29,7 @@ Focus on the communication layer with exchanges.
 ## Phase 3: Secondary Modules & Integration Audit
 Handle remaining dependencies and ensure the system integrates correctly.
 
-- [ ] Task: Identify and migrate any remaining critical helper modules (e.g., `Configuration.py` nuances) found during Phase 1 & 2.
-- [ ] Task: Conduct a final "Logic Audit": Compare `old/` and `src/` to ensure no functional features were accidentally dropped.
-- [ ] Task: Final Quality Gate: Run full project test suite and linting.
+- [x] Task: Identify and migrate any remaining critical helper modules (e.g., `Configuration.py` nuances) found during Phase 1 & 2.
+- [x] Task: Conduct a final "Logic Audit": Compare `old/` and `src/` to ensure no functional features were accidentally dropped.
+- [x] Task: Final Quality Gate: Run full project test suite and linting.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Secondary Modules & Integration Audit' (Protocol in workflow.md)
