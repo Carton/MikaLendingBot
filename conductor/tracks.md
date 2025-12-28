@@ -9,5 +9,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Python 3 Modernization & Logic Recovery
-*Link: [./conductor/tracks/modernization_logic_recovery_20251228/](./conductor/tracks/modernization_logic_recovery_20251228/)*
+## [x] Track: Python 3 Modernization & Logic Recovery
+*Link: [./conductor/archive/modernization_logic_recovery_20251228/](./conductor/archive/modernization_logic_recovery_20251228/)*
