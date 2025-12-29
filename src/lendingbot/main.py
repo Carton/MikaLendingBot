@@ -86,6 +86,12 @@ def main() -> NoReturn:
     # 1. Load config
     Config.init(config_location)
 
+    if args.verbose:
+        Lending.debug_on = True
+        if not Config.config.has_section("BOT"):
+            Config.config.add_section("BOT")
+        Config.config.set("BOT", "api_debug_log", "True")
+
     output_currency = str(Config.get("BOT", "outputCurrency", "BTC"))
     end_date = Config.get("BOT", "endDate")
     exchange = Config.get_exchange()

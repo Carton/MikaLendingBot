@@ -72,6 +72,9 @@ def start_web_server() -> None:
 
                 # Simple implementation:
                 root = Path.cwd() / web_server_template
+                # Strip query parameters and fragments
+                path = path.split('?', 1)[0]
+                path = path.split('#', 1)[0]
                 path = path.lstrip("/")
                 return str(root / path)
 
