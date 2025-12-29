@@ -9,27 +9,15 @@ Integration tests make real API calls to exchanges and require:
 Run with: RUN_INTEGRATION_TESTS=true pytest tests/integration/
 """
 
-import os
-import sys
 import time
 from pathlib import Path
 
 import pytest
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
-
 from lendingbot.modules import Configuration, Data
 from lendingbot.modules.Logger import Logger
 from lendingbot.modules.Bitfinex import Bitfinex
 from lendingbot.modules.Poloniex import Poloniex
-
-
-def pytest_configure(config):
-    """Skip all integration tests if not enabled."""
-    run_integration = os.getenv("RUN_INTEGRATION_TESTS", "false").lower() == "true"
-    if not run_integration:
-        pytest.skip("Integration tests disabled. Set RUN_INTEGRATION_TESTS=true")
 
 
 @pytest.fixture(scope="module")
