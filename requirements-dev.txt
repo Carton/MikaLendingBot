@@ -1,6 +1,0 @@
-numpy
-pandas
-hypothesis
-requests
-pytz
-pytest
