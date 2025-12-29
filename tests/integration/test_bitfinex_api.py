@@ -24,6 +24,7 @@ def test_multiple_calls(bitfinex_api: Bitfinex, start_time: float):
         bitfinex_api: Bitfinex API instance (from conftest.py fixture)
         start_time: Test start time for performance tracking
     """
+
     def call_get_open_loan_offers(thread_id: int):
         """Make an API call and log the timing.
 
@@ -35,7 +36,7 @@ def test_multiple_calls(bitfinex_api: Bitfinex, start_time: float):
             elapsed = time.time() - start_time
             print(f"Thread {thread_id} - API Call completed in {elapsed:.2f} sec")
         except Exception as e:
-            print(f"Thread {thread_id} - Error: {str(e)}")
+            print(f"Thread {thread_id} - Error: {e!s}")
             raise
 
     # Create and start 10 concurrent threads

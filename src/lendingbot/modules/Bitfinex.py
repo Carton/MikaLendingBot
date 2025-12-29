@@ -106,7 +106,7 @@ class Bitfinex(ExchangeApi):
             return r.json()
 
         except Exception as ex:
-            msg = getattr(ex, "message", str(ex))
+            msg = str(ex)
             ex_msg = f"{msg} Requesting {self.url + request_path}"
             raise ApiError(ex_msg) from ex
 
@@ -214,7 +214,7 @@ class Bitfinex(ExchangeApi):
                     }
 
                 except Exception as ex:
-                    msg = getattr(ex, "message", str(ex))
+                    msg = str(ex)
                     self.log.log_error(
                         f"Error retrieving ticker for {symbol}: {msg}. Continue with next currency."
                     )

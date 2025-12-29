@@ -26,7 +26,7 @@ def init(file_location: str, data: Any = None) -> configparser.ConfigParser:
             input("Press Enter to acknowledge and exit...")
             exit(1)
         except Exception as ex:
-            msg = getattr(ex, "message", str(ex))
+            msg = str(ex)
             print(f"Failed to automatically copy config. Please do so manually. Error: {msg}")
             exit(1)
     if config.has_option("BOT", "coinconfig"):
@@ -133,7 +133,7 @@ def get_coin_cfg() -> dict[str, Any]:
                 coin_cfg[cur]["frrdelta_max"] = Decimal(get(cur, "frrdelta_max", 0.00008))
 
             except Exception as ex:
-                msg = getattr(ex, "message", str(ex))
+                msg = str(ex)
                 print(
                     f"Coin Config for {cur} parsed incorrectly, please refer to the documentation. "
                     f"Error: {msg}"
@@ -150,7 +150,7 @@ def get_min_loan_sizes() -> dict[str, Decimal]:
             try:
                 min_loan_sizes[cur] = Decimal(get(cur, "minloansize", lower_limit=0.005))
             except Exception as ex:
-                msg = getattr(ex, "message", str(ex))
+                msg = str(ex)
                 print(
                     f"minloansize for {cur} parsed incorrectly, please refer to the documentation. "
                     f"Error: {msg}"

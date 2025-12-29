@@ -28,6 +28,7 @@ def test_rate_limiter(poloniex_api: Poloniex, start_time: float):
         poloniex_api: Poloniex API instance (from conftest.py fixture)
         start_time: Test start time for rate limit verification
     """
+
     def api_rate_limit(n: int, start: float):
         """Test rate limit logic.
 
@@ -41,10 +42,13 @@ def test_rate_limiter(poloniex_api: Poloniex, start_time: float):
         if n != 0 and n % 6 == 0:
             elapsed = time.time() - start
             expected_delay = int(n / 6)
-            print(f"Rate limit check for request {n}: {elapsed:.2f}s elapsed " +
-                  f"(started at {start:.2f}, expected >= {expected_delay}s)")
-            assert elapsed >= expected_delay, \
+            print(
+                f"Rate limit check for request {n}: {elapsed:.2f}s elapsed "
+                + f"(started at {start:.2f}, expected >= {expected_delay}s)"
+            )
+            assert elapsed >= expected_delay, (
                 f"Rate limit failed - expected at least {expected_delay}s delay, got {elapsed:.2f}s"
+            )
 
     # Create and start 20 threads to test rate limiting
     threads = []

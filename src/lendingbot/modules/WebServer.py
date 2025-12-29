@@ -73,8 +73,8 @@ def start_web_server() -> None:
                 # Simple implementation:
                 root = Path.cwd() / web_server_template
                 # Strip query parameters and fragments
-                path = path.split('?', 1)[0]
-                path = path.split('#', 1)[0]
+                path = path.split("?", 1)[0]
+                path = path.split("#", 1)[0]
                 path = path.lstrip("/")
                 return str(root / path)
 
@@ -156,7 +156,7 @@ def start_web_server() -> None:
         print(f"Started WebServer, lendingbot status available at {serving_msg}")
         server.serve_forever()
     except Exception as ex:
-        msg = getattr(ex, "message", str(ex))
+        msg = str(ex)
         print(f"Failed to start WebServer: {msg}")
 
 
@@ -169,5 +169,5 @@ def stop_web_server() -> None:
         if server:
             threading.Thread(target=server.shutdown).start()
     except Exception as ex:
-        msg = getattr(ex, "message", str(ex))
+        msg = str(ex)
         print(f"Failed to stop WebServer: {msg}")

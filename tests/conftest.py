@@ -6,6 +6,7 @@ This conftest.py provides:
 - Automatic integration test skipping
 - Test collection modifications
 """
+
 import os
 import sys
 from pathlib import Path
@@ -24,7 +25,9 @@ def pytest_configure(config):
     - integration: Slow tests that make real API calls
     - slow: Tests that take more than 1 second to run
     """
-    config.addinivalue_line("markers", "unit: Unit tests (fast, isolated, no external dependencies)")
+    config.addinivalue_line(
+        "markers", "unit: Unit tests (fast, isolated, no external dependencies)"
+    )
     config.addinivalue_line(
         "markers", "integration: Integration tests (slow, real API calls, require API keys)"
     )

@@ -15,8 +15,8 @@ from pathlib import Path
 import pytest
 
 from lendingbot.modules import Configuration, Data
-from lendingbot.modules.Logger import Logger
 from lendingbot.modules.Bitfinex import Bitfinex
+from lendingbot.modules.Logger import Logger
 from lendingbot.modules.Poloniex import Poloniex
 
 

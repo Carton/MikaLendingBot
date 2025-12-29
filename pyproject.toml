@@ -187,7 +187,7 @@ mypy = "mypy src/"
 check = ["ruff-format-check", "ruff-check"]
 fix = ["ruff-format", "ruff-check-fix"]
 check-full = ["ruff-format-check", "ruff-check", "mypy"]
-fix-full = ["ruff-format", "ruff-check-fix"]
+fix-full = ["ruff-format", "ruff-check-fix", "mypy"]
 
 # ── Application Runner ──────────────────────────────────────────────────────
 run = "python -m lendingbot.main"

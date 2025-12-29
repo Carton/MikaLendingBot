@@ -50,7 +50,7 @@ def get_max_duration(end_date: str, context: str) -> int | str:
             return f" - Days Remaining: {diff_days}"  # Status needs string
         return ""
     except Exception as ex:
-        msg = getattr(ex, "message", str(ex))
+        msg = str(ex)
         print(f"ERROR: There is something wrong with your endDate option. Error: {msg}")
         exit(1)
 

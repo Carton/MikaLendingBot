@@ -179,7 +179,7 @@ def main() -> NoReturn:
             except KeyboardInterrupt:
                 raise
             except Exception as ex:
-                msg = getattr(ex, "message", str(ex))
+                msg = str(ex)
                 log.log_error(msg)
                 log.persistStatus()
 
