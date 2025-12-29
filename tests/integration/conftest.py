@@ -6,7 +6,7 @@ Integration tests make real API calls to exchanges and require:
 - Network connectivity
 - Respect for rate limits
 
-Run with: RUN_INTEGRATION_TESTS=true pytest tests/integration/
+Run with: pytest --run-integration tests/integration/
 """
 
 import time

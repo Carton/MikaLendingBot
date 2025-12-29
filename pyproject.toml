@@ -172,8 +172,8 @@ exclude_lines = [
 [tool.poe.tasks]
 # ── Test Tasks ──────────────────────────────────────────────────────────────
 test = "pytest -m 'not integration'"
-test-integration = "pytest -m integration"
-test-full = "pytest"
+test-integration = "pytest --run-integration -m integration"
+test-full = "pytest --run-integration"
 test-coverage = "pytest --cov=src/lendingbot --cov-report=html --cov-report=term"
 test-verbose = "pytest -vv"
 
