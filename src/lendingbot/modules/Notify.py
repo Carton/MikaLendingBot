@@ -150,7 +150,7 @@ def post_to_irc(
         print("IRC module not available, please run 'pip install irc'")
         return
 
-    from irc import client  # Local import for testing
+    from irc import client  # Optional dependency
 
     if IRC_CLIENT is None:
         IRC_CLIENT = client.Reactor()

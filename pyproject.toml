@@ -123,6 +123,7 @@ ignore_missing_imports = false
 module = [
     "numpy.*",
     "pandas.*",
+    "irc.*",
 ]
 ignore_missing_imports = true
 
