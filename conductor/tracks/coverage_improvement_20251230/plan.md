@@ -1,10 +1,10 @@
 # Implementation Plan - Systematic Coverage Improvement 20251230
 
 ## Phase 1: Environment & Baseline
-- [~] Task: Environment Verification & Baseline Report
-    - [ ] Sub-task: Verify `uv` and `poe` setup.
-    - [ ] Sub-task: Run full test suite to ensure current state is passing (`uv run poe test`).
-    - [ ] Sub-task: Generate initial coverage report (`uv run poe test-coverage`) and save as baseline.
+- [x] Task: Environment Verification & Baseline Report 75a79ca
+    - [x] Sub-task: Verify `uv` and `poe` setup.
+    - [x] Sub-task: Run full test suite to ensure current state is passing (`uv run poe test`).
+    - [x] Sub-task: Generate initial coverage report (`uv run poe test-coverage`) and save as baseline.
 - [ ] Task: Conductor - User Manual Verification 'Environment & Baseline' (Protocol in workflow.md)
 
 ## Phase 2: Core Logic - Lending.py (Target: >80%)
