@@ -13,6 +13,7 @@
 - **Type Checker:** MyPy (Strict Mode)
 - **Task Runner:** Poe the Poet
 - **Build System:** Hatchling
+- **Database:** SQLite (for local market data and lending history)
 
 ## Testing
 - **Framework:** Pytest

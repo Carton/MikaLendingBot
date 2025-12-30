@@ -14,6 +14,7 @@ Mika Lending Bot is an automated cryptocurrency lending tool designed for exchan
 - **Lending Strategy Optimization:** Improve and refine strategies to maximize interest yield in volatile markets.
 - **System Stability & Security:** Enhance the robustness of the automated operation for safe, long-term use.
 - **Developer Experience:** Refactor the codebase to streamline the addition of new exchanges and modular components.
+- **Robust Test Coverage:** Maintain a high standard of testing with a target of >80% coverage for core logic and >60% for auxiliary modules to ensure code quality and prevent regressions.
 - **Python 3 Modernization:** Complete the transition to Python 3.12+ to leverage modern language features and maintainability.
 
 ## Key Features & Technical Requirements
