@@ -21,7 +21,7 @@
     - [x] Sub-task: Finalize coverage for `Lending.py`.
 - [x] Task: Conductor - User Manual Verification 'Core Logic - Lending.py' (Protocol in workflow.md) cb647ba
 
-## Phase 3: Core Logic - Data.py & MaxToLend.py (Target: >80%)
+## Phase 3: Core Logic - Data.py & MaxToLend.py (Target: >80%) [checkpoint: 7d7c546]
 - [x] Task: Analysis & Refactoring Plan for `Data.py` ae2ea85
     - [x] Sub-task: Analyze `Data.py` for dependencies (file I/O, API calls).
     - [x] Sub-task: Draft `refactor_plan_data.md` if needed.
@@ -31,7 +31,7 @@
 - [x] Task: Test Expansion - `MaxToLend.py` 6ab3e9c
     - [x] Sub-task: Analyze `MaxToLend.py` logic.
     - [x] Sub-task: Expand `tests/test_MaxToLend.py` to cover calculation logic.
-- [ ] Task: Conductor - User Manual Verification 'Core Logic - Data.py & MaxToLend.py' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Core Logic - Data.py & MaxToLend.py' (Protocol in workflow.md) 7d7c546
 
 ## Phase 4: Secondary Modules (Target: >60%)
 - [ ] Task: Test Expansion - `PluginsManager.py`
