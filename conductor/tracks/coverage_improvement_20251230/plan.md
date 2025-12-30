@@ -46,8 +46,8 @@
 - [x] Task: Test Expansion - Auxiliary Modules 04e08a3
     - [x] Sub-task: Attempt to improve `WebServer.py`, `AccountStats.py`, `Charts.py` coverage.
     - [x] Sub-task: Document any unreachable/untestable code.
-- [ ] Task: Final Verification
-    - [ ] Sub-task: Run full regression suite.
-    - [ ] Sub-task: Generate final coverage report.
-    - [ ] Sub-task: Compare against baseline.
-- [ ] Task: Conductor - User Manual Verification 'Auxiliary Modules & Finalization' (Protocol in workflow.md)
+- [x] Task: Final Verification 4b67f2f
+    - [x] Sub-task: Run full regression suite.
+    - [x] Sub-task: Generate final coverage report.
+    - [x] Sub-task: Compare against baseline.
+- [x] Task: Conductor - User Manual Verification 'Auxiliary Modules & Finalization' (Protocol in workflow.md) 4b67f2f
