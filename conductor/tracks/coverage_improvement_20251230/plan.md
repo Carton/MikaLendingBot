@@ -33,14 +33,14 @@
     - [x] Sub-task: Expand `tests/test_MaxToLend.py` to cover calculation logic.
 - [x] Task: Conductor - User Manual Verification 'Core Logic - Data.py & MaxToLend.py' (Protocol in workflow.md) 7d7c546
 
-## Phase 4: Secondary Modules (Target: >60%)
-- [ ] Task: Test Expansion - `PluginsManager.py`
-    - [ ] Sub-task: Add tests for plugin loading and lifecycle.
-- [ ] Task: Test Expansion - `ConsoleUtils.py` & `Logger.py`
-    - [ ] Sub-task: Add tests for console interaction and logging formatting.
-- [ ] Task: Test Expansion - `Poloniex.py` & `MarketAnalysis.py`
-    - [ ] Sub-task: Add mock-based tests for exchange interactions and analysis logic.
-- [ ] Task: Conductor - User Manual Verification 'Secondary Modules' (Protocol in workflow.md)
+## Phase 4: Secondary Modules (Target: >60%) [checkpoint: 646ea1a]
+- [x] Task: Test Expansion - `PluginsManager.py` 646ea1a
+    - [x] Sub-task: Add tests for plugin loading and lifecycle.
+- [x] Task: Test Expansion - `ConsoleUtils.py` & `Logger.py` 646ea1a
+    - [x] Sub-task: Add tests for console interaction and logging formatting.
+- [x] Task: Test Expansion - `Poloniex.py` & `MarketAnalysis.py` 646ea1a
+    - [x] Sub-task: Add mock-based tests for exchange interactions and analysis logic.
+- [x] Task: Conductor - User Manual Verification 'Secondary Modules' (Protocol in workflow.md) 646ea1a
 
 ## Phase 5: Auxiliary Modules & Finalization (Target: >60%)
 - [ ] Task: Test Expansion - Auxiliary Modules
