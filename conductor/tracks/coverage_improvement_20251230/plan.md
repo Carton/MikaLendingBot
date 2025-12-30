@@ -22,9 +22,9 @@
 - [x] Task: Conductor - User Manual Verification 'Core Logic - Lending.py' (Protocol in workflow.md) cb647ba
 
 ## Phase 3: Core Logic - Data.py & MaxToLend.py (Target: >80%)
-- [ ] Task: Analysis & Refactoring Plan for `Data.py`
-    - [ ] Sub-task: Analyze `Data.py` for dependencies (file I/O, API calls).
-    - [ ] Sub-task: Draft `refactor_plan_data.md` if needed.
+- [x] Task: Analysis & Refactoring Plan for `Data.py` ae2ea85
+    - [x] Sub-task: Analyze `Data.py` for dependencies (file I/O, API calls).
+    - [x] Sub-task: Draft `refactor_plan_data.md` if needed.
 - [ ] Task: Test Expansion - `Data.py`
     - [ ] Sub-task: Mock external data sources.
     - [ ] Sub-task: Expand `tests/test_Data.py` to cover parsing and data management.
