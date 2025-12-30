@@ -8,9 +8,9 @@
 - [x] Task: Conductor - User Manual Verification 'Environment & Baseline' (Protocol in workflow.md) aa61a61
 
 ## Phase 2: Core Logic - Lending.py (Target: >80%)
-- [ ] Task: Analysis & Refactoring Plan for `Lending.py`
-    - [ ] Sub-task: Analyze `Lending.py` for testability issues (global state, large functions).
-    - [ ] Sub-task: Draft `refactor_plan_lending.md` if significant refactoring is needed.
+- [x] Task: Analysis & Refactoring Plan for `Lending.py` ed5212a
+    - [x] Sub-task: Analyze `Lending.py` for testability issues (global state, large functions).
+    - [x] Sub-task: Draft `refactor_plan_lending.md` if significant refactoring is needed.
 - [ ] Task: Test Expansion - `Lending.py` Part 1
     - [ ] Sub-task: Create/Update `tests/test_Lending.py`.
     - [ ] Sub-task: Add tests for critical paths (money handling, lending offers).
