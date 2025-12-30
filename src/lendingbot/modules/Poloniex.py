@@ -6,11 +6,11 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+from collections import deque
 from typing import Any, cast
 
 from . import Configuration as Config
 from .ExchangeApi import ApiError, ExchangeApi
-from .RingBuffer import RingBuffer
 
 
 def post_process(before: dict[str, Any]) -> dict[str, Any]:
@@ -36,7 +36,7 @@ class Poloniex(ExchangeApi):
         self.req_per_period = 6
         self.default_req_period = 1000  # milliseconds
         self.req_period = float(self.default_req_period)
-        self.req_time_log: Any = RingBuffer(self.req_per_period)
+        self.req_time_log: deque[float] = deque(maxlen=self.req_per_period)
         self.lock = threading.RLock()
         socket.setdefaulttimeout(int(Config.get("BOT", "timeout", 30, 1, 180)))
         self.api_debug_log = self.cfg.getboolean("BOT", "api_debug_log")

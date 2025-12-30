@@ -4,13 +4,13 @@ import hmac
 import json
 import threading
 import time
+from collections import deque
 from typing import Any
 
 import requests
 
 from .Bitfinex2Poloniex import Bitfinex2Poloniex
 from .ExchangeApi import ApiError, ExchangeApi
-from .RingBuffer import RingBuffer
 
 
 class Bitfinex(ExchangeApi):
@@ -22,7 +22,7 @@ class Bitfinex(ExchangeApi):
         self.req_per_period = 1
         self.default_req_period = 5000.0  # milliseconds, 1000 = 60/min
         self.req_period = self.default_req_period
-        self.req_time_log: Any = RingBuffer(self.req_per_period)
+        self.req_time_log: deque[float] = deque(maxlen=self.req_per_period)
         self.url = "https://api.bitfinex.com"
         self.key = self.cfg.get("API", "apikey", None)
         self.secret = self.cfg.get("API", "secret", None)

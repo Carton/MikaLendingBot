@@ -3,12 +3,12 @@ import datetime
 import json
 import sys
 import time
+from collections import deque
 from typing import Any
 
 from . import Configuration as Config
 from . import ConsoleUtils
 from .Notify import send_notification
-from .RingBuffer import RingBuffer
 
 
 class ConsoleOutput:
@@ -47,7 +47,7 @@ class JsonOutput:
         self.jsonOutputCoins: dict[str, Any] = {}
         self.jsonOutputCurrency: dict[str, Any] = {}
         self.clearStatusValues()
-        self.jsonOutputLog: RingBuffer = RingBuffer(log_limit)
+        self.jsonOutputLog: deque[str] = deque(maxlen=log_limit)
         self.jsonOutput["exchange"] = exchange
         self.jsonOutput["label"] = Config.get("BOT", "label", "Lending Bot")
 
@@ -63,7 +63,7 @@ class JsonOutput:
         from pathlib import Path
 
         with Path(self.jsonOutputFile).open("w", encoding="utf-8") as f:
-            self.jsonOutput["log"] = self.jsonOutputLog.get()
+            self.jsonOutput["log"] = list(self.jsonOutputLog)
             f.write(json.dumps(self.jsonOutput, ensure_ascii=True, sort_keys=True))
 
     def addSectionLog(self, section: str, key: str, value: Any) -> None:
