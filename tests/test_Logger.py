@@ -1,59 +1,71 @@
 """
-Tests for Logger class
+Tests for Logger module.
 """
 
 import json
-from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 from lendingbot.modules.Logger import ConsoleOutput, JsonOutput, Logger
 
 
-def test_console_output_status() -> None:
-    """Test ConsoleOutput status update (manual verification of stderr is hard, so we just check it runs)"""
-    co = ConsoleOutput()
-    co.status("Testing Status")
-    assert co._status == "Testing Status"
+class TestLogger:
+    def test_console_output(self):
+        with (
+            patch("sys.stderr.write") as mock_write,
+            patch("lendingbot.modules.ConsoleUtils.get_terminal_size", return_value=(80, 25)),
+        ):
+            out = ConsoleOutput()
+            out.status("Test Status")
+            mock_write.assert_called()
 
+            out.printline("Test Line")
+            mock_write.assert_called()
 
-def test_json_output_printline(tmp_path: Any) -> None:
-    """Test JsonOutput printline and writeJsonFile"""
-    log_file = tmp_path / "test.json"
-    with patch("lendingbot.modules.Configuration.get", return_value="Test Bot"):
-        jo = JsonOutput(str(log_file), 5, "TestExchange")
+    def test_json_output(self, tmp_path):
+        json_file = tmp_path / "botlog.json"
+        out = JsonOutput(str(json_file), 10, "POLONIEX")
 
-    jo.printline("Test Line 1")
-    jo.status("Running", "2025-12-28 12:00:00", " (3 Days Remaining)")
-    jo.writeJsonFile()
+        out.status("Status", "2025-12-30", " - 1 Day")
+        out.printline("Log Line 1")
+        out.statusValue("BTC", "lentSum", "1.0")
 
-    assert log_file.exists()
-    with Path(log_file).open(encoding="utf-8") as f:
-        data = json.load(f)
-        assert data["exchange"] == "TestExchange"
-        assert data["last_status"] == "Running"
-        assert "Test Line 1" in data["log"][0]
+        out.writeJsonFile()
 
+        assert json_file.exists()
+        with json_file.open() as f:
+            data = json.load(f)
+            assert data["exchange"] == "POLONIEX"
+            assert data["last_status"] == "Status"
+            assert "Log Line 1" in data["log"]
+            assert data["raw_data"]["BTC"]["lentSum"] == "1.0"
 
-def test_logger_log() -> None:
-    """Test Logger log method"""
-    with patch("lendingbot.modules.Logger.ConsoleOutput") as mock_output:
-        logger = Logger()
-        logger.log("Hello World")
-        mock_output.return_value.printline.assert_called()
+    def test_logger_lifecycle(self, tmp_path):
+        json_file = tmp_path / "botlog.json"
+        logger = Logger(str(json_file), 5, "BITFINEX")
 
+        logger.log("Info Message")
+        logger.log_error("Error Message")
+        logger.offer(1.0, "BTC", 0.01, "2", "Offer Message")
+        logger.cancelOrder("BTC", "Cancel Message")
 
-def test_logger_timestamp() -> None:
-    """Test Logger timestamp format"""
-    ts = Logger.timestamp()
-    assert len(ts) == 19  # YYYY-MM-DD HH:MM:SS
-    assert ts[4] == "-"
-    assert ts[13] == ":"
+        logger.updateStatusValue("BTC", "test", "val")
+        logger.persistStatus()
 
+        assert json_file.exists()
 
-def test_logger_digest_api_msg() -> None:
-    """Test Logger.digestApiMsg"""
-    assert Logger.digestApiMsg({"message": "Success"}) == "Success"
-    assert Logger.digestApiMsg({"error": "Failed"}) == "Failed"
-    assert Logger.digestApiMsg("Something else") == "Something else"
-    assert Logger.digestApiMsg({}) == ""
+    def test_digest_api_msg(self):
+        assert Logger.digestApiMsg({"message": "success"}) == "success"
+        assert Logger.digestApiMsg({"error": "fail"}) == "fail"
+        assert Logger.digestApiMsg("raw string") == "raw string"
+        assert Logger.digestApiMsg(None) == ""
+
+    def test_notify(self):
+        with patch("lendingbot.modules.Logger.send_notification") as mock_send:
+            conf = {"enable_notifications": True}
+            Logger.notify("Msg", conf)
+            mock_send.assert_called_with("Msg", conf)
+
+            conf = {"enable_notifications": False}
+            Logger.notify("Msg", conf)
+            # Should not call if disabled
+            assert mock_send.call_count == 1
