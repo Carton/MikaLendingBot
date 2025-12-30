@@ -25,12 +25,12 @@
 - [x] Task: Analysis & Refactoring Plan for `Data.py` ae2ea85
     - [x] Sub-task: Analyze `Data.py` for dependencies (file I/O, API calls).
     - [x] Sub-task: Draft `refactor_plan_data.md` if needed.
-- [ ] Task: Test Expansion - `Data.py`
-    - [ ] Sub-task: Mock external data sources.
-    - [ ] Sub-task: Expand `tests/test_Data.py` to cover parsing and data management.
-- [ ] Task: Test Expansion - `MaxToLend.py`
-    - [ ] Sub-task: Analyze `MaxToLend.py` logic.
-    - [ ] Sub-task: Expand `tests/test_MaxToLend.py` to cover calculation logic.
+- [x] Task: Test Expansion - `Data.py` 6ab3e9c
+    - [x] Sub-task: Mock external data sources.
+    - [x] Sub-task: Expand `tests/test_Data.py` to cover parsing and data management.
+- [x] Task: Test Expansion - `MaxToLend.py` 6ab3e9c
+    - [x] Sub-task: Analyze `MaxToLend.py` logic.
+    - [x] Sub-task: Expand `tests/test_MaxToLend.py` to cover calculation logic.
 - [ ] Task: Conductor - User Manual Verification 'Core Logic - Data.py & MaxToLend.py' (Protocol in workflow.md)
 
 ## Phase 4: Secondary Modules (Target: >60%)
