@@ -282,9 +282,7 @@ def test_get_min_loan_sizes(mock_config_file):
 
     # Test parsing error
     with (
-        patch(
-            "lendingbot.modules.Configuration.get_all_currencies", return_value=["BTC"]
-        ),
+        patch("lendingbot.modules.Configuration.get_all_currencies", return_value=["BTC"]),
         patch(
             "lendingbot.modules.Configuration.get",
             side_effect=Exception("Parsing error"),
