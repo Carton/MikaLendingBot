@@ -11,14 +11,14 @@
 - [x] Task: Analysis & Refactoring Plan for `Lending.py` ed5212a
     - [x] Sub-task: Analyze `Lending.py` for testability issues (global state, large functions).
     - [x] Sub-task: Draft `refactor_plan_lending.md` if significant refactoring is needed.
-- [ ] Task: Test Expansion - `Lending.py` Part 1
-    - [ ] Sub-task: Create/Update `tests/test_Lending.py`.
-    - [ ] Sub-task: Add tests for critical paths (money handling, lending offers).
-    - [ ] Sub-task: Implement refactoring if planned.
-    - [ ] Sub-task: Verify coverage increase.
-- [ ] Task: Test Expansion - `Lending.py` Part 2
-    - [ ] Sub-task: Add tests for edge cases and error handling.
-    - [ ] Sub-task: Finalize coverage for `Lending.py`.
+- [x] Task: Test Expansion - `Lending.py` Part 1 b642afe
+    - [x] Sub-task: Create/Update `tests/test_Lending.py`.
+    - [x] Sub-task: Add tests for critical paths (money handling, lending offers).
+    - [x] Sub-task: Implement refactoring if planned.
+    - [x] Sub-task: Verify coverage increase.
+- [x] Task: Test Expansion - `Lending.py` Part 2 b642afe
+    - [x] Sub-task: Add tests for edge cases and error handling.
+    - [x] Sub-task: Finalize coverage for `Lending.py`.
 - [ ] Task: Conductor - User Manual Verification 'Core Logic - Lending.py' (Protocol in workflow.md)
 
 ## Phase 3: Core Logic - Data.py & MaxToLend.py (Target: >80%)
