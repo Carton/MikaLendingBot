@@ -135,8 +135,8 @@ def _reset_globals() -> None:
     loans_provided = []
     api = None
     log = None
-    Data = None
-    MaxToLend = None
+    Data = None  # type: ignore[assignment]
+    MaxToLend = None  # type: ignore[assignment]
     Analysis = None
     notify_conf = {}
 

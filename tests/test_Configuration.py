@@ -4,6 +4,7 @@ Tests for Configuration module
 
 import configparser
 import os
+import re
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -212,7 +213,7 @@ def test_get_all_currencies_unknown(tmp_path):
     config_file = tmp_path / "unknown.cfg"
     config_file.write_text("[API]\nexchange = Unknown\n")
     Configuration.init(str(config_file))
-    with pytest.raises(Exception):
+    with pytest.raises(Exception, match=re.escape("List of supported currencies must defined")):
         Configuration.get_all_currencies()
 
 
@@ -268,7 +269,7 @@ def test_get_coin_cfg(mock_config_file):
     with (
         patch.object(Configuration.config, "get", side_effect=Exception("Parsing error")),
         patch("builtins.print"),
-        pytest.raises(Exception),
+        pytest.raises(Exception, match="Parsing error"),
     ):
         Configuration.get_coin_cfg()
 
@@ -281,9 +282,15 @@ def test_get_min_loan_sizes(mock_config_file):
 
     # Test parsing error
     with (
-        patch("lendingbot.modules.Configuration.get", return_value="not_a_number"),
+        patch(
+            "lendingbot.modules.Configuration.get_all_currencies", return_value=["BTC"]
+        ),
+        patch(
+            "lendingbot.modules.Configuration.get",
+            side_effect=Exception("Parsing error"),
+        ),
         patch("builtins.print"),
-        pytest.raises(Exception),
+        pytest.raises(Exception, match="Parsing error"),
     ):
         Configuration.get_min_loan_sizes()
 

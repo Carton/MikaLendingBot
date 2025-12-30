@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 import threading
 import time
 from unittest.mock import MagicMock, patch
@@ -193,7 +194,7 @@ def test_create_loan_offer_min_amount_error(mock_post, bitfinex_api):
     ):
         bitfinex_api.ticker = {"USD_BTC": {"lowestAsk": "50000.0"}}
         bitfinex_api.tickerTime = 10000000000
-        with pytest.raises(ApiError, match="Amount must be at least 0.001 BTC"):
+        with pytest.raises(ApiError, match=re.escape("Amount must be at least 0.001 BTC")):
             bitfinex_api.create_loan_offer("BTC", 0.0001, 2, 0, 0.01)
 
 
@@ -226,7 +227,6 @@ def test_return_lending_history(mock_post, bitfinex_api):
 def test_multiple_calls(bitfinex_api):
     """Test fast api calls with mocks for concurrency"""
     bitfinex_api.return_open_loan_offers = MagicMock(return_value={})
-    start_time = time.time()
 
     def call_get_open_loan_offers(i: int) -> None:
         bitfinex_api.return_open_loan_offers()

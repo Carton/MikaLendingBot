@@ -142,7 +142,9 @@ class TestLendingCore:
         lending_module.exchange = "BITFINEX"
         lending_module.Config = Mock()
         lending_module.Config.get.return_value = "0.1"
-        lending_module.Config.getboolean.side_effect = lambda s, k, d: True if k == "frrasmin" else d
+        lending_module.Config.getboolean.side_effect = (
+            lambda _s, k, d: True if k == "frrasmin" else d
+        )
         lending_module.api = Mock()
         lending_module.api.get_frr.return_value = "0.002"
 
@@ -160,7 +162,15 @@ class TestLendingCore:
             assert rate == Decimal("0.005")
 
     def test_get_min_daily_rate_disabled(self, lending_module):
-        lending_module.coin_cfg = {"BTC": {"maxactive": 0, "minrate": "0.003", "frrasmin": False, "frrdelta_min": 0, "frrdelta_max": 0}}
+        lending_module.coin_cfg = {
+            "BTC": {
+                "maxactive": 0,
+                "minrate": "0.003",
+                "frrasmin": False,
+                "frrdelta_min": 0,
+                "frrdelta_max": 0,
+            }
+        }
         assert lending_module.get_min_daily_rate("BTC") is False
 
     def test_construct_order_books(self, lending_module):
@@ -179,7 +189,10 @@ class TestLendingCore:
         with patch.object(lending_module, "construct_order_books") as mock_books:
             mock_books.return_value = [
                 {},
-                {"volumes": ["100", "100", "100", "100"], "rates": ["0.01", "0.02", "0.03", "0.04"]},
+                {
+                    "volumes": ["100", "100", "100", "100"],
+                    "rates": ["0.01", "0.02", "0.03", "0.04"],
+                },
             ]
             lending_module.gap_mode_default = "relative"
             lending_module.gap_bottom_default = Decimal("50")
@@ -234,13 +247,16 @@ class TestLendingCore:
             mock_min_size.return_value = Decimal("0.01")
             with patch.object(lending_module, "construct_order_books") as mock_books:
                 mock_books.return_value = [
-                    {"rates": ["0.01"], "amount": ["10"], "rangeMax": [2]}, # demands
-                    {"rates": ["0.02"], "volumes": ["20"], "rangeMax": [30]}, # offers
+                    {"rates": ["0.01"], "amount": ["10"], "rangeMax": [2]},  # demands
+                    {"rates": ["0.02"], "volumes": ["20"], "rangeMax": [30]},  # offers
                 ]
                 with patch.object(lending_module, "get_min_daily_rate") as mock_min_rate:
                     mock_min_rate.return_value = Decimal("0.005")
                     with patch.object(lending_module, "construct_orders") as mock_orders:
-                        mock_orders.return_value = {"amounts": [Decimal("1.0")], "rates": [Decimal("0.02")]}
+                        mock_orders.return_value = {
+                            "amounts": [Decimal("1.0")],
+                            "rates": [Decimal("0.02")],
+                        }
                         with patch.object(lending_module, "create_lend_offer") as mock_create:
                             total_lent = {"BTC": Decimal("0")}
                             lending_balances = {"BTC": "1.0"}
@@ -252,7 +268,9 @@ class TestLendingCore:
         cfg = Mock()
         cfg.get_exchange.return_value = "POLONIEX"
         # Setup cfg.get to return sensible defaults for all calls
-        cfg.get.side_effect = lambda s, k, d=None, min=None, max=None: d if d is not None else "0"
+        cfg.get.side_effect = (
+            lambda _s, _k, d=None, _min=None, _max=None: d if d is not None else "0"
+        )
         cfg.get_gap_mode.return_value = "relative"
         cfg.get_coin_cfg.return_value = {}
         cfg.get_min_loan_sizes.return_value = {}
@@ -266,7 +284,9 @@ class TestLendingCore:
 
     def test_lend_all_basic(self, lending_module):
         lending_module.api = Mock()
-        lending_module.api.return_available_account_balances.return_value = {"lending": {"BTC": "1.0"}}
+        lending_module.api.return_available_account_balances.return_value = {
+            "lending": {"BTC": "1.0"}
+        }
         lending_module.all_currencies = ["BTC"]
         lending_module.gap_mode_default = "relative"
         lending_module.coin_cfg = {}
@@ -287,22 +307,29 @@ class TestLendingCore:
         lending_module.scheduler = Mock()
         lending_module.notify_summary(60)
         lending_module.log.notify.assert_called_with("Summary", {})
-        lending_module.scheduler.enter.assert_called_with(60, 1, lending_module.notify_summary, (60,))
+        lending_module.scheduler.enter.assert_called_with(
+            60, 1, lending_module.notify_summary, (60,)
+        )
 
     def test_notify_new_loans(self, lending_module):
         lending_module.api = Mock()
         lending_module.api.return_active_loans.return_value = {
-            "provided": [{"id": 1, "currency": "BTC", "amount": "1.0", "rate": "0.01", "duration": 2}]
+            "provided": [
+                {"id": 1, "currency": "BTC", "amount": "1.0", "rate": "0.01", "duration": 2}
+            ]
         }
         lending_module.loans_provided = []
         lending_module.log = MagicMock()
         lending_module.scheduler = Mock()
         lending_module.notify_new_loans(60)
-        assert lending_module.loans_provided == lending_module.api.return_active_loans.return_value["provided"]
+        assert (
+            lending_module.loans_provided
+            == lending_module.api.return_active_loans.return_value["provided"]
+        )
         lending_module.api.return_active_loans.return_value = {
             "provided": [
                 {"id": 1, "currency": "BTC", "amount": "1.0", "rate": "0.01", "duration": 2},
-                {"id": 2, "currency": "BTC", "amount": "2.0", "rate": "0.01", "duration": 2}
+                {"id": 2, "currency": "BTC", "amount": "2.0", "rate": "0.01", "duration": 2},
             ]
         }
         lending_module.notify_new_loans(60)
@@ -336,7 +363,7 @@ class TestLendingCore:
         lending_module.Data.get_total_lent.return_value = ({"BTC": Decimal("0")}, Decimal("0"))
         # Only 1 day remaining
         lending_module.Data.get_max_duration.return_value = 1
-        
+
         with pytest.raises(SystemExit):
             lending_module.create_lend_offer("BTC", Decimal("1.0"), Decimal("0.01"), "2")
 
@@ -345,18 +372,21 @@ class TestLendingCore:
         lending_module.hide_coins = True
         lending_module.MaxToLend = Mock()
         lending_module.MaxToLend.amount_to_lend.return_value = Decimal("1.0")
-        
+
         with patch.object(lending_module, "get_min_loan_size") as mock_min_size:
             mock_min_size.return_value = Decimal("0.01")
             with patch.object(lending_module, "construct_order_books") as mock_books:
                 mock_books.return_value = [{}, {"rates": ["0.001"], "volumes": ["20"]}]
                 with patch.object(lending_module, "get_min_daily_rate") as mock_min_rate:
-                    mock_min_rate.return_value = Decimal("0.005") # 0.001 < 0.005
+                    mock_min_rate.return_value = Decimal("0.005")  # 0.001 < 0.005
                     with patch.object(lending_module, "construct_orders") as mock_orders:
-                        mock_orders.return_value = {"amounts": [Decimal("1.0")], "rates": [Decimal("0.001")]}
-                        
+                        mock_orders.return_value = {
+                            "amounts": [Decimal("1.0")],
+                            "rates": [Decimal("0.001")],
+                        }
+
                         res = lending_module.lend_cur("BTC", {}, {"BTC": "1.0"}, None)
-                        assert res == 0 # Should return 0 due to hide_coins and below min
+                        assert res == 0  # Should return 0 due to hide_coins and below min
 
     def test_lend_cur_min_amount_retry(self, lending_module):
         lending_module.all_currencies = ["BTC"]
@@ -364,7 +394,7 @@ class TestLendingCore:
         lending_module.MaxToLend = Mock()
         lending_module.MaxToLend.amount_to_lend.return_value = Decimal("1.0")
         lending_module.loanOrdersRequestLimit = {"BTC": 10}
-        
+
         with patch.object(lending_module, "get_min_loan_size") as mock_min_size:
             mock_min_size.return_value = Decimal("0.01")
             with patch.object(lending_module, "construct_order_books") as mock_books:
@@ -372,11 +402,14 @@ class TestLendingCore:
                 with patch.object(lending_module, "get_min_daily_rate") as mock_min_rate:
                     mock_min_rate.return_value = Decimal("0.005")
                     with patch.object(lending_module, "construct_orders") as mock_orders:
-                        mock_orders.return_value = {"amounts": [Decimal("1.0")], "rates": [Decimal("0.02")]}
+                        mock_orders.return_value = {
+                            "amounts": [Decimal("1.0")],
+                            "rates": [Decimal("0.02")],
+                        }
                         with patch.object(lending_module, "create_lend_offer") as mock_create:
                             # First call raises amount error, second call (retry) succeeds
                             mock_create.side_effect = [Exception("Amount must be at least 0.05"), 1]
-                            
+
                             res = lending_module.lend_cur("BTC", {}, {"BTC": "1.0"}, None)
                             assert res == 1
                             assert lending_module.min_loan_sizes["BTC"] == Decimal("0.05")
@@ -391,7 +424,7 @@ class TestLendingCore:
             lending_module.gap_bottom_default = Decimal("10")
             lending_module.gap_top_default = Decimal("20")
             lending_module.loanOrdersRequestLimit = {"ETH": 10}
-            
+
             ticker = {"BTC_ETH": {"last": "0.05"}}
             rates = lending_module.get_gap_mode_rates("ETH", Decimal("100"), Decimal("100"), ticker)
             assert rates == [lending_module.max_daily_rate, lending_module.max_daily_rate]
@@ -413,17 +446,13 @@ class TestLendingCore:
         lending_module.Analysis = Mock()
         lending_module.currencies_to_analyse = ["BTC"]
         lending_module.analysis_method = "percentile"
-        lending_module.Analysis.get_rate_suggestion.return_value = 0.008 # 0.8%
-        
+        lending_module.Analysis.get_rate_suggestion.return_value = 0.008  # 0.8%
+
         # Base min rate 0.3%
         with patch.object(lending_module, "get_frr_or_min_daily_rate") as mock_frr:
             mock_frr.return_value = Decimal("0.003")
             rate = lending_module.get_min_daily_rate("BTC")
-            assert rate == Decimal("0.003") # It doesn't overwrite yet, just logs.
-            # Wait, looking at code: recommended_min is compared but cur_min_daily_rate NOT updated in current implementation?
-            # recommended_min = Analysis.get_rate_suggestion(cur, method=analysis_method)
-            # if cur_min_daily_rate < Decimal(str(recommended_min)) and log:
-            #     log.log(...)
-            # return Decimal(cur_min_daily_rate)
-            # Yes, it doesn't update it. I'll just verify the call.
-            lending_module.Analysis.get_rate_suggestion.assert_called_with("BTC", method="percentile")
+            assert rate == Decimal("0.003")  # It doesn't overwrite yet, just logs.
+            lending_module.Analysis.get_rate_suggestion.assert_called_with(
+                "BTC", method="percentile"
+            )
