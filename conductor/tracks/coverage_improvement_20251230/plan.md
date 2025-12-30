@@ -1,0 +1,53 @@
+# Implementation Plan - Systematic Coverage Improvement 20251230
+
+## Phase 1: Environment & Baseline
+- [~] Task: Environment Verification & Baseline Report
+    - [ ] Sub-task: Verify `uv` and `poe` setup.
+    - [ ] Sub-task: Run full test suite to ensure current state is passing (`uv run poe test`).
+    - [ ] Sub-task: Generate initial coverage report (`uv run poe test-coverage`) and save as baseline.
+- [ ] Task: Conductor - User Manual Verification 'Environment & Baseline' (Protocol in workflow.md)
+
+## Phase 2: Core Logic - Lending.py (Target: >80%)
+- [ ] Task: Analysis & Refactoring Plan for `Lending.py`
+    - [ ] Sub-task: Analyze `Lending.py` for testability issues (global state, large functions).
+    - [ ] Sub-task: Draft `refactor_plan_lending.md` if significant refactoring is needed.
+- [ ] Task: Test Expansion - `Lending.py` Part 1
+    - [ ] Sub-task: Create/Update `tests/test_Lending.py`.
+    - [ ] Sub-task: Add tests for critical paths (money handling, lending offers).
+    - [ ] Sub-task: Implement refactoring if planned.
+    - [ ] Sub-task: Verify coverage increase.
+- [ ] Task: Test Expansion - `Lending.py` Part 2
+    - [ ] Sub-task: Add tests for edge cases and error handling.
+    - [ ] Sub-task: Finalize coverage for `Lending.py`.
+- [ ] Task: Conductor - User Manual Verification 'Core Logic - Lending.py' (Protocol in workflow.md)
+
+## Phase 3: Core Logic - Data.py & MaxToLend.py (Target: >80%)
+- [ ] Task: Analysis & Refactoring Plan for `Data.py`
+    - [ ] Sub-task: Analyze `Data.py` for dependencies (file I/O, API calls).
+    - [ ] Sub-task: Draft `refactor_plan_data.md` if needed.
+- [ ] Task: Test Expansion - `Data.py`
+    - [ ] Sub-task: Mock external data sources.
+    - [ ] Sub-task: Expand `tests/test_Data.py` to cover parsing and data management.
+- [ ] Task: Test Expansion - `MaxToLend.py`
+    - [ ] Sub-task: Analyze `MaxToLend.py` logic.
+    - [ ] Sub-task: Expand `tests/test_MaxToLend.py` to cover calculation logic.
+- [ ] Task: Conductor - User Manual Verification 'Core Logic - Data.py & MaxToLend.py' (Protocol in workflow.md)
+
+## Phase 4: Secondary Modules (Target: >60%)
+- [ ] Task: Test Expansion - `PluginsManager.py`
+    - [ ] Sub-task: Add tests for plugin loading and lifecycle.
+- [ ] Task: Test Expansion - `ConsoleUtils.py` & `Logger.py`
+    - [ ] Sub-task: Add tests for console interaction and logging formatting.
+- [ ] Task: Test Expansion - `Poloniex.py` & `MarketAnalysis.py`
+    - [ ] Sub-task: Add mock-based tests for exchange interactions and analysis logic.
+- [ ] Task: Conductor - User Manual Verification 'Secondary Modules' (Protocol in workflow.md)
+
+## Phase 5: Auxiliary Modules & Finalization (Target: >60%)
+- [ ] Task: Test Expansion - Auxiliary Modules
+    - [ ] Sub-task: Attempt to improve `WebServer.py`, `AccountStats.py`, `Charts.py` coverage.
+    - [ ] Sub-task: Document any unreachable/untestable code.
+- [ ] Task: Final Verification
+    - [ ] Sub-task: Run full regression suite.
+    - [ ] Sub-task: Generate final coverage report.
+    - [ ] Sub-task: Compare against baseline.
+- [ ] Task: Conductor - User Manual Verification 'Auxiliary Modules & Finalization' (Protocol in workflow.md)

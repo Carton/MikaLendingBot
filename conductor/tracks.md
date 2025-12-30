@@ -16,3 +16,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: Coverage Improvement & Documentation Recovery
 *Link: [./conductor/archive/coverage_improvement_20251228/](./conductor/archive/coverage_improvement_20251228/)*
+
+---
+
+## [~] Track: Systematic Coverage Improvement 20251230
+*Link: [./conductor/tracks/coverage_improvement_20251230/](./conductor/tracks/coverage_improvement_20251230/)*
