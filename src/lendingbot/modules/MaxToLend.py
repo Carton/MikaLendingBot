@@ -60,7 +60,7 @@ def amount_to_lend(
     if active_cur in coin_cfg:
         cur_max_to_lend_rate = coin_cfg[active_cur]["maxtolendrate"]
         cur_max_to_lend = coin_cfg[active_cur]["maxtolend"]
-        cur_max_percent_to_lend = coin_cfg[active_cur]["maxpercenttolend"]
+        cur_max_percent_to_lend = Decimal(coin_cfg[active_cur]["maxpercenttolend"]) / 100
 
     if (cur_max_to_lend_rate == 0 and low_rate > 0) or cur_max_to_lend_rate >= low_rate > 0:
         log_data = (
