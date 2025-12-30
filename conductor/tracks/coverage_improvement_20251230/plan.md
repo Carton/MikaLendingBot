@@ -7,7 +7,7 @@
     - [x] Sub-task: Generate initial coverage report (`uv run poe test-coverage`) and save as baseline.
 - [x] Task: Conductor - User Manual Verification 'Environment & Baseline' (Protocol in workflow.md) aa61a61
 
-## Phase 2: Core Logic - Lending.py (Target: >80%)
+## Phase 2: Core Logic - Lending.py (Target: >80%) [checkpoint: cb647ba]
 - [x] Task: Analysis & Refactoring Plan for `Lending.py` ed5212a
     - [x] Sub-task: Analyze `Lending.py` for testability issues (global state, large functions).
     - [x] Sub-task: Draft `refactor_plan_lending.md` if significant refactoring is needed.
@@ -19,7 +19,7 @@
 - [x] Task: Test Expansion - `Lending.py` Part 2 b642afe
     - [x] Sub-task: Add tests for edge cases and error handling.
     - [x] Sub-task: Finalize coverage for `Lending.py`.
-- [ ] Task: Conductor - User Manual Verification 'Core Logic - Lending.py' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Core Logic - Lending.py' (Protocol in workflow.md) cb647ba
 
 ## Phase 3: Core Logic - Data.py & MaxToLend.py (Target: >80%)
 - [ ] Task: Analysis & Refactoring Plan for `Data.py`
