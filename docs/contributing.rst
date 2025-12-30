@@ -47,7 +47,7 @@ Whenever you create a variable or configuration option, follow PEP8 standards, t
 Line Length
 -----------
 
-To make it simple to review code in a diff viewer (and several other reasons) line length is limited to 128 characters in Python code.
+To make it simple to review code in a diff viewer (and several other reasons) line length is limited to 100 characters in Python code (as enforced by our Ruff configuration).
 
 Python allows plenty of features for one line to be split into multiple lines, those are permitted.
 
@@ -79,8 +79,9 @@ It is important to keep proper documentation of configuration options, to make i
 Building Docs
 -------------
 
-If you want to be able to build the html files of the documentation, you need to have Sphinx installed. You can install this with ``pip install sphinx``.
+If you want to be able to build the html files of the documentation, you need to have Sphinx installed. You can install this with ``uv add --dev sphinx``.
 From there, run ``make html`` in the docs directory. These instructions can also be found in the included README.
+
 
 Writing Docs
 ------------
@@ -94,6 +95,4 @@ Just follow the lead of the rest of the docs.
 Javascript
 ==========
 
-Codacy will offer suggestions for fixes to standardize/fix the code. Do not worry about having too many commits in your PR.
-
-Lendingbot.js is already quite messy, so following Codacy's suggestions is highly encouraged.
+Lendingbot.js is already quite messy, following modern standards is highly encouraged.

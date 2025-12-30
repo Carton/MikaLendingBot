@@ -21,7 +21,7 @@
 # 127.0.0.1 poloniex.localhost
 # 127.0.0.1 bitfinex.localhost
 
-version: '2'
+version: '3.8'
 services:
   nginx:
     image: jwilder/nginx-proxy
@@ -35,7 +35,7 @@ services:
   poloniex:
     depends_on:
       - nginx
-    image: amancevice/pandas:0.23.4-python2
+    image: python:3.12-slim
     restart: always
     working_dir: /usr/src/app/
     environment:
@@ -51,12 +51,12 @@ services:
     - "8000"
     volumes:
     - "./:/usr/git-src/"
-    command: bash -c "/usr/git-src/setup-container.sh && pip install -r requirements.txt && python lendingbot.py -cfg default.cfg"
+    command: bash -c "apt-get update && apt-get install -y curl && curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"/root/.local/bin:$PATH\" && /usr/git-src/setup-container.sh && uv sync && uv run python -m lendingbot.main -cfg default.cfg"
 
   bitfinex:
     depends_on:
       - nginx
-    image: amancevice/pandas:0.23.4-python2
+    image: python:3.12-slim
     restart: always
     working_dir: /usr/src/app/
     environment:
@@ -72,4 +72,4 @@ services:
     - "8000"
     volumes:
     - "./:/usr/git-src/"
-    command: bash -c "/usr/git-src/setup-container.sh && pip install -r requirements.txt && python lendingbot.py -cfg default.cfg"
+    command: bash -c "apt-get update && apt-get install -y curl && curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"/root/.local/bin:$PATH\" && /usr/git-src/setup-container.sh && uv sync && uv run python -m lendingbot.main -cfg default.cfg"

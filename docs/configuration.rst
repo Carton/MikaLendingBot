@@ -546,9 +546,9 @@ IRC notifications
 
 IRC is very easy to configure, if you are already interested in using it you'll understand what each of the options are.
 
-The main thing to note is that you need to have the python module 'irc' installed. You can git it from pip like so::
+The main thing to note is that you need to have the python module 'irc' installed. You can add it via uv:
 
-    pip install irc
+    uv add irc
 
 Once you have that installed you have access to the following options for configuration::
 

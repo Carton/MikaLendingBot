@@ -1,23 +1,23 @@
-FROM python:2.7-slim
+FROM python:3.12-slim
 LABEL "project.home"="https://github.com/BitBotFactory/poloniexlendingbot"
 
-#
-# Build: docker build -t <your_id>/pololendingbot .
-# Run: docker run -d -v /pololendingbot_data:/data -p 8000:8000 <your_id>/pololendingbot
-#
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /usr/src/app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r ./requirements.txt
+# Copy dependency files first for better caching
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-cache --no-dev
 
 COPY . .
 
+# Set up volumes and links
 VOLUME /data
-
-RUN ln -s /data/market_data market_data; \
-    ln -s /data/log/botlog.json www/botlog.json
+RUN mkdir -p /data/market_data /data/log && \
+    ln -sf /data/market_data market_data && \
+    ln -sf /data/log/botlog.json www/botlog.json
 
 EXPOSE 8000
 
-CMD ["python", "lendingbot.py", "-cfg", "/data/conf/default.cfg"]
+CMD ["uv", "run", "python", "-m", "lendingbot.main", "-cfg", "/data/conf/default.cfg"]

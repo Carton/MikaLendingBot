@@ -11,23 +11,16 @@ Prerequisites
 
 You will need:
 
-    - Python 2.7.x (Must be added to PATH)
+    - Python 3.12+ (Must be added to PATH)
 
 Recommended for easier use:
 
     - git
-    - pip (to install following required Python modules)
-    - Numpy (if using Analysis module)
-    - requests (HTTPS communication)
-    - pytz (Timezone calculations)
+    - uv (modern Python package manager, project default)
 
-It is possible to install all required Python modules **after downloading** of the bot running:
+It is recommended to use ``uv`` to manage the environment and dependencies:
 
-``pip install -r requirements.txt``
-
-or, if you need to run it as root under Linux:
-
-``sudo pip install -r requirements.txt``
+``uv sync``
 
 Downloading
 -----------
@@ -42,7 +35,7 @@ To download the bot you can either:
 
 * Windows using Startup Folder:
 
-    Add a shortcut to ``lendingbot.py`` to the startup folder of the start menu.
+    Add a shortcut to the ``uv run lendingbot`` command to the startup folder of the start menu.
     Its location may change with OS version, but for Windows 8/10 is ``C:\ProgramData\Microsoft\Windows\Start Menu\Programs\StartUp``
 
 * Linux using systemd:
@@ -57,7 +50,7 @@ To download the bot you can either:
 
         [Service]
         Type=simple
-        ExecStart=/usr/bin/python <INSTALLATION DIRECTORY>/lendingbot.py
+        ExecStart=/usr/local/bin/uv run lendingbot
         WorkingDirectory=<INSTALLATION DIRECTORY>
         RestartSec=10
         Restart=on-failure
@@ -70,19 +63,19 @@ To download the bot you can either:
     
     The permission on the unit file may need to be set to 644 (depending on your OS) :
     
-    ```
+    ```
        sudo chmod 644 /lib/systemd/system/lendingbot.service
     ```
 
     Modify the ExecStart and WorkingDirectory to match your setup.
     
     First you need to configure systemd (depending on your OS):
-    ```
+    ```
         sudo systemctl daemon-reload
     ```
 
     Enable the service using the command below:
-    ```
+    ```
         sudo systemctl enable lendingbot.service
     ```
 
@@ -97,7 +90,7 @@ You have to configure the bot, especially choosing the exchange  and api key/sec
 
 To configure the bot with your settings:
 
-    #. Copy ``default.cfg.example`` to ``default.cfg`` (Running lendingbot.py also does this for you if default.cfg doesn't already exist.)
+    #. Copy ``default.cfg.example`` to ``default.cfg`` (Running the bot also does this for you if default.cfg doesn't already exist.)
     #. Open ``default.cfg`` and enter your desired settings `(information on settings here) <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_.
     #. Save ``default.cfg``
 
@@ -106,12 +99,11 @@ You are now ready to run the bot.
 Running
 -------
 
-To run, either:
+To run, use ``uv``:
 
-    - Double-click lendingbot.py (if you have .py associated with the Python executable)
-    - Run ``python lendingbot.py`` in command prompt or terminal.
+    - Run ``uv run lendingbot`` (or ``uv run python -m lendingbot.main``) in command prompt or terminal.
 
-.. note:: You can use arguments to specify a specific config file ``-cfg`` or to do dry runs ``-dry``. To see these args do: ``python lendingbot.py -h``
+.. note:: You can use arguments to specify a specific config file ``-cfg`` or to do dry runs ``-dry``. To see these args do: ``uv run lendingbot -h``
 
 Installing on Pythonanywhere.com
 ================================
@@ -135,11 +127,11 @@ Downloading the bot's files to Pythonanywhere
 #. You should see some output with counters increasing.
 #. Change directory to the source code ``cd poloniexlendingbot``
 #. You should now see ``~/poloniexlendingbot (master)$`` this means you are looking at the master branch and things are ok to continue.
-#. Run the command ``python2.7 lendingbot.py`` once to generate the default.cfg
+#. Run the command ``python3 lendingbot.py`` once to generate the default.cfg
 #. Modify the default.cfg with your settings (See  `Configuration <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_.) You can do this with a tool called nano.
 #. Run ``nano default.cfg``, then use the arrow keys and backspace key to change ``YourAPIKey`` and ``YourSecret``. Make sure the layout of the file stays the same as it was. They should both be on separate lines.
 #. Press ``Ctr+x`` to exit, then press ``y`` to save the file, then press enter to accept the file name as ``default.cfg``.
-#. Now you can start up the bot. Run ``python2.7 lendingbot.py``
+#. Now you can start up the bot. Run ``python3 lendingbot.py``
 #. If it's working you will see ``Welcome to Poloniex Lending Bot`` displayed in the console.
 #. To update the bot just enter its directory, ``cd poloniexlendingbot`` and type, ``git pull``. This will not change the ``default.cfg`` file.
 
@@ -165,13 +157,13 @@ Running the Bot
 To run the bot continuously (Recommended for free accounts):
 
     #. Navigate to the "Consoles" tab.
-    #. Add a new "Custom console," name it "Poloniexlendingbot" and set the path to ``python /home/<username>/poloniexlendingbot/lendingbot.py``
+    #. Add a new "Custom console," name it "Poloniexlendingbot" and set the path to ``python3 /home/<username>/poloniexlendingbot/lendingbot.py``
     #. Click this link whenever you want to start the bot, it will run continuously until the website goes down for maintenance or the bot experiences an unexpected error.
 
 To have the bot restart itself every 24 hours, you need to have a `premium pythonanywhere account <https://www.pythonanywhere.com/pricing/>`_. This will make the bot more or less invincible to crashes and resets, but is not necessary.
 
     #. Navigate to the "Schedule" tab.
-    #. Create a new task to run daily (time does not matter) set the path to: ``python /home/<username>/poloniexlendingbot/lendingbot.py``
+    #. Create a new task to run daily (time does not matter) set the path to: ``python3 /home/<username>/poloniexlendingbot/lendingbot.py``
     #. The bot will start once the time comes (UTC) and run indefinitely.
 
 .. note:: If you are a free user, it will allow you to make the scheduled restart, but then it will only run for one hour and stop for 23.
@@ -189,10 +181,10 @@ By default this file will start 3 containers:
     It uses `jwilder/nginx-proxy <https://github.com/jwilder/nginx-proxy>`_
   - A python container running the bot on poloniex. 
     This starts a bot running that connects to poloniex and exposes a web interface. 
-    It uses `python:2.7-slim <https://hub.docker.com/r/library/python/tags/>`_
+    It uses `python:3.12-slim <https://hub.docker.com/_/python>`_
   - A python container running the bot on bitfinex. 
     This starts a bot running that connects to bitfinex and exposes a web interface. 
-    It uses `python:2.7-slim <https://hub.docker.com/r/library/python/tags/>`_
+    It uses `python:3.12-slim <https://hub.docker.com/_/python>`_
 
 This allows for simple deployments on a VPS or dedicated server. Each bot will be dynamically assinged a subdomain. 
 You can also use it to run the bots locally using subdomains.
