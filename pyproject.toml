@@ -39,6 +39,11 @@ test = [
     "hypothesis>=6.100.0",
 ]
 
+docs = [
+    "sphinx>=8.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+]
+
 [project.scripts]
 lendingbot = "lendingbot.main:main"
 
@@ -198,6 +203,12 @@ run-dev = "python -m lendingbot.main --config=default.cfg"
 deps-update = "uv sync --upgrade"
 deps-add = "uv add"
 deps-add-dev = "uv add --dev"
+
+# ── Documentation Tasks ─────────────────────────────────────────────────────
+docs = { cmd = "make html", cwd = "docs" }
+docs-pdf = { cmd = "make latexpdf", cwd = "docs" }
+docs-clean = { cmd = "make clean", cwd = "docs" }
+docs-linkcheck = { cmd = "make linkcheck", cwd = "docs" }
 
 # ── Build and Publish ───────────────────────────────────────────────────────
 build = "uv build"
