@@ -1,13 +1,13 @@
 import atexit
 import datetime
 import json
+import shutil
 import sys
 import time
 from collections import deque
 from typing import Any
 
 from . import Configuration as Config
-from . import ConsoleUtils
 from .Notify import send_notification
 
 
@@ -22,7 +22,7 @@ class ConsoleOutput:
 
     def status(self, msg: Any, _time_str: str = "", _days_remaining_msg: str = "") -> None:
         status = str(msg)
-        cols = ConsoleUtils.get_terminal_size()[0]
+        cols = shutil.get_terminal_size().columns
         if msg != "" and len(status) > cols:
             # truncate status, try preventing console bloating
             status = str(msg)[: cols - 4] + "..."

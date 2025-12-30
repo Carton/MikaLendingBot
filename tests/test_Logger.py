@@ -3,6 +3,8 @@ Tests for Logger module.
 """
 
 import json
+import os
+
 from unittest.mock import patch
 
 from lendingbot.modules.Logger import ConsoleOutput, JsonOutput, Logger
@@ -12,7 +14,7 @@ class TestLogger:
     def test_console_output(self):
         with (
             patch("sys.stderr.write") as mock_write,
-            patch("lendingbot.modules.ConsoleUtils.get_terminal_size", return_value=(80, 25)),
+            patch("shutil.get_terminal_size", return_value=os.terminal_size((80, 25))),
         ):
             out = ConsoleOutput()
             out.status("Test Status")
