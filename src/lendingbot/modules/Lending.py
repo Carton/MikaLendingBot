@@ -58,6 +58,89 @@ analysis_method: str = "percentile"
 all_currencies: list[str] = []
 
 
+def _reset_globals() -> None:
+    """
+    Resets all global variables to their default values.
+    Primarily used for testing to ensure a clean state between test cases.
+    """
+    global \
+        sleep_time, \
+        sleep_time_active, \
+        sleep_time_inactive, \
+        min_daily_rate, \
+        max_daily_rate, \
+        spread_lend, \
+        gap_bottom_default, \
+        gap_top_default, \
+        xday_threshold, \
+        min_loan_size, \
+        end_date, \
+        coin_cfg, \
+        min_loan_sizes, \
+        dry_run, \
+        transferable_currencies, \
+        keep_stuck_orders, \
+        hide_coins, \
+        scheduler, \
+        gap_mode_default, \
+        exchange, \
+        analysis_method, \
+        currencies_to_analyse, \
+        all_currencies, \
+        frrasmin, \
+        frrdelta_min, \
+        frrdelta_max, \
+        frrdelta_cur_step, \
+        debug_on, \
+        lending_paused, \
+        last_lending_status, \
+        loans_provided, \
+        api, \
+        log, \
+        Data, \
+        MaxToLend, \
+        Analysis, \
+        notify_conf
+
+    sleep_time = 0
+    sleep_time_active = 0
+    sleep_time_inactive = 0
+    min_daily_rate = Decimal(0)
+    max_daily_rate = Decimal(0)
+    spread_lend = 0
+    gap_bottom_default = Decimal(0)
+    gap_top_default = Decimal(0)
+    xday_threshold = ""
+    min_loan_size = Decimal(0)
+    min_loan_sizes = {}
+    end_date = None
+    coin_cfg = {}
+    dry_run = False
+    transferable_currencies = []
+    keep_stuck_orders = True
+    hide_coins = True
+    scheduler = None
+    gap_mode_default = ""
+    exchange = ""
+    analysis_method = "percentile"
+    currencies_to_analyse = []
+    all_currencies = []
+    frrasmin = False
+    frrdelta_min = Decimal(0)
+    frrdelta_max = Decimal(0)
+    frrdelta_cur_step = 0
+    debug_on = False
+    lending_paused = False
+    last_lending_status = None
+    loans_provided = []
+    api = None
+    log = None
+    Data = None
+    MaxToLend = None
+    Analysis = None
+    notify_conf = {}
+
+
 def debug_log(msg: str) -> None:
     if debug_on:
         print(f"DEBUG: {msg}")
