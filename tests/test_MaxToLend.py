@@ -80,7 +80,7 @@ class TestMaxToLend:
             "ETH": {
                 "maxtolend": Decimal("2"),
                 "maxpercenttolend": Decimal("0"),
-                "maxtolendrate": Decimal("0.05")
+                "maxtolendrate": Decimal("0.05"),
             }
         }
         # Market rate 0.01 <= 0.05 (restricted for ETH)
@@ -89,9 +89,9 @@ class TestMaxToLend:
 
     def test_amount_to_lend_no_restriction_due_to_rate(self, maxtolend_module):
         maxtolend_module.log = MagicMock()
-        maxtolend_module.max_to_lend_rate = Decimal("0.01") # Only restrict if rate <= 1%
+        maxtolend_module.max_to_lend_rate = Decimal("0.01")  # Only restrict if rate <= 1%
         maxtolend_module.max_to_lend = Decimal("5")
-        
+
         # Market rate 0.02 > 0.01. No restriction.
         res = maxtolend_module.amount_to_lend(Decimal("10"), "BTC", Decimal("10"), Decimal("0.02"))
         assert res == Decimal("10")

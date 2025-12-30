@@ -43,7 +43,7 @@
 - [x] Task: Conductor - User Manual Verification 'Secondary Modules' (Protocol in workflow.md) 646ea1a
 
 ## Phase 5: Auxiliary Modules & Finalization (Target: >60%)
-- [ ] Task: Test Expansion - Auxiliary Modules
+- [~] Task: Test Expansion - Auxiliary Modules
     - [ ] Sub-task: Attempt to improve `WebServer.py`, `AccountStats.py`, `Charts.py` coverage.
     - [ ] Sub-task: Document any unreachable/untestable code.
 - [ ] Task: Final Verification
