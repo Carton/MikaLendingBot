@@ -30,6 +30,7 @@ dev = [
     "ruff>=0.7.0",
     "mypy>=1.8.0",
     "poethepoet>=0.24.0",
+    "types-requests>=2.32.4.20250913",
 ]
 
 test = [
