@@ -13,21 +13,21 @@ Focus: Improving type safety and code clarity by adopting `dataclasses` for core
     - [x] Sub-task: Implement the refactor. (Green) (e7f36f4)
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Data Structure Modernization' (Protocol in workflow.md)
 
-## Phase 2: Legacy Pattern & API Replacement
+## Phase 2: Legacy Pattern & API Replacement [checkpoint: e232145]
 Focus: Replacing outdated standard library usage and manual "Python 2 workarounds" with modern Python 3 APIs.
 
-- [~] Task: Identify and replace legacy "workaround" patterns.
-    - [ ] Sub-task: Scan for manual implementations of features now in the stdlib (e.g., manual caching -> `functools.lru_cache`, manual path manipulation -> `pathlib` deeper features, manual `enum`-like behavior -> `enum.Enum`).
-    - [ ] Sub-task: Replace old `subprocess` or `os` calls with modern equivalents if they exist for the specific use case.
-- [ ] Task: Scan and Refactor Legacy `datetime` usage.
-    - [ ] Sub-task: Identify areas using old timestamp manipulation manually.
-    - [ ] Sub-task: Refactor to use `datetime.timezone.utc` and modern timestamp methods (`fromisoformat`, etc.).
-- [ ] Task: Scan and Refactor Legacy `collections`/`io` usage.
-    - [ ] Sub-task: Replace complex `dict` subclassing with `UserDict` or `collections.abc` if found.
-    - [ ] Sub-task: Ensure context managers (`with` statements) are used for all file/stream I/O.
-- [ ] Task: Code Simplification scan.
-    - [ ] Sub-task: Apply `walrus` operator (`:=`) where it significantly improves readability.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Legacy Pattern & API Replacement' (Protocol in workflow.md)
+- [x] Task: Identify and replace legacy "workaround" patterns. (e232145)
+    - [x] Sub-task: Scan for manual implementations of features now in the stdlib (e.g., manual caching -> `functools.lru_cache`, manual path manipulation -> `pathlib` deeper features, manual `enum`-like behavior -> `enum.Enum`). (e232145)
+    - [x] Sub-task: Replace old `subprocess` or `os` calls with modern equivalents if they exist for the specific use case. (e232145)
+- [x] Task: Scan and Refactor Legacy `datetime` usage. (e232145)
+    - [x] Sub-task: Identify areas using old timestamp manipulation manually. (e232145)
+    - [x] Sub-task: Refactor to use `datetime.timezone.utc` and modern timestamp methods (`fromisoformat`, etc.). (e232145)
+- [x] Task: Scan and Refactor Legacy `collections`/`io` usage. (e232145)
+    - [x] Sub-task: Replace complex `dict` subclassing with `UserDict` or `collections.abc` if found. (e232145)
+    - [x] Sub-task: Ensure context managers (`with` statements) are used for all file/stream I/O. (e232145)
+- [x] Task: Code Simplification scan. (e232145)
+    - [x] Sub-task: Apply `walrus` operator (`:=`) where it significantly improves readability. (e232145)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Legacy Pattern & API Replacement' (Protocol in workflow.md)
 
 ## Phase 3: Final Verification & Cleanup
 Focus: Ensuring the modernized codebase is stable and strictly typed.
