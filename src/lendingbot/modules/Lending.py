@@ -33,7 +33,7 @@ coin_cfg_alerted: dict[str, bool] = {}
 max_active_alerted: dict[str, bool] = {}
 notify_conf: dict[str, Any] = {}
 loans_provided: list[dict[str, Any]] = []
-gap_mode_default: Config.GapMode | str = ""
+gap_mode_default: Config.GapMode | bool | str = ""
 scheduler: sched.scheduler | None = None
 exchange: str = ""
 frrasmin: bool = False
@@ -767,13 +767,17 @@ def get_gap_mode_rates(
 
     order_book = books[1]
 
-    if cfg := coin_cfg.get(cur):  # Get custom values specific to coin
-        if cfg.gapmode and cfg.gapbottom is not None and cfg.gaptop is not None:
-            # Only overwrite default if all three are set
-            use_gap_cfg = True
-            gap_mode = str(cfg.gapmode)
-            gap_bottom = cfg.gapbottom
-            gap_top = cfg.gaptop
+    if (
+        (cfg := coin_cfg.get(cur))
+        and cfg.gapmode
+        and cfg.gapbottom is not None
+        and cfg.gaptop is not None
+    ):
+        # Only overwrite default if all three are set
+        use_gap_cfg = True
+        gap_mode = str(cfg.gapmode)
+        gap_bottom = cfg.gapbottom
+        gap_top = cfg.gaptop
 
     if gap_mode == "rawbtc":
         btc_value = Decimal(1)
@@ -795,7 +799,7 @@ def get_gap_mode_rates(
     else:
         if use_gap_cfg:
             print(f"WARN: Invalid setting for gapMode for [{cur}], using defaults...")
-            coin_cfg[cur].gapmode = "rawbtc"
+            coin_cfg[cur].gapmode = Config.GapMode.RAWBTC
             coin_cfg[cur].gapbottom = Decimal(10)
             coin_cfg[cur].gaptop = Decimal(100)
         else:

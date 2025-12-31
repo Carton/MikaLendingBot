@@ -1,5 +1,4 @@
 import datetime
-import math
 import sqlite3
 import sys
 import threading
@@ -243,7 +242,9 @@ class MarketAnalysis:
         diff_days = (now - date1).days
         return diff_days
 
-    def get_rate_list(self, cur: str | sqlite3.Connection, seconds: int) -> list[Any] | pd.DataFrame:
+    def get_rate_list(
+        self, cur: str | sqlite3.Connection, seconds: int
+    ) -> list[Any] | pd.DataFrame:
         """
         Query the database (cur) for rates that are within the supplied number of seconds and now.
         """

@@ -1,6 +1,5 @@
 import hashlib
 import hmac
-import json
 import socket
 import threading
 import time

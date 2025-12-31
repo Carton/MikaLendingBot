@@ -1,13 +1,11 @@
 import datetime
-import json
 import subprocess
-
-import requests
 from collections.abc import Iterator
-
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
+
+import requests
 
 from .Logger import Logger
 

@@ -43,7 +43,7 @@ class TestPoloniexCore:
             assert res["result"] == "success"
 
             # Verify it was called with headers (Sign/Key)
-            args, kwargs = mock_post.call_args
+            _args, kwargs = mock_post.call_args
             headers = kwargs["headers"]
             assert "Key" in headers
             assert "Sign" in headers
@@ -64,7 +64,7 @@ class TestPoloniexCore:
             mock_resp.status_code = 429
             mock_resp.text = '{"error": "Rate limit exceeded"}'
             mock_resp.json.return_value = {"error": "Rate limit exceeded"}
-            
+
             # Construct HTTPError that points to this response
             mock_error = requests.HTTPError(response=mock_resp)
             mock_get.side_effect = mock_error
