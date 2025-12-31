@@ -21,3 +21,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: Systematic Coverage Improvement 20251230
 *Link: [./conductor/archive/coverage_improvement_20251230/](./conductor/archive/coverage_improvement_20251230/)*
+
+---
+
+## [~] Track: Python 3 modernization and idiom adoption
+*Link: [./conductor/tracks/modernization_idioms_20251230/](./conductor/tracks/modernization_idioms_20251230/)*

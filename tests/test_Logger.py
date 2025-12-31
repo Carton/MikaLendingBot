@@ -4,7 +4,6 @@ Tests for Logger module.
 
 import json
 import os
-
 from unittest.mock import patch
 
 from lendingbot.modules.Logger import ConsoleOutput, JsonOutput, Logger

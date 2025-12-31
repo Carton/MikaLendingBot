@@ -257,7 +257,7 @@ def test_get_coin_cfg(mock_config_file):
     Configuration.init(mock_config_file)
     coin_cfg = Configuration.get_coin_cfg()
     assert "BTC" in coin_cfg
-    assert coin_cfg["BTC"]["minrate"] == Decimal("0.0002")  # 0.02 / 100
+    assert coin_cfg["BTC"].minrate == Decimal("0.0002")  # 0.02 / 100
 
     # Test missing section (should just skip)
     with patch(

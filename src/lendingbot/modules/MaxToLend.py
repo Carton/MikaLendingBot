@@ -1,10 +1,11 @@
 from decimal import Decimal
 from typing import Any
 
+from . import Configuration
 from .Logger import Logger
 
 
-coin_cfg: dict[str, Any] = {}
+coin_cfg: dict[str, Configuration.CoinConfig] = {}
 max_to_lend_rate: Decimal = Decimal(0)
 max_to_lend: Decimal = Decimal(0)
 max_percent_to_lend: Decimal = Decimal(0)
@@ -58,9 +59,9 @@ def amount_to_lend(
     cur_max_percent_to_lend = max_percent_to_lend
 
     if active_cur in coin_cfg:
-        cur_max_to_lend_rate = coin_cfg[active_cur]["maxtolendrate"]
-        cur_max_to_lend = coin_cfg[active_cur]["maxtolend"]
-        cur_max_percent_to_lend = Decimal(coin_cfg[active_cur]["maxpercenttolend"]) / 100
+        cur_max_to_lend_rate = coin_cfg[active_cur].maxtolendrate
+        cur_max_to_lend = coin_cfg[active_cur].maxtolend
+        cur_max_percent_to_lend = coin_cfg[active_cur].maxpercenttolend
 
     if (cur_max_to_lend_rate == 0 and low_rate > 0) or cur_max_to_lend_rate >= low_rate > 0:
         log_data = (

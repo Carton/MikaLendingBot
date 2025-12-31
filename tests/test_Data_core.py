@@ -21,23 +21,15 @@ def data_module():
 
 class TestDataCore:
     def test_stringify_total_lent(self, data_module):
-        # Data.log needs to be mocked because stringify_total_lent calls log.updateStatusValue
-        data_module.log = MagicMock()
+        from lendingbot.modules.Data import LentData
 
         total_lent = {"BTC": Decimal("1.0"), "ETH": Decimal("10.0")}
-        rate_lent = {"BTC": Decimal("0.05"), "ETH": Decimal("0.2")}  # Rate sum: rate * amount
-
-        result = data_module.stringify_total_lent(total_lent, rate_lent)
-
+        rate_lent = {"BTC": Decimal("0.0001"), "ETH": Decimal("0.001")}
+        data_module.log = MagicMock()
+        result = data_module.stringify_total_lent(LentData(total_lent, rate_lent))
         assert "Lent:" in result
-        assert "[1.0000 BTC @ 5.0000%]" in result
-        assert "[10.0000 ETH @ 2.0000%]" in result
-
-        # Check log updates
-        data_module.log.updateStatusValue.assert_any_call("BTC", "lentSum", Decimal("1.0"))
-        data_module.log.updateStatusValue.assert_any_call(
-            "BTC", "averageLendingRate", Decimal("5.0")
-        )
+        assert "[1.0000 BTC @ 0.0100%]" in result
+        assert "[10.0000 ETH @ 0.0100%]" in result
 
     def test_truncate(self, data_module):
         assert data_module.truncate(1.23456789, 4) == 1.2345

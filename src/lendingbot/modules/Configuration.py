@@ -1,8 +1,24 @@
 import configparser
 import os
 import shutil
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
+
+
+@dataclass
+class CoinConfig:
+    minrate: Decimal
+    maxactive: Decimal
+    maxtolend: Decimal
+    maxpercenttolend: Decimal
+    maxtolendrate: Decimal
+    gapmode: str | bool
+    gapbottom: Decimal
+    gaptop: Decimal
+    frrasmin: bool
+    frrdelta_min: Decimal
+    frrdelta_max: Decimal
 
 
 config = configparser.ConfigParser()
@@ -59,8 +75,8 @@ def get(
     category: str,
     option: str,
     default_value: Any = False,
-    lower_limit: float | bool = False,
-    upper_limit: float | bool = False,
+    lower_limit: float | bool | Decimal = False,
+    upper_limit: float | bool | Decimal = False,
 ) -> Any:
     if has_option(category, option):
         value = os.environ.get(f"{category}_{option}")
@@ -108,29 +124,36 @@ def get_exchange() -> str:
         return "POLONIEX"
 
 
-def get_coin_cfg() -> dict[str, Any]:
-    coin_cfg: dict[str, Any] = {}
+def get_coin_cfg() -> dict[str, CoinConfig]:
+    coin_cfg: dict[str, CoinConfig] = {}
     for cur in get_all_currencies():
         if config.has_section(cur):
             try:
-                coin_cfg[cur] = {}
-                coin_cfg[cur]["minrate"] = (Decimal(config.get(cur, "mindailyrate"))) / 100
-                coin_cfg[cur]["maxactive"] = Decimal(config.get(cur, "maxactiveamount"))
-                coin_cfg[cur]["maxtolend"] = Decimal(config.get(cur, "maxtolend"))
-                coin_cfg[cur]["maxpercenttolend"] = (
-                    Decimal(config.get(cur, "maxpercenttolend"))
-                ) / 100
-                coin_cfg[cur]["maxtolendrate"] = (Decimal(config.get(cur, "maxtolendrate"))) / 100
-                coin_cfg[cur]["gapmode"] = get_gap_mode(cur, "gapmode")
-                coin_cfg[cur]["gapbottom"] = Decimal(get(cur, "gapbottom", False, 0))
-                coin_cfg[cur]["gaptop"] = Decimal(
-                    get(cur, "gaptop", False, coin_cfg[cur]["gapbottom"])
+                minrate = (Decimal(config.get(cur, "mindailyrate"))) / 100
+                maxactive = Decimal(config.get(cur, "maxactiveamount"))
+                maxtolend = Decimal(config.get(cur, "maxtolend"))
+                maxpercenttolend = (Decimal(config.get(cur, "maxpercenttolend"))) / 100
+                maxtolendrate = (Decimal(config.get(cur, "maxtolendrate"))) / 100
+                gapmode = get_gap_mode(cur, "gapmode")
+                gapbottom = Decimal(get(cur, "gapbottom", False, 0))
+                gaptop = Decimal(get(cur, "gaptop", False, gapbottom))
+                frrasmin = getboolean(cur, "frrasmin", getboolean("BOT", "frrasmin"))
+                frrdelta_min = Decimal(get(cur, "frrdelta_min", 0.0000))
+                frrdelta_max = Decimal(get(cur, "frrdelta_max", 0.00008))
+
+                coin_cfg[cur] = CoinConfig(
+                    minrate=minrate,
+                    maxactive=maxactive,
+                    maxtolend=maxtolend,
+                    maxpercenttolend=maxpercenttolend,
+                    maxtolendrate=maxtolendrate,
+                    gapmode=gapmode,
+                    gapbottom=gapbottom,
+                    gaptop=gaptop,
+                    frrasmin=frrasmin,
+                    frrdelta_min=frrdelta_min,
+                    frrdelta_max=frrdelta_max,
                 )
-                coin_cfg[cur]["frrasmin"] = getboolean(
-                    cur, "frrasmin", getboolean("BOT", "frrasmin")
-                )
-                coin_cfg[cur]["frrdelta_min"] = Decimal(get(cur, "frrdelta_min", 0.0000))
-                coin_cfg[cur]["frrdelta_max"] = Decimal(get(cur, "frrdelta_max", 0.00008))
 
             except Exception as ex:
                 msg = str(ex)

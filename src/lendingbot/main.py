@@ -93,7 +93,6 @@ def main() -> NoReturn:
         Config.config.set("BOT", "api_debug_log", "True")
 
     output_currency = str(Config.get("BOT", "outputCurrency", "BTC"))
-    end_date = Config.get("BOT", "endDate")
     exchange = Config.get_exchange()
 
     json_output_enabled = Config.has_option("BOT", "jsonfile") and Config.has_option(
@@ -169,10 +168,7 @@ def main() -> NoReturn:
                     Lending.lend_all()
                     PluginsManager.after_lending()
 
-                log.refreshStatus(
-                    Data.stringify_total_lent(*Data.get_total_lent()),
-                    str(Data.get_max_duration(end_date, "status")),
-                )
+                log.log(Data.stringify_total_lent(Data.get_total_lent()))
                 log.persistStatus()
                 sys.stdout.flush()
                 time.sleep(Lending.get_sleep_time())

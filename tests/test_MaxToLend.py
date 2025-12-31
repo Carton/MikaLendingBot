@@ -24,20 +24,31 @@ def maxtolend_module():
 
 class TestMaxToLend:
     def test_maxtolend_init(self, maxtolend_module):
+        from lendingbot.modules.Configuration import CoinConfig
+
         mock_config = MagicMock()
         mock_config.get_coin_cfg.return_value = {
-            "BTC": {
-                "maxtolend": Decimal("1.0"),
-                "maxpercenttolend": Decimal("0.5"),
-                "maxtolendrate": Decimal("0.01"),
-            }
+            "BTC": CoinConfig(
+                minrate=Decimal("0.0001"),
+                maxactive=Decimal("100"),
+                maxtolend=Decimal("1.0"),
+                maxpercenttolend=Decimal("0.5"),
+                maxtolendrate=Decimal("0.01"),
+                gapmode="raw",
+                gapbottom=Decimal("10"),
+                gaptop=Decimal("20"),
+                frrasmin=True,
+                frrdelta_min=Decimal("0.00001"),
+                frrdelta_max=Decimal("0.00005"),
+            )
         }
         mock_config.get.return_value = "0"
 
         log = MagicMock()
         maxtolend_module.init(mock_config, log)
         assert maxtolend_module.max_to_lend == Decimal("0")
-        assert maxtolend_module.coin_cfg["BTC"]["maxtolend"] == Decimal("1.0")
+        # test coin_cfg override
+        assert maxtolend_module.coin_cfg["BTC"].maxtolend == Decimal("1.0")
 
     def test_amount_to_lend_no_restriction(self, maxtolend_module):
         maxtolend_module.log = MagicMock()
@@ -75,13 +86,23 @@ class TestMaxToLend:
         assert res == Decimal("10")
 
     def test_amount_to_lend_coin_cfg_override(self, maxtolend_module):
+        from lendingbot.modules.Configuration import CoinConfig
+
         maxtolend_module.log = MagicMock()
         maxtolend_module.coin_cfg = {
-            "ETH": {
-                "maxtolend": Decimal("2"),
-                "maxpercenttolend": Decimal("0"),
-                "maxtolendrate": Decimal("0.05"),
-            }
+            "ETH": CoinConfig(
+                minrate=Decimal("0.0001"),
+                maxactive=Decimal("100"),
+                maxtolend=Decimal("2"),
+                maxpercenttolend=Decimal("0"),
+                maxtolendrate=Decimal("0.05"),
+                gapmode="raw",
+                gapbottom=Decimal("10"),
+                gaptop=Decimal("20"),
+                frrasmin=True,
+                frrdelta_min=Decimal("0.00001"),
+                frrdelta_max=Decimal("0.00005"),
+            )
         }
         # Market rate 0.01 <= 0.05 (restricted for ETH)
         res = maxtolend_module.amount_to_lend(Decimal("10"), "ETH", Decimal("10"), Decimal("0.01"))

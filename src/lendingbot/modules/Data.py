@@ -2,10 +2,31 @@ import datetime
 import json
 import subprocess
 import urllib.request
+from collections.abc import Iterator
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
 from .Logger import Logger
+
+
+@dataclass
+class LentData:
+    total_lent: dict[str, Decimal]
+    rate_lent: dict[str, Decimal]
+
+    def __iter__(self) -> Iterator[dict[str, Decimal]]:
+        """Allow unpacking for legacy compatibility: total, rate = get_total_lent()"""
+        yield self.total_lent
+        yield self.rate_lent
+
+    def __getitem__(self, index: int) -> dict[str, Decimal]:
+        """Allow indexing for legacy compatibility: get_total_lent()[0]"""
+        if index == 0:
+            return self.total_lent
+        if index == 1:
+            return self.rate_lent
+        raise IndexError("LentData index out of range")
 
 
 api: Any = None
@@ -55,14 +76,12 @@ def get_max_duration(end_date: str, context: str) -> int | str:
         exit(1)
 
 
-def get_total_lent() -> list[dict[str, Decimal]]:
+def get_total_lent() -> LentData:
     """
     Retrieves the total amount lent for each currency.
 
     Returns:
-        A list containing two dictionaries:
-        - index 0: Total amount lent per currency.
-        - index 1: Total weighted rate per currency (rate * amount).
+        LentData: Object containing total amount lent and total weighted rate per currency.
     """
     crypto_lent = api.return_active_loans()
     total_lent: dict[str, Decimal] = {}
@@ -77,7 +96,7 @@ def get_total_lent() -> list[dict[str, Decimal]]:
         else:
             total_lent[currency] = item_float
             rate_lent[currency] = item_rate_float * item_float
-    return [total_lent, rate_lent]
+    return LentData(total_lent=total_lent, rate_lent=rate_lent)
 
 
 def timestamp() -> str:
@@ -87,13 +106,12 @@ def timestamp() -> str:
     return datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def stringify_total_lent(total_lent: dict[str, Decimal], rate_lent: dict[str, Decimal]) -> str:
+def stringify_total_lent(lent_data: LentData) -> str:
     """
     Formats the total lent data into a readable string.
 
     Args:
-        total_lent: Dictionary of total amounts lent.
-        rate_lent: Dictionary of weighted rates.
+        lent_data: LentData object.
 
     Returns:
         A formatted string describing the lent status.
@@ -101,6 +119,8 @@ def stringify_total_lent(total_lent: dict[str, Decimal], rate_lent: dict[str, De
     result = "Lent: "
     if log is None:
         return result
+    total_lent = lent_data.total_lent
+    rate_lent = lent_data.rate_lent
     for key in sorted(total_lent):
         average_lending_rate = Decimal(rate_lent[key] * 100 / total_lent[key])
         result += f"[{Decimal(total_lent[key]):.4f} {key} @ {average_lending_rate:.4f}%] "
@@ -111,7 +131,7 @@ def stringify_total_lent(total_lent: dict[str, Decimal], rate_lent: dict[str, De
 
 def update_conversion_rates(output_currency: str, json_output_enabled: bool) -> None:
     if json_output_enabled and log:
-        total_lent = get_total_lent()[0]
+        total_lent = get_total_lent().total_lent
         ticker_response = api.return_ticker()
         output_currency_found = False
         # Set this up now in case we get an exception later and don't have a currency to use
@@ -162,7 +182,7 @@ def update_conversion_rates(output_currency: str, json_output_enabled: bool) -> 
 
 def get_lending_currencies() -> list[str]:
     currencies = []
-    total_lent = get_total_lent()[0]
+    total_lent = get_total_lent().total_lent
     for cur in total_lent:
         currencies.append(cur)
     lending_balances = api.return_available_account_balances("lending")["lending"]

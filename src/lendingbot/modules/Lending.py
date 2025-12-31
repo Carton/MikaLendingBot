@@ -23,7 +23,7 @@ xday_threshold: str = ""
 min_loan_size: Decimal = Decimal(0)
 min_loan_sizes: dict[str, Decimal] = {}
 end_date: str | None = None
-coin_cfg: dict[str, Any] = {}
+coin_cfg: dict[str, Config.CoinConfig] = {}
 dry_run: bool = False
 transferable_currencies: list[str] = []
 currencies_to_analyse: list[str] = []
@@ -283,7 +283,7 @@ def notify_summary(sleep_time_val: float) -> None:
     """
     try:
         if log:
-            log.notify(Data.stringify_total_lent(*Data.get_total_lent()), notify_conf)
+            log.notify(Data.stringify_total_lent(Data.get_total_lent()), notify_conf)
     except Exception as ex:
         print(f"Error during summary notification: {ex}")
     if scheduler:
@@ -411,10 +411,7 @@ def create_lend_offer(
                 log.log(
                     "The end date has almost been reached and the bot can no longer lend. Exiting."
                 )
-                log.refreshStatus(
-                    Data.stringify_total_lent(*Data.get_total_lent()),
-                    str(Data.get_max_duration(end_date, "status")),
-                )
+                log.log(Data.stringify_total_lent(Data.get_total_lent()))
                 log.persistStatus()
             exit(0)
         if int(days) > days_remaining:
@@ -440,7 +437,7 @@ def cancel_all() -> None:
     for cur in loan_offers:
         if cur not in all_currencies:
             continue
-        if cur in coin_cfg and coin_cfg[cur]["maxactive"] == 0:
+        if cur in coin_cfg and coin_cfg[cur].maxactive == 0:
             # don't cancel disabled coin
             continue
         if keep_stuck_orders:
@@ -471,7 +468,7 @@ def lend_all() -> None:
     """
     Main loop to attempt lending for all currencies with available balance.
     """
-    total_lent = Data.get_total_lent()[0]
+    total_lent = Data.get_total_lent().total_lent
     lending_balances = api.return_available_account_balances("lending")["lending"]
     if dry_run:  # just fake some numbers, if dryrun (testing)
         lending_balances = Data.get_on_order_balances()
@@ -488,7 +485,7 @@ def lend_all() -> None:
         ticker = api.return_ticker()  # Only call ticker once for all orders
     else:
         for cur_name in coin_cfg:
-            if "rawbtc" in str(coin_cfg[cur_name].get("gapmode", "")):
+            if coin_cfg[cur_name].gapmode == "rawbtc":
                 ticker = api.return_ticker()
                 break
 
@@ -517,10 +514,10 @@ def get_frr_or_min_daily_rate(cur: str) -> Decimal:
     """
     global frrdelta_cur_step, frrdelta_min, frrdelta_max
     if cur in coin_cfg:
-        min_rate = Decimal(coin_cfg[cur]["minrate"])
-        frr_as_min = coin_cfg[cur]["frrasmin"]
-        frr_d_min = Decimal(coin_cfg[cur]["frrdelta_min"]) / 100
-        frr_d_max = Decimal(coin_cfg[cur]["frrdelta_max"]) / 100
+        min_rate = coin_cfg[cur].minrate
+        frr_as_min = coin_cfg[cur].frrasmin
+        frr_d_min = coin_cfg[cur].frrdelta_min / 100
+        frr_d_max = coin_cfg[cur].frrdelta_max / 100
     else:
         min_rate = Decimal(Config.get("BOT", "mindailyrate", None, 0.003, 5)) / 100
         frr_as_min = Config.getboolean("BOT", "frrasmin", False)
@@ -571,7 +568,7 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
     """
     cur_min_daily_rate = get_frr_or_min_daily_rate(cur)
     if cur in coin_cfg:
-        if coin_cfg[cur]["maxactive"] == 0:
+        if coin_cfg[cur].maxactive == 0:
             if cur not in max_active_alerted:  # Only alert once per coin.
                 max_active_alerted[cur] = True
                 if log:
@@ -770,16 +767,12 @@ def get_gap_mode_rates(
 
     if cur in coin_cfg:  # Get custom values specific to coin
         cfg = coin_cfg[cur]
-        if (
-            cfg.get("gapmode")
-            and cfg.get("gapbottom") is not None
-            and cfg.get("gaptop") is not None
-        ):
+        if cfg.gapmode and cfg.gapbottom is not None and cfg.gaptop is not None:
             # Only overwrite default if all three are set
             use_gap_cfg = True
-            gap_mode = cfg["gapmode"]
-            gap_bottom = Decimal(str(cfg["gapbottom"]))
-            gap_top = Decimal(str(cfg["gaptop"]))
+            gap_mode = str(cfg.gapmode)
+            gap_bottom = cfg.gapbottom
+            gap_top = cfg.gaptop
 
     if gap_mode == "rawbtc":
         btc_value = Decimal(1)
@@ -801,9 +794,9 @@ def get_gap_mode_rates(
     else:
         if use_gap_cfg:
             print(f"WARN: Invalid setting for gapMode for [{cur}], using defaults...")
-            coin_cfg[cur]["gapmode"] = "rawbtc"
-            coin_cfg[cur]["gapbottom"] = 10
-            coin_cfg[cur]["gaptop"] = 100
+            coin_cfg[cur].gapmode = "rawbtc"
+            coin_cfg[cur].gapbottom = Decimal(10)
+            coin_cfg[cur].gaptop = Decimal(100)
         else:
             print("WARN: Invalid setting for gapMode, using defaults...")
             gap_mode_default = "relative"

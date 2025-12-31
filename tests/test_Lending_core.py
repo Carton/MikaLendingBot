@@ -155,21 +155,45 @@ class TestLendingCore:
         assert rate == Decimal("0.002")
 
     def test_get_min_daily_rate_coin_cfg(self, lending_module):
-        lending_module.coin_cfg = {"BTC": {"minrate": "0.005", "frrasmin": False, "maxactive": 100}}
+        from lendingbot.modules.Configuration import CoinConfig
+
+        lending_module.coin_cfg = {
+            "BTC": CoinConfig(
+                minrate=Decimal("0.005"),
+                maxactive=Decimal(100),
+                maxtolend=Decimal(0),
+                maxpercenttolend=Decimal(0),
+                maxtolendrate=Decimal(0),
+                gapmode=False,
+                gapbottom=Decimal(0),
+                gaptop=Decimal(0),
+                frrasmin=False,
+                frrdelta_min=Decimal(0),
+                frrdelta_max=Decimal(0),
+            )
+        }
         with patch.object(lending_module, "get_frr_or_min_daily_rate") as mock_frr:
             mock_frr.return_value = Decimal("0.005")
             rate = lending_module.get_min_daily_rate("BTC")
             assert rate == Decimal("0.005")
 
     def test_get_min_daily_rate_disabled(self, lending_module):
+        from lendingbot.modules.Configuration import CoinConfig
+
         lending_module.coin_cfg = {
-            "BTC": {
-                "maxactive": 0,
-                "minrate": "0.003",
-                "frrasmin": False,
-                "frrdelta_min": 0,
-                "frrdelta_max": 0,
-            }
+            "BTC": CoinConfig(
+                maxactive=Decimal(0),
+                minrate=Decimal("0.003"),
+                maxtolend=Decimal(0),
+                maxpercenttolend=Decimal(0),
+                maxtolendrate=Decimal(0),
+                gapmode=False,
+                gapbottom=Decimal(0),
+                gaptop=Decimal(0),
+                frrasmin=False,
+                frrdelta_min=Decimal(0),
+                frrdelta_max=Decimal(0),
+            )
         }
         assert lending_module.get_min_daily_rate("BTC") is False
 
@@ -283,6 +307,8 @@ class TestLendingCore:
         assert lending_module.dry_run is True
 
     def test_lend_all_basic(self, lending_module):
+        from lendingbot.modules.Data import LentData
+
         lending_module.api = Mock()
         lending_module.api.return_available_account_balances.return_value = {
             "lending": {"BTC": "1.0"}
@@ -291,7 +317,9 @@ class TestLendingCore:
         lending_module.gap_mode_default = "relative"
         lending_module.coin_cfg = {}
         lending_module.Data = Mock()
-        lending_module.Data.get_total_lent.return_value = ({"BTC": Decimal("0")}, Decimal("0"))
+        lending_module.Data.get_total_lent.return_value = LentData(
+            {"BTC": Decimal("0")}, {"BTC": Decimal("0")}
+        )
         lending_module.MaxToLend = Mock()
         with patch.object(lending_module, "lend_cur") as mock_lend_cur:
             mock_lend_cur.return_value = 1
@@ -300,9 +328,13 @@ class TestLendingCore:
             assert lending_module.sleep_time == lending_module.sleep_time_active
 
     def test_notify_summary(self, lending_module):
+        from lendingbot.modules.Data import LentData
+
         lending_module.log = MagicMock()
         lending_module.Data = Mock()
-        lending_module.Data.get_total_lent.return_value = ({"BTC": Decimal("10")}, Decimal("0.1"))
+        lending_module.Data.get_total_lent.return_value = LentData(
+            {"BTC": Decimal("10")}, {"BTC": Decimal("0.1")}
+        )
         lending_module.Data.stringify_total_lent.return_value = "Summary"
         lending_module.scheduler = Mock()
         lending_module.notify_summary(60)
@@ -355,12 +387,16 @@ class TestLendingCore:
         assert 25 < days < 120
 
     def test_create_lend_offer_end_date(self, lending_module):
+        from lendingbot.modules.Data import LentData
+
         lending_module.Config = Mock()
         lending_module.Config.has_option.return_value = True
         lending_module.end_date = "2025-12-31"
         lending_module.Data = Mock()
-        # Mock get_total_lent to return a tuple
-        lending_module.Data.get_total_lent.return_value = ({"BTC": Decimal("0")}, Decimal("0"))
+        # Mock get_total_lent to return a LentData object
+        lending_module.Data.get_total_lent.return_value = LentData(
+            {"BTC": Decimal("0")}, {"BTC": Decimal("0")}
+        )
         # Only 1 day remaining
         lending_module.Data.get_max_duration.return_value = 1
 
@@ -430,7 +466,23 @@ class TestLendingCore:
             assert rates == [lending_module.max_daily_rate, lending_module.max_daily_rate]
 
     def test_get_gap_mode_rates_coin_cfg(self, lending_module):
-        lending_module.coin_cfg = {"BTC": {"gapmode": "raw", "gapbottom": 50, "gaptop": 150}}
+        from lendingbot.modules.Configuration import CoinConfig
+
+        lending_module.coin_cfg = {
+            "BTC": CoinConfig(
+                gapmode="raw",
+                gapbottom=Decimal(50),
+                gaptop=Decimal(150),
+                minrate=Decimal(0),
+                maxactive=Decimal(100),
+                maxtolend=Decimal(0),
+                maxpercenttolend=Decimal(0),
+                maxtolendrate=Decimal(0),
+                frrasmin=False,
+                frrdelta_min=Decimal(0),
+                frrdelta_max=Decimal(0),
+            )
+        }
         with patch.object(lending_module, "construct_order_books") as mock_books:
             mock_books.return_value = [
                 {},
