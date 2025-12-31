@@ -24,5 +24,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Python 3 modernization and idiom adoption
-*Link: [./conductor/tracks/modernization_idioms_20251230/](./conductor/tracks/modernization_idioms_20251230/)*
+## [x] Track: Python 3 modernization and idiom adoption
+*Link: [./conductor/archive/modernization_idioms_20251230/](./conductor/archive/modernization_idioms_20251230/)*
