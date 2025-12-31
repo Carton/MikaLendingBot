@@ -1,7 +1,7 @@
 # Mika Lending Bot (Python 3 Edition)
 
 > [!NOTE]
-> This project is a modern Python 3 fork of the original Mika Lending Bot, enhanced with new features and improved stability.
+> This project is a modern Python 3 fork of the original [Mika Lending Bot](https://github.com/BitBotFactory/MikaLendingBot), enhanced with new features and improved stability.
 
 ## Key Improvements in this Version
 

@@ -2,10 +2,12 @@
 
 ## Backend
 - **Language:** Python 3.12+
+- **Data Modeling:** Python Dataclasses
 - **Numerical Processing:** NumPy
 - **Data Analysis:** Pandas
 - **HTTP Client:** Requests
 - **Timezone Management:** Python Native (datetime.UTC)
+- **Type Definitions:** Python StrEnum (for constants)
 
 ## Development & Tooling
 - **Package Manager:** uv
