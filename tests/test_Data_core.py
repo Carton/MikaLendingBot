@@ -115,15 +115,15 @@ class TestDataCore:
         data_module.api.return_active_loans.return_value = {"provided": []}
         data_module.api.return_ticker.return_value = {}
 
-        with patch("urllib.request.urlopen") as mock_url:
+        with patch("requests.get") as mock_get:
             mock_response = MagicMock()
-            mock_response.read.return_value = b"0.001"  # 1 USD = 0.001 BTC (fake)
-            mock_response.__enter__.return_value = mock_response
-            mock_url.return_value = mock_response
+            mock_response.json.return_value = 0.001  # 1 USD = 0.001 BTC (fake)
+            mock_get.return_value = mock_response
 
             data_module.update_conversion_rates("USD", True)
             # 1 / 0.001 = 1000
             data_module.log.updateOutputCurrency.assert_any_call("highestBid", 1000.0)
+            data_module.log.updateOutputCurrency.assert_any_call("currency", "USD")
             data_module.log.updateOutputCurrency.assert_any_call("currency", "USD")
 
     def test_get_lending_currencies(self, data_module):

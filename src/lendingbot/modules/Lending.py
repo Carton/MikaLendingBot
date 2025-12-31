@@ -33,7 +33,7 @@ coin_cfg_alerted: dict[str, bool] = {}
 max_active_alerted: dict[str, bool] = {}
 notify_conf: dict[str, Any] = {}
 loans_provided: list[dict[str, Any]] = []
-gap_mode_default: str = ""
+gap_mode_default: Config.GapMode | str = ""
 scheduler: sched.scheduler | None = None
 exchange: str = ""
 frrasmin: bool = False
@@ -214,7 +214,7 @@ def init(
     min_daily_rate = Decimal(Config.get("BOT", "mindailyrate", None, 0.003, exchange_max)) / 100
     max_daily_rate = Decimal(Config.get("BOT", "maxdailyrate", None, 0.003, exchange_max)) / 100
     spread_lend = int(Config.get("BOT", "spreadlend", None, 1, 20))
-    gap_mode_default = str(Config.get_gap_mode("BOT", "gapMode"))
+    gap_mode_default = Config.get_gap_mode("BOT", "gapMode")
     gap_bottom_default = Decimal(Config.get("BOT", "gapbottom", None, 0))
     gap_top_default = Decimal(Config.get("BOT", "gaptop", None, float(gap_bottom_default)))
     xday_threshold = str(Config.get("BOT", "xdaythreshold"))
@@ -232,11 +232,13 @@ def init(
     frrasmin = Config.getboolean("BOT", "frrasmin", False)
     frrdelta_min = Decimal(Config.get("BOT", "frrdelta_min", 0.0000))
     frrdelta_max = Decimal(Config.get("BOT", "frrdelta_max", 0.00008))
-    analysis_method = str(Config.get("Daily_min", "method", "percentile"))
-    if analysis_method not in ["percentile", "MACD"]:
+    try:
+        analysis_method = Config.AnalysisMethod(Config.get("Daily_min", "method", "percentile"))
+    except ValueError:
+        allowed = ", ".join([m.value for m in Config.AnalysisMethod])
         raise ValueError(
-            f'analysis_method: "{analysis_method}" is not valid, must be percentile or MACD'
-        )
+            f'analysis_method: "{Config.get("Daily_min", "method")}" is not valid, must be {allowed}'
+        ) from None
 
     sleep_time = sleep_time_active  # Start with active mode
 
@@ -437,7 +439,7 @@ def cancel_all() -> None:
     for cur in loan_offers:
         if cur not in all_currencies:
             continue
-        if cur in coin_cfg and coin_cfg[cur].maxactive == 0:
+        if (cfg := coin_cfg.get(cur)) and cfg.maxactive == 0:
             # don't cancel disabled coin
             continue
         if keep_stuck_orders:
@@ -513,11 +515,11 @@ def get_frr_or_min_daily_rate(cur: str) -> Decimal:
     :return: The better of the two rates (FRR and min daily rate)
     """
     global frrdelta_cur_step, frrdelta_min, frrdelta_max
-    if cur in coin_cfg:
-        min_rate = coin_cfg[cur].minrate
-        frr_as_min = coin_cfg[cur].frrasmin
-        frr_d_min = coin_cfg[cur].frrdelta_min / 100
-        frr_d_max = coin_cfg[cur].frrdelta_max / 100
+    if cfg := coin_cfg.get(cur):
+        min_rate = cfg.minrate
+        frr_as_min = cfg.frrasmin
+        frr_d_min = cfg.frrdelta_min / 100
+        frr_d_max = cfg.frrdelta_max / 100
     else:
         min_rate = Decimal(Config.get("BOT", "mindailyrate", None, 0.003, 5)) / 100
         frr_as_min = Config.getboolean("BOT", "frrasmin", False)
@@ -567,8 +569,8 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
         bool: False if the currency is disabled (maxactive == 0).
     """
     cur_min_daily_rate = get_frr_or_min_daily_rate(cur)
-    if cur in coin_cfg:
-        if coin_cfg[cur].maxactive == 0:
+    if cfg := coin_cfg.get(cur):
+        if cfg.maxactive == 0:
             if cur not in max_active_alerted:  # Only alert once per coin.
                 max_active_alerted[cur] = True
                 if log:
@@ -765,8 +767,7 @@ def get_gap_mode_rates(
 
     order_book = books[1]
 
-    if cur in coin_cfg:  # Get custom values specific to coin
-        cfg = coin_cfg[cur]
+    if cfg := coin_cfg.get(cur):  # Get custom values specific to coin
         if cfg.gapmode and cfg.gapbottom is not None and cfg.gaptop is not None:
             # Only overwrite default if all three are set
             use_gap_cfg = True

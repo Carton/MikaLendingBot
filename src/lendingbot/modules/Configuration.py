@@ -3,7 +3,19 @@ import os
 import shutil
 from dataclasses import dataclass
 from decimal import Decimal
+from enum import StrEnum
 from typing import Any
+
+
+class AnalysisMethod(StrEnum):
+    PERCENTILE = "percentile"
+    MACD = "MACD"
+
+
+class GapMode(StrEnum):
+    RAW = "raw"
+    RAWBTC = "rawbtc"
+    RELATIVE = "relative"
 
 
 @dataclass
@@ -13,7 +25,7 @@ class CoinConfig:
     maxtolend: Decimal
     maxpercenttolend: Decimal
     maxtolendrate: Decimal
-    gapmode: str | bool
+    gapmode: GapMode | bool
     gapbottom: Decimal
     gaptop: Decimal
     frrasmin: bool
@@ -203,19 +215,20 @@ def get_currencies_list(option: str, section: str = "BOT") -> list[str]:
         return []
 
 
-def get_gap_mode(category: str, option: str) -> str | bool:
+def get_gap_mode(category: str, option: str) -> GapMode | bool:
     if config.has_option(category, option):
-        full_list = ["raw", "rawbtc", "relative"]
         raw_val = get(category, "gapmode", False)
         if not raw_val:
             return False
         value = str(raw_val).lower().strip(" ")
-        if value not in full_list:
+        try:
+            return GapMode(value)
+        except ValueError:
+            allowed = ", ".join([m.value for m in GapMode])
             print(
-                f"ERROR: Invalid entry '{value}' for [{category}]-gapMode. Please check your config. Allowed values are: {', '.join(full_list)}"
+                f"ERROR: Invalid entry '{value}' for [{category}]-gapMode. Please check your config. Allowed values are: {allowed}"
             )
             exit(1)
-        return value.lower()
     else:
         return False
 

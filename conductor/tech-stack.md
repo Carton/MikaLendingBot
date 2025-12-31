@@ -5,7 +5,7 @@
 - **Numerical Processing:** NumPy
 - **Data Analysis:** Pandas
 - **HTTP Client:** Requests
-- **Timezone Management:** PyTZ
+- **Timezone Management:** Python Native (datetime.UTC)
 
 ## Development & Tooling
 - **Package Manager:** uv

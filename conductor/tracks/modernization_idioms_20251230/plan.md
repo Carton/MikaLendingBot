@@ -16,7 +16,7 @@ Focus: Improving type safety and code clarity by adopting `dataclasses` for core
 ## Phase 2: Legacy Pattern & API Replacement
 Focus: Replacing outdated standard library usage and manual "Python 2 workarounds" with modern Python 3 APIs.
 
-- [ ] Task: Identify and replace legacy "workaround" patterns.
+- [~] Task: Identify and replace legacy "workaround" patterns.
     - [ ] Sub-task: Scan for manual implementations of features now in the stdlib (e.g., manual caching -> `functools.lru_cache`, manual path manipulation -> `pathlib` deeper features, manual `enum`-like behavior -> `enum.Enum`).
     - [ ] Sub-task: Replace old `subprocess` or `os` calls with modern equivalents if they exist for the specific use case.
 - [ ] Task: Scan and Refactor Legacy `datetime` usage.

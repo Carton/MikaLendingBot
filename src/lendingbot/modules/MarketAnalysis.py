@@ -1,6 +1,6 @@
 import datetime
 import math
-import sqlite3 as sqlite
+import sqlite3
 import sys
 import threading
 import time
@@ -8,32 +8,11 @@ import traceback
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from .Data import truncate
 from .ExchangeApi import ApiError
-
-
-# Improvements
-# [ ] Provide something that takes into account dust offers. (The golden cross works well on BTC, not slower markets)
-# [ ] RE: above. Weighted rate.
-# [ ] Add docstring to everything
-# [ ] Unit tests
-
-# NOTES
-# * A possible solution for the dust problem is take the top 10 offers and if the offer amount is less than X% of the
-#   total available, ignore it as dust.
-
-
-try:
-    import numpy as np
-
-    use_numpy = True
-except ImportError as ex:
-    print(
-        f"WARN: Module Numpy not found, using manual percentile method instead. It is recommended to install Numpy. Error: {ex}"
-    )
-    use_numpy = False
 
 
 class MarketDataException(Exception):
@@ -195,7 +174,7 @@ class MarketAnalysis:
             self.update_market_once(cur, levels, db_con)
             time.sleep(5)
 
-    def update_market_once(self, cur: str, levels: int, db_con: sqlite.Connection) -> None:
+    def update_market_once(self, cur: str, levels: int, db_con: sqlite3.Connection) -> None:
         """
         Perform a single market data update for a currency.
         """
@@ -230,7 +209,7 @@ class MarketAnalysis:
         self.insert_into_db(db_con, market_data, levels)
 
     def insert_into_db(
-        self, db_con: sqlite.Connection, market_data: list[str], levels: int | None = None
+        self, db_con: sqlite3.Connection, market_data: list[str], levels: int | None = None
     ) -> None:
         if levels is None:
             levels = self.recorded_levels
@@ -244,7 +223,7 @@ class MarketAnalysis:
             except Exception as ex:
                 self.print_traceback(ex, "Error inserting market data into DB")
 
-    def delete_old_data(self, db_con: sqlite.Connection, seconds: int) -> None:
+    def delete_old_data(self, db_con: sqlite3.Connection, seconds: int) -> None:
         """
         Delete old data from the database
         """
@@ -264,13 +243,13 @@ class MarketAnalysis:
         diff_days = (now - date1).days
         return diff_days
 
-    def get_rate_list(self, cur: str | sqlite.Connection, seconds: int) -> list[Any] | pd.DataFrame:
+    def get_rate_list(self, cur: str | sqlite3.Connection, seconds: int) -> list[Any] | pd.DataFrame:
         """
         Query the database (cur) for rates that are within the supplied number of seconds and now.
         """
         request_seconds = int(seconds * 1.1)
         full_list = self.config.get_all_currencies()
-        if isinstance(cur, sqlite.Connection):
+        if isinstance(cur, sqlite3.Connection):
             db_con = cur
         else:
             if cur not in full_list:
@@ -287,7 +266,7 @@ class MarketAnalysis:
             db_con, from_date=time.time() - request_seconds, price_levels=price_levels
         )
         if len(rates) == 0:
-            if not isinstance(cur, sqlite.Connection):
+            if not isinstance(cur, sqlite3.Connection):
                 db_con.close()
             return []
 
@@ -300,18 +279,18 @@ class MarketAnalysis:
         except Exception:
             if self.ma_debug_log:
                 print(f"DEBUG:get_rate_list: cols: {columns} rates:{rates} db:{db_con}")
-            if not isinstance(cur, sqlite.Connection):
+            if not isinstance(cur, sqlite3.Connection):
                 db_con.close()
             raise
 
         df.time = pd.to_datetime(df.time, unit="s")
         if len(df) < seconds * (self.data_tolerance / 100):
-            if not isinstance(cur, sqlite.Connection):
+            if not isinstance(cur, sqlite3.Connection):
                 db_con.close()
             return df
 
         df = df.resample("1s", on="time").mean().ffill()
-        if not isinstance(cur, sqlite.Connection):
+        if not isinstance(cur, sqlite3.Connection):
             db_con.close()
         return df
 
@@ -323,7 +302,7 @@ class MarketAnalysis:
         return 0
 
     def get_rate_suggestion(
-        self, cur: str, rates: pd.DataFrame | None = None, method: str = "percentile"
+        self, cur: str, method: str = "percentile", rates: pd.DataFrame | None = None
     ) -> float:
         """
         Analyses the market data and suggests a lending rate.
@@ -380,48 +359,18 @@ class MarketAnalysis:
             return 0.0
         return 0.0
 
-    @staticmethod
-    def percentile(N: list[float], percent: float, key: Any = lambda x: x) -> float:
+    def get_percentile(self, rates: list[float], lending_style: float) -> float:
         """
-        Calculates the percentile value from a list of numbers (Manual implementation).
-
-        Args:
-            N: Sorted list of data points.
-            percent: The percentile to calculate (0.0 to 1.0).
-            key: Optional function to extract value from elements.
-
-        Returns:
-            The interpolated percentile value.
-        """
-        if not N:
-            return 0.0
-        k = (len(N) - 1) * percent
-        f = math.floor(k)
-        c = math.ceil(k)
-        if f == c:
-            return float(key(N[int(k)]))
-        d0 = key(N[int(f)]) * (c - k)
-        d1 = key(N[int(c)]) * (k - f)
-        return float(d0 + d1)
-
-    def get_percentile(
-        self, rates: list[float], lending_style: float, use_numpy_val: bool = use_numpy
-    ) -> float:
-        """
-        Convenience wrapper to get percentile using either Numpy or manual implementation.
+        Calculates the percentile suggested rate using Numpy.
 
         Args:
             rates: List of daily rates.
             lending_style: The percentile to target (1-99).
-            use_numpy_val: Whether to use Numpy for calculation.
 
         Returns:
             The calculated percentile rate, truncated to 6 decimals.
         """
-        if use_numpy_val:
-            result = float(np.percentile(rates, int(lending_style)))
-        else:
-            result = self.percentile(sorted(rates), lending_style / 100.0)
+        result = float(np.percentile(rates, int(lending_style)))
         return float(truncate(result, 6))
 
     def get_MACD_rate(self, cur: str, rates_df: pd.DataFrame) -> float:
@@ -462,20 +411,20 @@ class MarketAnalysis:
         else:
             return float(long_rate * self.daily_min_multiplier)
 
-    def create_connection(self, cur: str, db_path: str | None = None) -> sqlite.Connection | None:
+    def create_connection(self, cur: str, db_path: str | None = None) -> sqlite3.Connection | None:
         if db_path is None:
             prefix = self.config.get_exchange()
 
             db_path_obj = self.db_dir / f"{prefix}-{cur}.db"
             db_path = str(db_path_obj)
         try:
-            con = sqlite.connect(db_path)
+            con = sqlite3.connect(db_path)
             return con
-        except sqlite.Error as ex:
+        except sqlite3.Error as ex:
             print(ex)
             return None
 
-    def create_rate_table(self, db_con: sqlite.Connection, levels: int) -> None:
+    def create_rate_table(self, db_con: sqlite3.Connection, levels: int) -> None:
         with db_con:
             cursor = db_con.cursor()
             create_table_sql = (
@@ -491,7 +440,7 @@ class MarketAnalysis:
 
     def get_rates_from_db(
         self,
-        db_con: sqlite.Connection,
+        db_con: sqlite3.Connection,
         from_date: float | None = None,
         price_levels: list[str] | None = None,
     ) -> list[Any]:

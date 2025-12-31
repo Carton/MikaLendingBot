@@ -2,10 +2,10 @@
 Tests for Poloniex module core logic.
 """
 
-import urllib.request
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import requests
 
 from lendingbot.modules.Poloniex import ApiError, Poloniex
 
@@ -23,48 +23,51 @@ def poloniex_api():
 
 class TestPoloniexCore:
     def test_api_query_public(self, poloniex_api):
-        with patch("urllib.request.urlopen") as mock_url:
+        with patch("requests.get") as mock_get:
             mock_resp = MagicMock()
-            mock_resp.read.return_value = b'{"BTC_ETH": {"last": "0.05"}}'
-            mock_resp.__enter__.return_value = mock_resp
-            mock_url.return_value = mock_resp
+            mock_resp.json.return_value = {"BTC_ETH": {"last": "0.05"}}
+            mock_get.return_value = mock_resp
 
             res = poloniex_api.return_ticker()
             assert res["BTC_ETH"]["last"] == "0.05"
-            mock_url.assert_called()
+            mock_get.assert_called()
 
     def test_api_query_private(self, poloniex_api):
-        with patch("urllib.request.urlopen") as mock_url:
+        with patch("requests.post") as mock_post:
             mock_resp = MagicMock()
-            mock_resp.read.return_value = b'{"result": "success"}'
-            mock_resp.__enter__.return_value = mock_resp
-            mock_url.return_value = mock_resp
+            mock_resp.json.return_value = {"result": "success"}
+            mock_post.return_value = mock_resp
 
             # private query (not in public list)
             res = poloniex_api.return_balances()
             assert res["result"] == "success"
 
             # Verify it was called with headers (Sign/Key)
-            args, _kwargs = mock_url.call_args
-            req = args[0]
-            assert "Key" in req.headers
-            assert "Sign" in req.headers
+            args, kwargs = mock_post.call_args
+            headers = kwargs["headers"]
+            assert "Key" in headers
+            assert "Sign" in headers
 
     def test_api_error_handling(self, poloniex_api):
-        with patch("urllib.request.urlopen") as mock_url:
+        with patch("requests.get") as mock_get:
             mock_resp = MagicMock()
-            mock_resp.read.return_value = b'{"error": "Invalid API Key"}'
-            mock_resp.__enter__.return_value = mock_resp
-            mock_url.return_value = mock_resp
+            mock_resp.json.return_value = {"error": "Invalid API Key"}
+            mock_get.return_value = mock_resp
 
             with pytest.raises(ApiError, match="Invalid API Key"):
                 poloniex_api.return_ticker()
 
     def test_http_error_handling(self, poloniex_api):
-        with patch("urllib.request.urlopen") as mock_url:
-            mock_error = urllib.request.HTTPError("url", 429, "Too Many Requests", {}, MagicMock())
-            mock_error.read = lambda: b'{"error": "Rate limit exceeded"}'
-            mock_url.side_effect = mock_error
+        with patch("requests.get") as mock_get:
+            # Construct a response with 429 error
+            mock_resp = MagicMock()
+            mock_resp.status_code = 429
+            mock_resp.text = '{"error": "Rate limit exceeded"}'
+            mock_resp.json.return_value = {"error": "Rate limit exceeded"}
+            
+            # Construct HTTPError that points to this response
+            mock_error = requests.HTTPError(response=mock_resp)
+            mock_get.side_effect = mock_error
 
             with pytest.raises(ApiError, match="Rate limit exceeded"):
                 poloniex_api.return_ticker()

@@ -1,8 +1,10 @@
 import datetime
 import json
 import subprocess
-import urllib.request
+
+import requests
 from collections.abc import Iterator
+
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
@@ -163,19 +165,16 @@ def update_conversion_rates(output_currency: str, json_output_enabled: bool) -> 
         url = f"https://blockchain.info/tobtc?currency={output_currency}&value=1"
         if not output_currency_found:  # fetch output currency rate from blockchain.info
             try:
-                with urllib.request.urlopen(url) as response:
-                    data = response.read()
-                    try:
-                        highest_bid = json.loads(data)
-                        log.updateOutputCurrency("highestBid", 1 / float(highest_bid))
-                        log.updateOutputCurrency("currency", output_currency)
-                    except ValueError:
-                        try:
-                            highest_bid_str = data.decode("utf-8")
-                            log.updateOutputCurrency("highestBid", 1 / float(highest_bid_str))
-                            log.updateOutputCurrency("currency", output_currency)
-                        except ValueError:
-                            log.log_error("Failed to decode response as plain text or JSON")
+                r = requests.get(url, timeout=10)
+                r.raise_for_status()
+                try:
+                    highest_bid = r.json()
+                    log.updateOutputCurrency("highestBid", 1 / float(highest_bid))
+                    log.updateOutputCurrency("currency", output_currency)
+                except ValueError:
+                    highest_bid_str = r.text
+                    log.updateOutputCurrency("highestBid", 1 / float(highest_bid_str))
+                    log.updateOutputCurrency("currency", output_currency)
             except Exception:
                 log.log_error(f"Can't connect to {url} using BTC as the output currency")
 
@@ -192,13 +191,21 @@ def get_lending_currencies() -> list[str]:
 
 
 def truncate(f: float | Decimal, n: int) -> float:
-    """Truncates/pads a float f to n decimal places without rounding"""
-    # From https://stackoverflow.com/questions/783897/truncating-floats-in-python
-    s = f"{f}"
-    if "e" in s or "E" in s:
-        return float("{0:.{1}f}".format(float(f), n))
-    i, _p, d = s.partition(".")
-    return float(".".join([i, (d + "0" * n)[:n]]))
+    """
+    Truncates/pads a float f to n decimal places without rounding.
+
+    Args:
+        f: The number to truncate.
+        n: Number of decimal places.
+
+    Returns:
+        float: Truncated number.
+    """
+    if n < 0:
+        raise ValueError("Decimal places must be non-negative")
+    d = Decimal(str(f))
+    # Use ROUND_DOWN to truncate
+    return float(d.quantize(Decimal(10) ** -n, rounding="ROUND_DOWN"))
 
 
 def get_bot_version() -> str:

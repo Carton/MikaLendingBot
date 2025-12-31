@@ -5,8 +5,6 @@ Converts Bitfinex to Poloniex Api returns
 import datetime
 from typing import Any
 
-import pytz
-
 
 class Bitfinex2Poloniex:
     @staticmethod
@@ -14,7 +12,7 @@ class Bitfinex2Poloniex:
         """
         Converts unix timestamp
         """
-        dt = datetime.datetime.fromtimestamp(float(timestamp), pytz.utc)
+        dt = datetime.datetime.fromtimestamp(float(timestamp), datetime.UTC)
         return dt.strftime("%Y-%m-%d %H:%M:%S")
 
     @staticmethod
@@ -80,7 +78,7 @@ class Bitfinex2Poloniex:
         for bid in bfxLendbook["bids"]:
             plxOrders["demands"].append(
                 {
-                    "rate": "{:0.8f}".format(float(bid["rate"]) / 36500),
+                    "rate": f"{float(bid['rate']) / 36500:0.8f}",
                     "amount": bid["amount"],
                     "rangeMin": "2",
                     "rangeMax": bid["period"],
@@ -90,7 +88,7 @@ class Bitfinex2Poloniex:
         for ask in bfxLendbook["asks"]:
             plxOrders["offers"].append(
                 {
-                    "rate": "{:0.8f}".format(float(ask["rate"]) / 36500),
+                    "rate": f"{float(ask['rate']) / 36500:0.8f}",
                     "amount": ask["amount"],
                     "rangeMin": "2",
                     "rangeMax": ask["period"],

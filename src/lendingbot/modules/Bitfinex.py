@@ -257,9 +257,7 @@ class Bitfinex(ExchangeApi):
         try:
             if bfx_resp["id"] == order_number:
                 success = 1
-                message = "Loan offer canceled ({:.4f} @ {:.4f}%).".format(
-                    float(bfx_resp["remaining_amount"]), float(bfx_resp["rate"]) / 365
-                )
+                message = f"Loan offer canceled ({float(bfx_resp['remaining_amount']):.4f} @ {float(bfx_resp['rate']) / 365:.4f}%)."
         except Exception as e:
             message = f"Error canceling offer: {e}"
             success = 0

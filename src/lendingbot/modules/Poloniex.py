@@ -5,9 +5,10 @@ import socket
 import threading
 import time
 import urllib.parse
-import urllib.request
 from collections import deque
 from typing import Any, cast
+
+import requests
 
 from . import Configuration as Config
 from .ExchangeApi import ApiError, ExchangeApi
@@ -61,64 +62,66 @@ class Poloniex(ExchangeApi):
         if req is None:
             req = {}
 
-        def _read_response(resp: Any) -> Any:
-            data = resp.read()
-            resp_data = json.loads(data.decode("utf-8"))
+        def _handle_response(r: requests.Response) -> Any:
+            try:
+                resp_data = r.json()
+            except ValueError:
+                raise ApiError(f"Failed to decode JSON response: {r.text}") from None
+
             if isinstance(resp_data, dict) and "error" in resp_data:
                 raise ApiError(resp_data["error"])
             return resp_data
 
         try:
+            headers = {"Connection": "close"}
+            timeout = int(Config.get("BOT", "timeout", 30, 1, 180))
+
             if command in ("returnTicker", "return24hVolume"):
                 url = f"https://poloniex.com/public?command={command}"
-                req_obj = urllib.request.Request(url)
-                with urllib.request.urlopen(req_obj) as ret:
-                    return _read_response(ret)
+                r = requests.get(url, headers=headers, timeout=timeout)
+                return _handle_response(r)
             elif command == "returnOrderBook":
                 url = f"https://poloniex.com/public?command={command}&currencyPair={req['currencyPair']}"
-                req_obj = urllib.request.Request(url)
-                with urllib.request.urlopen(req_obj) as ret:
-                    return _read_response(ret)
+                r = requests.get(url, headers=headers, timeout=timeout)
+                return _handle_response(r)
             elif command == "returnMarketTradeHistory":
                 url = f"https://poloniex.com/public?command=returnTradeHistory&currencyPair={req['currencyPair']}"
-                req_obj = urllib.request.Request(url)
-                with urllib.request.urlopen(req_obj) as ret:
-                    return _read_response(ret)
+                r = requests.get(url, headers=headers, timeout=timeout)
+                return _handle_response(r)
             elif command == "returnLoanOrders":
-                req_url = f"https://poloniex.com/public?command=returnLoanOrders&currency={req['currency']}"
+                url = f"https://poloniex.com/public?command=returnLoanOrders&currency={req['currency']}"
                 if req.get("limit", 0) > 0:
-                    req_url += f"&limit={req['limit']}"
-                req_obj = urllib.request.Request(req_url)
-                with urllib.request.urlopen(req_obj) as ret:
-                    return _read_response(ret)
+                    url += f"&limit={req['limit']}"
+                r = requests.get(url, headers=headers, timeout=timeout)
+                return _handle_response(r)
             else:
                 req["command"] = command
                 req["nonce"] = int(time.time() * 1000)
-                post_data = urllib.parse.urlencode(req).encode("utf-8")
+                post_data_str = urllib.parse.urlencode(req)
+                sign = hmac.new(
+                    self.Secret.encode("utf-8"), post_data_str.encode("utf-8"), hashlib.sha512
+                ).hexdigest()
 
-                sign = hmac.new(self.Secret.encode("utf-8"), post_data, hashlib.sha512).hexdigest()
-                headers = {"Sign": sign, "Key": self.APIKey}
-
-                req_obj = urllib.request.Request(
-                    "https://poloniex.com/tradingApi", data=post_data, headers=headers
+                headers.update({"Sign": sign, "Key": self.APIKey})
+                r = requests.post(
+                    "https://poloniex.com/tradingApi", data=req, headers=headers, timeout=timeout
                 )
-                with urllib.request.urlopen(req_obj) as ret:
-                    json_ret = _read_response(ret)
-                    return post_process(json_ret)
+                json_ret = _handle_response(r)
+                return post_process(json_ret)
 
             # Check in case something has gone wrong and the timer is too big
             self.reset_request_timer()
 
-        except urllib.request.HTTPError as ex:
-            raw_polo_response = ex.read().decode("utf-8")
+        except requests.HTTPError as ex:
+            raw_polo_response = ex.response.text
             try:
-                data = json.loads(raw_polo_response)
+                data = ex.response.json()
                 polo_error_msg = data["error"]
             except Exception:
-                if hasattr(ex, "code") and (ex.code == 502 or ex.code in range(520, 527)):
-                    # 502 and 520-526 Bad Gateway so response is likely HTML from Cloudflare
-                    polo_error_msg = f"API Error {ex.code}: The web server reported a bad gateway or gateway timeout error."
-                elif hasattr(ex, "code") and (ex.code == 429):
+                code = ex.response.status_code
+                if code == 502 or code in range(520, 527):
+                    polo_error_msg = f"API Error {code}: The web server reported a bad gateway or gateway timeout error."
+                elif code == 429:
                     self.increase_request_timer()
                     polo_error_msg = "Rate limit exceeded (429)"
                 else:

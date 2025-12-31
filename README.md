@@ -1,43 +1,60 @@
-# Mika Lending Bot <img src="https://nevet.me/public/icon.png" width="50">
+# Mika Lending Bot (Python 3 Edition)
 
-## Devs are Out of Office - Community Pull Requests will be considered
+> [!NOTE]
+> This project is a modern Python 3 fork of the original Mika Lending Bot, enhanced with new features and improved stability.
 
-Mika Lending Bot is written in Python and features automatic lending on exchanges Poloniex and Bitfinex.
-It will automatically lend all cryptocurrencies found in your lending account.
+## Key Improvements in this Version
 
-It uses an advanced lending strategy which will spread offers across the lend book to take advantage of possible spikes in lending rates. Inspired by [MarginBot](https://github.com/HFenter/MarginBot) and [BitfinexLendingBot](https://github.com/eAndrius/BitfinexLendingBot).
+This project has been extensively refactored and improved from the original codebase:
 
-Join the discussion at:
+-   **Python 3 Migration**: Fully ported to Python 3, establishing a more modern and secure runtime environment.
+-   **Enhanced Bitfinex Strategies**:
+    -   **Dynamic FRR Delta**: Instead of a fixed offset, you can now specify a range (`frrdelta_min` to `frrdelta_max`). The bot will dynamically utilize values within this range to optimize lending rates.
+    -   **Advanced XDay Thresholds**: Granular control over lending duration based on rates. You can now define mappings like `0.050:20,0.058:30`, meaning "lend for 20 days if rate is 0.05%, 30 days if 0.058%".
+    -   **Smart Competitor Analysis**: The bot checks the demand book to intelligently place offers just below competing rates.
+-   **Web UI Upgrades**:
+    -   **Pause/Resume Control**: A new button allows you to safely pause lending operations without shutting down the bot.
+    -   **Live Configuration**: Update critical settings like FRR Delta ranges directly from the web interface.
+-   **Quality Assurance**: Significantly increased unit test coverage for core lending logic and API interactions.
 
-[![Join the chat at https://gitter.im/Mikadily/poloniexlendingbot](https://badges.gitter.im/Mikadily/poloniexlendingbot.svg)](https://gitter.im/Mikadily/poloniexlendingbot?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+## Original Introduction
 
-[<img src='https://dokkur.com/assets/images/docs_screens/telegram.png' width='100'>](https://t.me/mikalendingbot)
+Mika Lending Bot is an automatic lending bot for **Poloniex** and **Bitfinex**. It automatically lends all cryptocurrencies found in your lending account using advanced strategies to maximize returns.
 
-[<img src='https://cdn.worldvectorlogo.com/logos/slack.svg' width='90'>](https://poloniexbot.slack.com/shared_invite/MTc5OTU4MDAzNTY4LTE0OTQzMTA2MzYtZDdkYTg1NjBkYg) **- Recommended for communicating with Devs**
+It is inspired by [MarginBot](https://github.com/HFenter/MarginBot) and [BitfinexLendingBot](https://github.com/eAndrius/BitfinexLendingBot).
 
-[<img src='https://www.redditstatic.com/spreddit1.gif'>Subreddit](https://www.reddit.com/r/poloniexlendingbot/) **- Recommended for focused discussion**
+## Features
 
-We also have a public [FAQ on the Github Wiki](https://github.com/BitBotFactory/MikaLendingBot/wiki/FAQ-(Troubleshooting)), feel free to add your questions or check there for support! 
+-   **Automated Lending**: Lends coins 24/7 at the best possible rates.
+-   **Configurable Strategies**: Choose between aggressive high-yield strategies or conservative constant-lending approaches.
+-   **Spike Detection**: Spreads offers to capture momentary spikes in lending rates.
+-   **Hold Back Funds**: Option to withhold coins until rates reach a certain threshold.
+-   **Long-Term Locking**: Lock in high daily rates for extended periods (up to 120 days on Bitfinex).
+-   **Auto-Transfer**: Automatically moves deposited funds to the lending wallet.
+-   **Web Dashboard**: Monitor profits, active loans, and bot status via a local web interface.
+-   **Docker Support**: Ready-to-run Docker configuration.
 
-Workflow management with Waffle.io
+## Quick Start (Python 3)
 
-[![Throughput Graph](https://graphs.waffle.io/Mikadily/poloniexlendingbot/throughput.svg)](https://waffle.io/Mikadily/poloniexlendingbot/)
+We recommend using `uv` for dependency management:
+
+```bash
+# Install dependencies
+uv sync
+
+# Run the bot
+uv run python lendingbot.py
+```
+
+## Community (Original)
+
+*Note: These links refer to the original project community.*
+
+-   [Gitter Chat](https://gitter.im/Mikadily/poloniexlendingbot)
+-   [Telegram](https://t.me/mikalendingbot)
+-   [Subreddit](https://www.reddit.com/r/poloniexlendingbot/)
 
 ## Documentation
-[Click here to read the Documentation, hosted by readthedocs.io](http://poloniexlendingbot.readthedocs.io/en/latest/index.html)
 
-
-### Features
-- Automatically lend your coins on Poloniex and Bitfinex at the highest possible rates, 24 hours a day.
-- Configure your own lending strategy! Be aggressive and hold out for a great rate or be conservative and lend often but at a lower rate, your choice!
-- The ability to spread your offers out to take advantage of spikes in the lending rate.
-- Withhold lending a percentage of your coins until the going rate reaches a certain threshold to maximize your profits.
-- Lock in a high daily rate for a longer period of time period of up to sixty days, all configurable!
-- Automatically transfer any funds you deposit (configurable on a coin-by-coin basis) to your lending account instantly after deposit.
-- View a summary of your bot's activities, status, and reports via an easy-to-set-up webpage that you can access from anywhere!
-- Choose any currency to see your profits in, even show how much you are making in USD!
-- Select different lending strategies on a coin-by-coin basis.
-- Run multiple instances of the bot for multiple accounts easily using multiple config files.
-- Configure a date you would like your coins back, and watch the bot make sure all your coins are available to be traded or withdrawn at the beginning of that day.
-- Docker support.
-- And the best feature of all: It is absolutely free!
+For the original documentation, visit [readthedocs.io](http://poloniexlendingbot.readthedocs.io/en/latest/index.html).
+*Please note that some configuration options regarding the new Bitfinex features are documented in `default.cfg.example`.*

@@ -59,10 +59,10 @@ class TestMarketAnalysis:
     def test_get_percentile(self, ma_module):
         rates = [0.01, 0.02, 0.03, 0.04, 0.05]
         # lending_style 50 -> median
-        perc = ma_module.get_percentile(rates, 50, use_numpy_val=False)
+        perc = ma_module.get_percentile(rates, 50)
         assert perc == 0.03
 
-        perc_np = ma_module.get_percentile(rates, 50, use_numpy_val=True)
+        perc_np = ma_module.get_percentile(rates, 50)
         assert perc_np == 0.03
 
     def test_get_rate_suggestion_percentile(self, ma_module):
