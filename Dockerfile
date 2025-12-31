@@ -1,7 +1,7 @@
 FROM python:3.12-slim
-LABEL "project.home"="https://github.com/BitBotFactory/poloniexlendingbot"
+LABEL project.home="https://github.com/Carton/MikaLendingBot"
 
-# Install uv
+# Install uv for fast dependency management
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /usr/src/app
@@ -10,14 +10,18 @@ WORKDIR /usr/src/app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-cache --no-dev
 
+# Copy the rest of the source code
 COPY . .
 
-# Set up volumes and links
-VOLUME /data
-RUN mkdir -p /data/market_data /data/log && \
-    ln -sf /data/market_data market_data && \
-    ln -sf /data/log/botlog.json www/botlog.json
+# Create directory for persistent data (configs, logs, etc.)
+RUN mkdir -p /data/conf /data/market_data /data/log
 
+# Default environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Expose web server port
 EXPOSE 8000
 
-CMD ["uv", "run", "python", "-m", "lendingbot.main", "-cfg", "/data/conf/default.cfg"]
+# Default command: run the bot with the provided config
+# If no config is provided, it will fallback to looking for default.cfg in the working dir
+CMD ["uv", "run", "python", "-m", "lendingbot.main"]

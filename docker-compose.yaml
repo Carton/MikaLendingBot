@@ -1,75 +1,84 @@
-# start: docker-compose up -d
-# stop: docker-compose down
-# logs: docker-compose logs
-# state: docker-compose ps
-
-# This docker-compose file starts 3 docker containers. One for nginx and one for a bot on each exchange. 
-# You can start as many bots as you want using the same config style and they will all have their web
-# interface accessible via the name you set of VIRTUAL_HOST
-
+# ───────────────────────────────────────────────────────────────────────────────
+# LendingBot Multi-Instance Docker Orchestration
+# ───────────────────────────────────────────────────────────────────────────────
+# Description:
+#   Runs multiple exchange-specific bot instances behind an automated Nginx 
+#   reverse proxy. Each instance is accessible via its own Virtual Host.
+#
+# Quick Commands:
+#   - Start:   docker-compose up -d
+#   - Stop:    docker-compose down
+#   - Logs:    docker-compose logs -f
+#   - Status:  docker-compose ps
+#
+# Connectivity (Local Testing):
+#   Map the virtual hosts to your local IP by editing the system 'hosts' file:
+#   (Linux/macOS: /etc/hosts | Windows: C:\Windows\System32\drivers\etc\hosts)
+#
+#   127.0.0.1 poloniex.localhost
+#   127.0.0.1 bitfinex.localhost
+#
 # VIRTUAL_HOST can be changed to poloniex.yourdomain.com if you want it to be accessible via the internet
-
-# The environment variables included are the minimum required to get it working, you can change a lot of bot
-# configurations with them using the same naming convention, i.e. CATEGORY_OPTION. 
-
-# Environment variables take precedence over the config file
-
-# If you have a more complicated setup, you can create a new config file from default.cfg and then use that in
-# the command line for each container.
-
-# If you want to use this on your local machine, without a domain name, you can add lines like this to /etc/hosts
-# 127.0.0.1 poloniex.localhost
-# 127.0.0.1 bitfinex.localhost
+#
+# Configuration & Persistence:
+#   - Environment variables defined below OVERRIDE settings in 'default.cfg'.
+#   - Project data (market history/logs) is persisted in './market_data' and './logs'.
+# ───────────────────────────────────────────────────────────────────────────────
 
 version: '3.8'
+
 services:
   nginx:
-    image: jwilder/nginx-proxy
-    environment:
-      - VIRTUAL_PORT=8000
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
+    image: jwilder/nginx-proxy:alpine
+    container_name: lendingbot-proxy
     ports:
       - "80:80"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    restart: always
 
   poloniex:
+    build: .
+    container_name: lendingbot-poloniex
     depends_on:
       - nginx
-    image: python:3.12-slim
     restart: always
-    working_dir: /usr/src/app/
     environment:
       - API_exchange=poloniex
-      - API_apikey=
-      - API_secret=
+      - API_apikey=${POLO_KEY:-}
+      - API_secret=${POLO_SECRET:-}
+      - BOT_label=PoloBot
+      - BOT_startWebServer=true
+      - BOT_jsonfile=www/botlog.json
+      - BOT_jsonlogsize=200
       - VIRTUAL_HOST=poloniex.localhost
       - VIRTUAL_PROTO=http
-      - BOT_jsonfile=www/botlog.json
-      - BOT_jsonlogsize=200
-      - BOT_startWebServer=true
-    expose:
-    - "8000"
+      - VIRTUAL_PORT=8000
     volumes:
-    - "./:/usr/git-src/"
-    command: bash -c "apt-get update && apt-get install -y curl && curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"/root/.local/bin:$PATH\" && /usr/git-src/setup-container.sh && uv sync && uv run python -m lendingbot.main -cfg default.cfg"
+      - ./market_data:/usr/src/app/market_data
+      - ./logs/poloniex:/usr/src/app/www
+      # You can mount your own config if you need specific settings not covered by env vars
+      # - ./default.cfg:/usr/src/app/default.cfg:ro
 
   bitfinex:
+    build: .
+    container_name: lendingbot-bitfinex
     depends_on:
       - nginx
-    image: python:3.12-slim
     restart: always
-    working_dir: /usr/src/app/
     environment:
       - API_exchange=bitfinex
-      - API_apikey=
-      - API_secret=
-      - VIRTUAL_HOST=bitfinex.localhost
-      - VIRTUAL_PROTO=http
+      - API_apikey=${BITF_KEY:-}
+      - API_secret=${BITF_SECRET:-}
+      - BOT_label=BitfBot
+      - BOT_startWebServer=true
       - BOT_jsonfile=www/botlog.json
       - BOT_jsonlogsize=200
-      - BOT_startWebServer=true
-    expose:
-    - "8000"
+      - VIRTUAL_HOST=bitfinex.localhost
+      - VIRTUAL_PROTO=http
+      - VIRTUAL_PORT=8000
     volumes:
-    - "./:/usr/git-src/"
-    command: bash -c "apt-get update && apt-get install -y curl && curl -LsSf https://astral.sh/uv/install.sh | sh && export PATH=\"/root/.local/bin:$PATH\" && /usr/git-src/setup-container.sh && uv sync && uv run python -m lendingbot.main -cfg default.cfg"
+      - ./market_data:/usr/src/app/market_data
+      - ./logs/bitfinex:/usr/src/app/www
+      # You can mount your own config if you need specific settings not covered by env vars
+      # - ./default.cfg:/usr/src/app/default.cfg:ro
