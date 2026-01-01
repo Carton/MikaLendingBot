@@ -44,6 +44,7 @@ def init(file_location: str, data: Any = None) -> configparser.ConfigParser:
     Data = data
     loaded_files = config.read(file_location, encoding="utf-8")
     if len(loaded_files) != 1:
+        print(f"Failed to load config file: {file_location}: {loaded_files}")
         # Copy default config file if not found
         try:
             shutil.copy("default.cfg.example", file_location)

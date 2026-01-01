@@ -10,8 +10,9 @@ WORKDIR /usr/src/app
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-cache --no-dev --no-install-project
 
-# Copy the rest of the source code
-COPY . .
+# Copy source code (excluding configs per .dockerignore)
+COPY src ./src
+COPY www ./www
 
 # Install the project
 RUN uv sync --frozen --no-cache --no-dev
@@ -20,11 +21,13 @@ RUN uv sync --frozen --no-cache --no-dev
 RUN mkdir -p /data/conf /data/market_data /data/log
 
 # Default environment variables
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    UV_NO_DEV=1
 
 # Expose web server port
 EXPOSE 8000
 
+
 # Default command: run the bot with the provided config
-# If no config is provided, it will fallback to looking for default.cfg in the working dir
-CMD ["uv", "run", "python", "-m", "lendingbot.main"]
+# UV_NO_DEV environment variable ensures dev dependencies are not installed
+CMD ["uv", "run", "lendingbot"]

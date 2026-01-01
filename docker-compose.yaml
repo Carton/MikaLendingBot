@@ -43,8 +43,8 @@ services:
     restart: always
     environment:
       - API_exchange=poloniex
-      - API_apikey=${POLO_KEY:-}
-      - API_secret=${POLO_SECRET:-}
+      # - API_apikey=${POLO_KEY:-}
+      # - API_secret=${POLO_SECRET:-}
       - BOT_label=PoloBot
       - BOT_startWebServer=true
       - BOT_jsonfile=www/botlog.json
@@ -56,7 +56,7 @@ services:
       - ./market_data:/usr/src/app/market_data
       - ./logs/poloniex:/usr/src/app/www
       # You can mount your own config if you need specific settings not covered by env vars
-      # - ./default.cfg:/usr/src/app/default.cfg:ro
+      - ./default_poloniex.cfg:/usr/src/app/default.cfg:ro
 
   bitfinex:
     build: .
@@ -66,8 +66,8 @@ services:
     restart: always
     environment:
       - API_exchange=bitfinex
-      - API_apikey=${BITF_KEY:-}
-      - API_secret=${BITF_SECRET:-}
+      # - API_apikey=${BITF_KEY:-}
+      # - API_secret=${BITF_SECRET:-}
       - BOT_label=BitfBot
       - BOT_startWebServer=true
       - BOT_jsonfile=www/botlog.json
@@ -79,4 +79,4 @@ services:
       - ./market_data:/usr/src/app/market_data
       - ./logs/bitfinex:/usr/src/app/www
       # You can mount your own config if you need specific settings not covered by env vars
-      # - ./default.cfg:/usr/src/app/default.cfg:ro
+      - ./default_bitfinex.cfg:/usr/src/app/default.cfg:ro
