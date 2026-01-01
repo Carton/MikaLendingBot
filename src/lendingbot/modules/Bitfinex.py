@@ -11,6 +11,7 @@ import requests
 
 from .Bitfinex2Poloniex import Bitfinex2Poloniex
 from .ExchangeApi import ApiError, ExchangeApi
+from .Utils import format_amount_currency, format_rate_pct
 
 
 class Bitfinex(ExchangeApi):
@@ -257,7 +258,7 @@ class Bitfinex(ExchangeApi):
         try:
             if bfx_resp["id"] == order_number:
                 success = 1
-                message = f"Loan offer canceled ({float(bfx_resp['remaining_amount']):.4f} @ {float(bfx_resp['rate']) / 365:.4f}%)."
+                message = f"Loan offer canceled ({format_amount_currency(bfx_resp['remaining_amount'], bfx_resp['currency'])} @ {format_rate_pct(float(bfx_resp['rate']) / 36500)})."
         except Exception as e:
             message = f"Error canceling offer: {e}"
             success = 0

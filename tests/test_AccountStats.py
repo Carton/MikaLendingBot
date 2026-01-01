@@ -88,8 +88,3 @@ class TestAccountStats:
         with patch.object(account_stats, "fetch_history", return_value=0) as mock_fetch:
             account_stats.update_history()
             mock_fetch.assert_called()
-
-    def test_format_value(self):
-        assert AccountStats.format_value(1.230000) == "1.23"
-        assert AccountStats.format_value(0.000000000123) == "0.000000000123"
-        assert AccountStats.format_value(10) == "10"

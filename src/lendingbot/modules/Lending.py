@@ -7,6 +7,7 @@ from typing import Any
 from . import Configuration as Config
 from . import Data, MaxToLend
 from .Logger import Logger
+from .Utils import format_amount_currency, format_rate_pct
 
 
 SATOSHI = Decimal(10) ** -8
@@ -319,7 +320,7 @@ def notify_new_loans(sleep_time_val: float) -> None:
             # send notifications with the grouped info
             for k, amount in loans_amount.items():
                 loan = loans_info[k]
-                text = f"{amount} {loan['currency']} loan filled for {loan['duration']} days at a rate of {float(loan['rate']) * 100:.4f}%"
+                text = f"{format_amount_currency(amount, loan['currency'])} loan filled for {loan['duration']} days at a rate of {format_rate_pct(loan['rate'])}"
                 if log:
                     log.notify(text, notify_conf)
         loans_provided = new_provided
@@ -403,7 +404,9 @@ def create_lend_offer(
             else:
                 # If rate is greater than the last rate, use the last xdays
                 days = xdays[-1]
-        print(f"Using xday threshold: rate={rate_f}, days={days}")
+        print(
+            f"Lending {format_amount_currency(amt_s, currency)} by rate {format_rate_pct(rate_f)} for {days} days"
+        )
 
     if Config.has_option("BOT", "endDate") and end_date:
         days_remaining = int(Data.get_max_duration(end_date, "order"))
@@ -421,9 +424,7 @@ def create_lend_offer(
     if not dry_run:
         msg = api.create_loan_offer(currency, amt_s, days, 0, rate_f)
         if len(xdays) > 0 and days == xdays[-1] and notify_conf["notify_xday_threshold"]:
-            text = (
-                f"{amt_s} {currency} loan placed for {days} days at a rate of {rate_f * 100:.4f}%"
-            )
+            text = f"{format_amount_currency(amt_s, currency)} loan placed for {days} days at a rate of {format_rate_pct(rate_f)}"
             if log:
                 log.notify(text, notify_conf)
         if log:
@@ -541,18 +542,18 @@ def get_frr_or_min_daily_rate(cur: str) -> Decimal:
     if log:
         log.log(f"Using frrasmin {frr_as_min} for {cur}")
         log.log(
-            f"Using frrdelta {frr_d_min * 100}% + {(frrdelta_val - frr_d_min) * 100}% = {frrdelta_val * 100}% for {cur}"
+            f"Using frrdelta {format_rate_pct(frr_d_min)} + {format_rate_pct(frrdelta_val - frr_d_min)} = {format_rate_pct(frrdelta_val)} for {cur}"
         )
 
     if exchange == "BITFINEX" and frr_as_min:
         frr_rate = Decimal(api.get_frr(cur)) + frrdelta_val
         if frr_rate > min_rate:
             if log:
-                log.log(f"Using FRR as mindailyrate {frr_rate * 100:.6f}% for {cur}")
+                log.log(f"Using FRR as mindailyrate {format_rate_pct(frr_rate)} for {cur}")
             return frr_rate
 
     if log:
-        log.log(f"Using min_daily_rate {min_rate * 100:.6f}% for {cur}")
+        log.log(f"Using min_daily_rate {format_rate_pct(min_rate)} for {cur}")
     return min_rate
 
 
@@ -579,13 +580,15 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
         if cur not in coin_cfg_alerted:  # Only alert once per coin.
             coin_cfg_alerted[cur] = True
             if log:
-                log.log(f"Using custom mindailyrate {cur_min_daily_rate * 100}% for {cur}")
+                log.log(
+                    f"Using custom mindailyrate {format_rate_pct(cur_min_daily_rate)} for {cur}"
+                )
     if Analysis and cur in currencies_to_analyse:
         # TODO: Check how the suggested rate is calculated here.
         recommended_min = Analysis.get_rate_suggestion(cur, method=analysis_method)
         if cur_min_daily_rate < Decimal(str(recommended_min)) and log:
             log.log(
-                f"Suggest to use {analysis_method} as mindailyrate {recommended_min * 100}% for {cur}"
+                f"Suggest to use {analysis_method} as mindailyrate {format_rate_pct(recommended_min)} for {cur}"
             )
             # cur_min_daily_rate = recommended_min
     return Decimal(cur_min_daily_rate)
@@ -875,7 +878,7 @@ def lend_cur(
         if hide_coins and below_min:
             if log:
                 log.log(
-                    f"Not lending {active_cur} due to rate below {Decimal(str(cur_min_daily_rate)) * 100:.4f}% (actual: {Decimal(str(orders['rates'][i])) * 100:.4f}%)"
+                    f"Not lending {active_cur} due to rate below {format_rate_pct(cur_min_daily_rate)} (actual: {format_rate_pct(orders['rates'][i])})"
                 )
             return 0
         elif below_min:
@@ -890,7 +893,7 @@ def lend_cur(
             days = str(demand_book["rangeMax"][0])
             if log:
                 log.log(
-                    f"Competing offer found for {active_cur} at {float(rate) * 100:.4f}% for {days} days."
+                    f"Competing offer found for {active_cur} at {format_rate_pct(rate)} for {days} days."
                 )
 
         try:

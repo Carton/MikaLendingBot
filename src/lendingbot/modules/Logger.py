@@ -9,6 +9,7 @@ from typing import Any
 
 from . import Configuration as Config
 from .Notify import send_notification
+from .Utils import format_amount_currency, format_rate_pct
 
 
 class ConsoleOutput:
@@ -123,7 +124,7 @@ class Logger:
 
     def offer(self, amt: Any, cur: str, rate: Any, days: str, msg: Any) -> None:
         line = (
-            f"{self.timestamp()} Placing {amt} {cur} at {float(rate) * 100}% for "
+            f"{self.timestamp()} Placing {format_amount_currency(amt, cur)} at {format_rate_pct(rate)} for "
             f"{days} days... {self.digestApiMsg(msg)}"
         )
         self.output.printline(line)

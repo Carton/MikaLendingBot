@@ -3,6 +3,7 @@ from typing import Any
 
 from . import Configuration
 from .Logger import Logger
+from .Utils import format_amount_currency, format_rate_pct
 
 
 coin_cfg: dict[str, Configuration.CoinConfig] = {}
@@ -65,8 +66,8 @@ def amount_to_lend(
 
     if (cur_max_to_lend_rate == 0 and low_rate > 0) or cur_max_to_lend_rate >= low_rate > 0:
         log_data = (
-            f"The Lower Rate found on {active_cur} is {Decimal(low_rate) * 100:.4f}% "
-            f"vs conditional rate {Decimal(cur_max_to_lend_rate) * 100:.4f}%. "
+            f"The Lower Rate found on {active_cur} is {format_rate_pct(low_rate)} "
+            f"vs conditional rate {format_rate_pct(cur_max_to_lend_rate)}. "
         )
         restrict_lend = True
 
@@ -98,6 +99,9 @@ def amount_to_lend(
         active_bal = lending_balance
 
     if active_bal < lending_balance:
-        log.log(f"{log_data} Lending {active_bal:.8f} of {lending_balance:.8f} Available")
+        log.log(
+            f"{log_data} Lending {format_amount_currency(active_bal, active_cur)} "
+            f"of {format_amount_currency(lending_balance, active_cur)} Available"
+        )
 
     return active_bal

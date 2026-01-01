@@ -3,6 +3,7 @@ import sqlite3
 import time
 from typing import Any
 
+from ..modules.Utils import format_amount_currency
 from .Plugin import Plugin
 
 
@@ -190,7 +191,7 @@ class AccountStats(Plugin):
         row = cursor.fetchone()
         if row is not None:
             while row is not None:
-                output += f"{self.format_value(row[0])} {row[1]} Today\n"
+                output += f"{format_amount_currency(row[0], row[1])} Today\n"
                 if row[1] not in self.earnings:
                     self.earnings[row[1]] = {}
                 self.earnings[row[1]]["todayEarnings"] = row[0]
@@ -204,7 +205,7 @@ class AccountStats(Plugin):
         row = cursor.fetchone()
         if row is not None:
             while row is not None:
-                output += f"{self.format_value(row[0])} {row[1]} Yesterday\n"
+                output += f"{format_amount_currency(row[0], row[1])} Yesterday\n"
                 if row[1] not in self.earnings:
                     self.earnings[row[1]] = {}
                 self.earnings[row[1]]["yesterdayEarnings"] = row[0]
@@ -218,7 +219,7 @@ class AccountStats(Plugin):
         row = cursor.fetchone()
         if row is not None:
             while row is not None:
-                output += f"{self.format_value(row[0])} {row[1]} in total\n"
+                output += f"{format_amount_currency(row[0], row[1])} in total\n"
                 if row[1] not in self.earnings:
                     self.earnings[row[1]] = {}
                 self.earnings[row[1]]["totalEarnings"] = row[0]
@@ -232,7 +233,3 @@ class AccountStats(Plugin):
             output = "Earnings:\n----------\n" + output
             self.log.notify(output, self.notify_config)
             self.log.log(output)
-
-    @staticmethod
-    def format_value(value: Any) -> str:
-        return f"{float(value):0.12f}".rstrip("0").rstrip(".")

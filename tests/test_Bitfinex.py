@@ -157,7 +157,12 @@ def test_return_ticker(mock_get, bitfinex_api):
 def test_cancel_loan_offer_success(mock_post, bitfinex_api):
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {"id": 12345, "remaining_amount": "10.0", "rate": "365.0"}
+    mock_response.json.return_value = {
+        "id": 12345,
+        "remaining_amount": "10.0",
+        "rate": "365.0",
+        "currency": "BTC",
+    }
     mock_post.return_value = mock_response
     res = bitfinex_api.cancel_loan_offer("BTC", 12345)
     assert res["success"] == 1

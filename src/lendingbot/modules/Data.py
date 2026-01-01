@@ -8,6 +8,7 @@ from typing import Any
 import requests
 
 from .Logger import Logger
+from .Utils import format_amount_currency, format_rate_pct
 
 
 @dataclass
@@ -122,10 +123,10 @@ def stringify_total_lent(lent_data: LentData) -> str:
     total_lent = lent_data.total_lent
     rate_lent = lent_data.rate_lent
     for key in sorted(total_lent):
-        average_lending_rate = Decimal(rate_lent[key] * 100 / total_lent[key])
-        result += f"[{Decimal(total_lent[key]):.4f} {key} @ {average_lending_rate:.4f}%] "
+        avg_rate = rate_lent[key] / total_lent[key]
+        result += f"[{format_amount_currency(total_lent[key], key)} @ {format_rate_pct(avg_rate)}] "
         log.updateStatusValue(key, "lentSum", total_lent[key])
-        log.updateStatusValue(key, "averageLendingRate", average_lending_rate)
+        log.updateStatusValue(key, "averageLendingRate", avg_rate * 100)
     return result
 
 

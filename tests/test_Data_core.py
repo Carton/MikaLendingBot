@@ -28,8 +28,8 @@ class TestDataCore:
         data_module.log = MagicMock()
         result = data_module.stringify_total_lent(LentData(total_lent, rate_lent))
         assert "Lent:" in result
-        assert "[1.0000 BTC @ 0.0100%]" in result
-        assert "[10.0000 ETH @ 0.0100%]" in result
+        assert "[1 BTC @ 0.01000%]" in result
+        assert "[10 ETH @ 0.01000%]" in result
 
     def test_truncate(self, data_module):
         assert data_module.truncate(1.23456789, 4) == 1.2345
