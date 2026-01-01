@@ -346,8 +346,11 @@ function applyWebSettings(settings) {
     $("input[name='effRateMode'][value='" + effRateMode + "']").prop('checked', true);
 
     // 6. FRR Slider
-    var minVal = parseFloat(settings.frrdelta_min) || -10;
-    var maxVal = parseFloat(settings.frrdelta_max) || 10;
+    var minVal = parseFloat(settings.frrdelta_min);
+    if (isNaN(minVal)) minVal = -10;
+
+    var maxVal = parseFloat(settings.frrdelta_max);
+    if (isNaN(maxVal)) maxVal = 10;
 
     // Update hidden inputs
     $('#frrdelta_min').val(minVal);
