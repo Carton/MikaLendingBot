@@ -500,6 +500,14 @@ function bsNavbarBugWorkaround() {
     var nb = $('nav.navbar-fixed-top');
     $('.modal').on('show.bs.modal', function () {
         nb.width(nb.width());
+
+        // Reset FRR slider to saved values to ensure unsaved changes are discarded
+        var slider = document.getElementById('frr-slider');
+        if (slider && slider.noUiSlider) {
+            var savedMin = parseFloat(localStorage.getItem('frrdelta_min')) || -10;
+            var savedMax = parseFloat(localStorage.getItem('frrdelta_max')) || 10;
+            slider.noUiSlider.set([savedMin, savedMax]);
+        }
     }).on('hidden.bs.modal', function () {
         nb.width(nb.width('auto'));
     });

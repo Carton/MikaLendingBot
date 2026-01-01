@@ -132,6 +132,10 @@ def start_web_server() -> None:
                         try:
                             Lending.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
                             Lending.frrdelta_max = Decimal(str(config_data["frrdelta_max"]))
+                            if Lending.log:
+                                Lending.log.log(
+                                    f"Settings updated by user: FRR Delta Min={Lending.frrdelta_min}%, Max={Lending.frrdelta_max}%"
+                                )
                             response = {
                                 "success": True,
                                 "frrdelta_min": str(Lending.frrdelta_min),
