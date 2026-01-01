@@ -7,11 +7,14 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /usr/src/app
 
 # Copy dependency files first for better caching
-COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-cache --no-dev
+COPY pyproject.toml uv.lock README.md ./
+RUN uv sync --frozen --no-cache --no-dev --no-install-project
 
 # Copy the rest of the source code
 COPY . .
+
+# Install the project
+RUN uv sync --frozen --no-cache --no-dev
 
 # Create directory for persistent data (configs, logs, etc.)
 RUN mkdir -p /data/conf /data/market_data /data/log
