@@ -98,10 +98,12 @@ hideCoins = True
 #instead of mindailyrate. This only works on bitfinex.
 #frrasmin = False
 
-# The Flash Return Rate Delta min/max (frrdelta_min/max) are dynamic funding rate options that allow you to specify offset range from the Flash Return Rate. This only works on bitfinex and frrasmin = TRUE
-# 这个值要乘以 100 才是App和网站显示的百分比的值，负值则是基于frr再减去个delta
-frrdelta_min = 0.00000
-frrdelta_max = 0.00008
+# FRR Rate Adjustment (frrdelta_min/max) adjusts the lending rate relative to FRR.
+# Values are percentages: -10 means 10% below FRR, +20 means 20% above FRR.
+# The bot cycles through 5 steps between min and max. Range: -50 to +50.
+# This only works on Bitfinex with frrasmin = True.
+frrdelta_min = -10
+frrdelta_max = 10
 
 #This option creates a json log file instead of console output which includes the most recent status.
 #Uncomment both jsonfile and jsonlogsize to enable.
@@ -150,8 +152,8 @@ frrdelta_max = 0.00008
 #gapbottom = 20
 #gaptop = 400
 #frrasmin = False
-#frrdelta_min = 0.0000
-#frrdelta_max = 0.0008
+#frrdelta_min = -10
+#frrdelta_max = 10
 
 #[CLAM]
 #minloansize = 1
@@ -164,8 +166,8 @@ frrdelta_max = 0.00008
 #gapbottom = 10
 #gaptop = 20
 #frrasmin = False
-#frrdelta_min = 0.0000
-#frrdelta_max = 0.0008
+#frrdelta_min = -10
+#frrdelta_max = 10
 
 
 [notifications]

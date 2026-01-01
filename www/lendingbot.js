@@ -391,13 +391,41 @@ function loadSettings() {
         $('input[data-timespan="' + t + '"]').prop('checked', true);
     });
 
-    // frrdelta_min
-    var frrdelta_min = localStorage.getItem('frrdelta_min') || 0.00001;
-    $('#frrdelta_min').val(frrdelta_min);
+    // FRR delta slider - values stored as percentage (-50 to +50)
+    initFrrSlider();
+}
 
-    // frrdelta_max
-    var frrdelta_max = localStorage.getItem('frrdelta_max') || 0.00001;
-    $('#frrdelta_max').val(frrdelta_max);
+function initFrrSlider() {
+    var slider = document.getElementById('frr-slider');
+    if (!slider || slider.noUiSlider) return; // Already initialized or not found
+
+    // Load saved values (stored as percentage, e.g., -10 means -10% relative to FRR)
+    var savedMin = parseFloat(localStorage.getItem('frrdelta_min')) || -10;
+    var savedMax = parseFloat(localStorage.getItem('frrdelta_max')) || 10;
+
+    noUiSlider.create(slider, {
+        start: [savedMin, savedMax],
+        connect: true,
+        range: { 'min': -50, 'max': 50 },
+        step: 1,
+        tooltips: [
+            { to: function (v) { return (v >= 0 ? '+' : '') + Math.round(v) + '%'; } },
+            { to: function (v) { return (v >= 0 ? '+' : '') + Math.round(v) + '%'; } }
+        ]
+    });
+
+    slider.noUiSlider.on('update', function (values, handle) {
+        var minVal = Math.round(parseFloat(values[0]));
+        var maxVal = Math.round(parseFloat(values[1]));
+
+        // Update display
+        $('#frrdelta_min_display').text((minVal >= 0 ? '+' : '') + minVal + '%');
+        $('#frrdelta_max_display').text((maxVal >= 0 ? '+' : '') + maxVal + '%');
+
+        // Update hidden inputs (store as percentage directly)
+        $('#frrdelta_min').val(minVal);
+        $('#frrdelta_max').val(maxVal);
+    });
 }
 
 function doSave() {
@@ -438,18 +466,10 @@ function doSave() {
         effRateMode = localStorage.effRateMode;
     }
 
+    // FRR delta values (from hidden inputs, already validated by slider range)
     var frrdelta_min = parseFloat($('#frrdelta_min').val());
-    if (frrdelta_min < -0.003 || frrdelta_min > 0.003) {
-        alert('Please input a value between -0.003 and 0.003 for frrdelta_min');
-        return false;
-    }
-    localStorage.setItem('frrdelta_min', frrdelta_min.toString());
-
     var frrdelta_max = parseFloat($('#frrdelta_max').val());
-    if (frrdelta_max < frrdelta_min || frrdelta_max > 0.003) {
-        alert('Please input a value between frrdelta_min and 0.003 for frrdelta_max');
-        return false;
-    }
+    localStorage.setItem('frrdelta_min', frrdelta_min.toString());
     localStorage.setItem('frrdelta_max', frrdelta_max.toString());
 
     setConfig({
@@ -491,7 +511,7 @@ function updateButtonStatus(isPaused) {
 }
 
 function handle_pause_button() {
-    // 查询当前的状态
+    // Query the current status
     $.get('/get_status', function (data) {
         updateButtonStatus(data.lending_paused);
     });

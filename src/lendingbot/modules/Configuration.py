@@ -150,8 +150,8 @@ def get_coin_cfg() -> dict[str, CoinConfig]:
                 gapbottom = Decimal(get(cur, "gapbottom", False, 0))
                 gaptop = Decimal(get(cur, "gaptop", False, gapbottom))
                 frrasmin = getboolean(cur, "frrasmin", getboolean("BOT", "frrasmin"))
-                frrdelta_min = Decimal(get(cur, "frrdelta_min", 0.0000))
-                frrdelta_max = Decimal(get(cur, "frrdelta_max", 0.00008))
+                frrdelta_min = Decimal(get(cur, "frrdelta_min", -10))
+                frrdelta_max = Decimal(get(cur, "frrdelta_max", 10))
 
                 coin_cfg[cur] = CoinConfig(
                     minrate=minrate,

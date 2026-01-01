@@ -40,6 +40,10 @@
     <!-- For some icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 
+    <!-- noUiSlider for rate adjustment -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
+
     <script src="lendingbot.js?version=2" ></script>
 
     <style>
@@ -174,6 +178,7 @@
                             <input type="number" class="form-control" id="refresh_interval" placeholder="(10-60)">
                         </div>
 
+                        <!-- COMMENTED OUT: These settings are not currently used
                         <div class="form-group">
                             <h5>Date ranges to display earnings for</h5>
                             <label class="checkbox-inline">
@@ -208,6 +213,7 @@
                                 <input value="Satoshi" type="radio" name="btcDisplayUnit"> Satoshi
                             </label>
                         </div>
+                        -->
 
                         <div class="form-group">
                             <h5>Which earnings are displayed in selected output currency</h5>
@@ -231,13 +237,23 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="frrdelta_min">FRR minimum delta value (+-0.003 etc.)</label>
-                            <input type="number" class="form-control" id="frrdelta_min" placeholder="(-0.00009 ~ 0.00009)">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="frrdelta_max">FRR maximum delta value (+-0.003 etc.)</label>
-                            <input type="number" class="form-control" id="frrdelta_max" placeholder="(-0.00009 ~ 0.00009)">
+                            <h5>FRR Rate Adjustment</h5>
+                            <p class="small">Adjusts lending rate relative to FRR (Flash Return Rate). Bot cycles through 5 steps.<br>Example: -20% means rate = FRR × 0.80</p>
+                            <div id="frr-slider" style="margin: 35px 10px 25px 10px;"></div>
+                            <div style="display:flex; justify-content:space-between; color:#999; font-size:11px; margin-top:5px;">
+                                <span>-50%</span>
+                                <span style="color:#666;">0</span>
+                                <span>+50%</span>
+                            </div>
+                            <div style="margin-top:15px; padding:10px; background:#f8f8f8; border-radius:4px;">
+                                <div class="row">
+                                    <div class="col-xs-6"><span style="color:#666;">Min:</span> <strong id="frrdelta_min_display">-10%</strong></div>
+                                    <div class="col-xs-6"><span style="color:#666;">Max:</span> <strong id="frrdelta_max_display">+10%</strong></div>
+                                </div>
+                            </div>
+                            <!-- Hidden inputs for form compatibility -->
+                            <input type="hidden" id="frrdelta_min">
+                            <input type="hidden" id="frrdelta_max">
                         </div>
                     </form>
                 </div>

@@ -246,8 +246,8 @@ def init(
     keep_stuck_orders = Config.getboolean("BOT", "keepstuckorders", True)
     hide_coins = Config.getboolean("BOT", "hideCoins", True)
     frrasmin = Config.getboolean("BOT", "frrasmin", False)
-    frrdelta_min = Decimal(Config.get("BOT", "frrdelta_min", 0.0000))
-    frrdelta_max = Decimal(Config.get("BOT", "frrdelta_max", 0.00008))
+    frrdelta_min = Decimal(Config.get("BOT", "frrdelta_min", -10))
+    frrdelta_max = Decimal(Config.get("BOT", "frrdelta_max", 10))
     try:
         analysis_method = Config.AnalysisMethod(Config.get("Daily_min", "method", "percentile"))
     except ValueError:
@@ -536,8 +536,9 @@ def get_frr_or_min_daily_rate(cur: str) -> RateCalcInfo:
     if cfg := coin_cfg.get(cur):
         min_rate = cfg.minrate
         frr_as_min = cfg.frrasmin
-        frr_d_min = cfg.frrdelta_min / 100
-        frr_d_max = cfg.frrdelta_max / 100
+        # Config values are now percentages (e.g., -10 means -10%)
+        frr_d_min = cfg.frrdelta_min
+        frr_d_max = cfg.frrdelta_max
     else:
         min_rate = Decimal(Config.get("BOT", "mindailyrate", None, 0.003, 5)) / 100
         frr_as_min = Config.getboolean("BOT", "frrasmin", False)
@@ -553,20 +554,21 @@ def get_frr_or_min_daily_rate(cur: str) -> RateCalcInfo:
 
     if frrdelta_cur_step > frrdelta_steps:
         frrdelta_cur_step = 0
-    frrdelta_val = frr_d_min + (frrdelta_step * frrdelta_cur_step)
+    frrdelta_pct = frr_d_min + (frrdelta_step * frrdelta_cur_step)
     current_step = frrdelta_cur_step + 1  # 1-indexed for display
     frrdelta_cur_step += 1
 
     if exchange == "BITFINEX" and frr_as_min:
         frr_base = Decimal(api.get_frr(cur))
-        frr_rate = frr_base + frrdelta_val
+        # Apply relative percentage: rate = FRR * (1 + pct/100)
+        frr_rate = frr_base * (1 + frrdelta_pct / 100)
         if frr_rate > min_rate:
             return RateCalcInfo(
                 final_rate=frr_rate,
                 min_rate=min_rate,
                 frr_enabled=True,
                 frr_base=frr_base,
-                frr_delta=frrdelta_val,
+                frr_delta=frrdelta_pct,
                 frr_delta_step=current_step,
                 frr_used=True,
             )
@@ -577,7 +579,7 @@ def get_frr_or_min_daily_rate(cur: str) -> RateCalcInfo:
                 min_rate=min_rate,
                 frr_enabled=True,
                 frr_base=frr_base,
-                frr_delta=frrdelta_val,
+                frr_delta=frrdelta_pct,
                 frr_delta_step=current_step,
                 frr_used=False,
             )
@@ -642,20 +644,21 @@ def _log_rate_calculation(cur: str, info: RateCalcInfo) -> None:
         assert info.frr_delta is not None
         assert info.frr_delta_step is not None
 
-        frr_total = info.frr_base + info.frr_delta
+        # frr_delta is now a relative percentage (e.g., -10 means -10%)
+        frr_multiplier = 1 + info.frr_delta / 100
         if info.frr_used:
-            # FRR+delta > min_rate, use FRR
+            # FRR*multiplier > min_rate, use FRR
             log.log(
-                f"[{cur}] Rate: FRR {format_rate_pct(info.frr_base)} + "
-                f"delta {format_rate_pct(info.frr_delta)} (step {info.frr_delta_step}/5) = "
-                f"{format_rate_pct(frr_total)} (> min {format_rate_pct(info.min_rate)}) ✓"
+                f"[{cur}] Rate: FRR {format_rate_pct(info.frr_base)} × "
+                f"{frr_multiplier:.2f} (step {info.frr_delta_step}/5) = "
+                f"{format_rate_pct(info.final_rate)} (> min {format_rate_pct(info.min_rate)}) ✓"
             )
         else:
-            # FRR+delta <= min_rate, use min_rate
+            # FRR*multiplier <= min_rate, use min_rate
             log.log(
-                f"[{cur}] Rate: FRR {format_rate_pct(info.frr_base)} + "
-                f"delta {format_rate_pct(info.frr_delta)} (step {info.frr_delta_step}/5) = "
-                f"{format_rate_pct(frr_total)} (< min {format_rate_pct(info.min_rate)}, using min)"
+                f"[{cur}] Rate: FRR {format_rate_pct(info.frr_base)} × "
+                f"{frr_multiplier:.2f} (step {info.frr_delta_step}/5) = "
+                f"{format_rate_pct(info.frr_base * frr_multiplier)} (< min {format_rate_pct(info.min_rate)}, using min)"
             )
     else:
         # Non-FRR mode

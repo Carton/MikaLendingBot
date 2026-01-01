@@ -135,8 +135,9 @@ class TestLendingCore:
         lending_module.Config.get.return_value = "0.3"
         lending_module.Config.getboolean.return_value = False
 
-        rate = lending_module.get_frr_or_min_daily_rate("BTC")
-        assert rate == Decimal("0.003")
+        rate_info = lending_module.get_frr_or_min_daily_rate("BTC")
+        assert rate_info.final_rate == Decimal("0.003")
+        assert rate_info.frr_enabled is False
 
     def test_get_frr_or_min_daily_rate_bitfinex_frr(self, lending_module):
         lending_module.exchange = "BITFINEX"
@@ -151,8 +152,10 @@ class TestLendingCore:
         lending_module.frrdelta_min = Decimal(0)
         lending_module.frrdelta_max = Decimal(0)
 
-        rate = lending_module.get_frr_or_min_daily_rate("BTC")
-        assert rate == Decimal("0.002")
+        rate_info = lending_module.get_frr_or_min_daily_rate("BTC")
+        assert rate_info.final_rate == Decimal("0.002")
+        assert rate_info.frr_enabled is True
+        assert rate_info.frr_used is True
 
     def test_get_min_daily_rate_coin_cfg(self, lending_module):
         from lendingbot.modules.Configuration import CoinConfig
@@ -173,7 +176,13 @@ class TestLendingCore:
             )
         }
         with patch.object(lending_module, "get_frr_or_min_daily_rate") as mock_frr:
-            mock_frr.return_value = Decimal("0.005")
+            from lendingbot.modules.Lending import RateCalcInfo
+
+            mock_frr.return_value = RateCalcInfo(
+                final_rate=Decimal("0.005"),
+                min_rate=Decimal("0.005"),
+                frr_enabled=False,
+            )
             rate = lending_module.get_min_daily_rate("BTC")
             assert rate == Decimal("0.005")
 
@@ -502,7 +511,13 @@ class TestLendingCore:
 
         # Base min rate 0.3%
         with patch.object(lending_module, "get_frr_or_min_daily_rate") as mock_frr:
-            mock_frr.return_value = Decimal("0.003")
+            from lendingbot.modules.Lending import RateCalcInfo
+
+            mock_frr.return_value = RateCalcInfo(
+                final_rate=Decimal("0.003"),
+                min_rate=Decimal("0.003"),
+                frr_enabled=False,
+            )
             rate = lending_module.get_min_daily_rate("BTC")
             assert rate == Decimal("0.003")  # It doesn't overwrite yet, just logs.
             lending_module.Analysis.get_rate_suggestion.assert_called_with(
