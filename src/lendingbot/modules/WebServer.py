@@ -65,7 +65,6 @@ def start_web_server() -> None:
             def log_message(self, _format_str: str, *_args: Any) -> None:
                 return
 
-            # serve from web_server_template folder under current working dir
             def translate_path(self, path: str) -> str:
                 # In Python 3, translate_path is a bit different.
                 # We need to prepend the web_server_template to the path.
@@ -73,15 +72,29 @@ def start_web_server() -> None:
                 # Simple implementation:
                 root = Path.cwd() / web_server_template
                 # Strip query parameters and fragments
-                path = path.split("?", 1)[0]
-                path = path.split("#", 1)[0]
-                path = path.lstrip("/")
-                return str(root / path)
+                url_path = path.split("?", 1)[0]
+                url_path = url_path.split("#", 1)[0]
+                url_path = url_path.lstrip("/")
+                if not url_path:
+                    url_path = "index.html"
+
+                final_path = root / url_path
+                return str(final_path)
+
+            def end_headers(self) -> None:
+                # Prevent caching for JSON files (dynamic data)
+                if self.path.split("?")[0].endswith(".json"):
+                    self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                    self.send_header("Pragma", "no-cache")
+                    self.send_header("Expires", "0")
+                super().end_headers()
 
             def send_head(self) -> Any:
                 local_path = self.translate_path(self.path)
-                if Path(local_path).resolve().parent != self.real_server_path and not str(
-                    Path(local_path).resolve()
+                # Security check to prevent directory traversal
+                resolved_path = Path(local_path).resolve()
+                if resolved_path.parent != self.real_server_path and not str(
+                    resolved_path
                 ).startswith(str(self.real_server_path)):
                     self.send_error(404, "These aren't the droids you're looking for")
                     return None
