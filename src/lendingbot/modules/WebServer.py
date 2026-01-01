@@ -176,11 +176,13 @@ def start_web_server() -> None:
             def do_GET(self) -> None:
                 if self.path == "/pause_lending":
                     Lending.lending_paused = True
+                    save_web_settings({"lending_paused": True})
                     self.send_response(200)
                     self.end_headers()
                     self.wfile.write(b"Lending paused")
                 elif self.path == "/resume_lending":
                     Lending.lending_paused = False
+                    save_web_settings({"lending_paused": False})
                     self.send_response(200)
                     self.end_headers()
                     self.wfile.write(b"Lending resumed")

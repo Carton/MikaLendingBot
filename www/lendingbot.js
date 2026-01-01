@@ -345,6 +345,11 @@ function applyWebSettings(settings) {
     }
     $("input[name='effRateMode'][value='" + effRateMode + "']").prop('checked', true);
 
+    // 5.1 Lending Paused State
+    if (settings.lending_paused !== undefined) {
+        updateButtonStatus(settings.lending_paused);
+    }
+
     // 6. FRR Slider
     var minVal = parseFloat(settings.frrdelta_min);
     if (isNaN(minVal)) minVal = -10;
@@ -494,6 +499,13 @@ function bsNavbarBugWorkaround() {
 function updateButtonStatus(isPaused) {
     var buttonHtml = isPaused ? '<i class="fas fa-play"></i> Resume Lending' : '<i class="fas fa-pause"></i> Pause Lending';
     $('#pauseButton').html(buttonHtml);
+
+    var statusLabel = $('#global_status');
+    if (isPaused) {
+        statusLabel.text('Paused').removeClass('label-success').addClass('label-warning').show();
+    } else {
+        statusLabel.text('Running').removeClass('label-warning').addClass('label-success').show();
+    }
 }
 
 function handle_pause_button() {

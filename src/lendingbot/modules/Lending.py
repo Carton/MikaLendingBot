@@ -220,7 +220,8 @@ def init(
         all_currencies, \
         frrasmin, \
         frrdelta_min, \
-        frrdelta_max
+        frrdelta_max, \
+        lending_paused
 
     exchange = Config.get_exchange()
 
@@ -270,6 +271,11 @@ def init(
             # We overwrite locally.
             frrdelta_min = val_min
             frrdelta_max = val_max
+
+        if "lending_paused" in web_settings:
+            lending_paused = bool(web_settings["lending_paused"])
+            if log:
+                log.log(f"Loaded lending_paused={lending_paused} from Web Configuration.")
 
     except Exception as e:
         print(f"Failed to load web settings: {e}")
