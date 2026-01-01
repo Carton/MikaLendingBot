@@ -248,6 +248,32 @@ def init(
     frrasmin = Config.getboolean("BOT", "frrasmin", False)
     frrdelta_min = Decimal(Config.get("BOT", "frrdelta_min", -10))
     frrdelta_max = Decimal(Config.get("BOT", "frrdelta_max", 10))
+
+    # Web Settings Precedence Rule: Web Settings > Default Config
+    # If a web_settings.json exists, it takes priority.
+    try:
+        from . import WebServer
+
+        web_settings = WebServer.get_web_settings()
+        # verify if we are loading from file (persistence) or defaults
+        # Since get_web_settings handles logic, we just check if it has the keys.
+        # But we only want to override if the FILE actually existed or if we want to enforce the web state.
+        # Given the plan: "If found, it overrides". get_web_settings returns defaults if not found.
+        # However, get_web_settings saves the default to file if not found.
+        # So effectively, once this runs once, the file exists.
+        # This means the file becomes the source of truth immediately.
+
+        if "frrdelta_min" in web_settings and "frrdelta_max" in web_settings:
+            val_min = Decimal(str(web_settings["frrdelta_min"]))
+            val_max = Decimal(str(web_settings["frrdelta_max"]))
+
+            # We overwrite locally.
+            frrdelta_min = val_min
+            frrdelta_max = val_max
+
+    except Exception as e:
+        print(f"Failed to load web settings: {e}")
+
     try:
         analysis_method = Config.AnalysisMethod(Config.get("Daily_min", "method", "percentile"))
     except ValueError:
@@ -257,6 +283,13 @@ def init(
         ) from None
 
     sleep_time = sleep_time_active  # Start with active mode
+
+    # Check precedence logging
+    if log and (
+        frrdelta_min != Decimal(Config.get("BOT", "frrdelta_min", -10))
+        or frrdelta_max != Decimal(Config.get("BOT", "frrdelta_max", 10))
+    ):
+        log.log("Loaded FRR settings from Web Configuration. Values in default.cfg are ignored.")
 
     # create the scheduler thread
     scheduler = sched.scheduler(time.time, time.sleep)

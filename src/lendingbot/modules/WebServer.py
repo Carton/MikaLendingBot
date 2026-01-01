@@ -49,6 +49,79 @@ def initialize_web_server(config: Any) -> None:
     thread.start()
 
 
+web_settings_file: str = "web_settings.json"
+DEFAULT_WEB_SETTINGS: dict[str, Any] = {
+    "refreshRate": 30,
+    "timespanNames": ["Year", "Month", "Week", "Day", "Hour"],
+    "btcDisplayUnit": "BTC",
+    "outputCurrencyDisplayMode": "all",
+    "effRateMode": "lentperc",
+    "frrdelta_min": -10,
+    "frrdelta_max": 10,
+}
+
+
+def get_web_settings() -> dict[str, Any]:
+    """
+    Retrieves the current web settings.
+    If the settings file doesn't exist, it creates one using defaults,
+    potentially merged with legacy default.cfg values for FRR.
+    """
+    if not Path(web_settings_file).exists():
+        # Start with defaults
+        settings = DEFAULT_WEB_SETTINGS.copy()
+
+        # Merge legacy config if available (Factory Defaults)
+        # We access Lending.frrdelta_min/max which are loaded from default.cfg in Lending.init()
+        # BUT, to avoid circular dependency issues if get_web_settings is called early,
+        # we'll trust that if this file doesn't exist, it's a fresh start or first migration.
+        # If Lending has already initialized these from default.cfg, we can peek at them.
+
+        # Actually, a cleaner way for the VERY FIRST run is:
+        # If Lending is initialized, use its current values (which came from default.cfg)
+        # to seed the web_settings.
+        # We check a knownInitialized variable or just try to access the values.
+        try:
+            settings["frrdelta_min"] = float(Lending.frrdelta_min)
+            settings["frrdelta_max"] = float(Lending.frrdelta_max)
+        except (ValueError, AttributeError):
+            pass
+
+        save_web_settings(settings)
+        return settings
+
+    try:
+        with Path(web_settings_file).open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+            return DEFAULT_WEB_SETTINGS.copy()
+    except (json.JSONDecodeError, OSError):
+        return DEFAULT_WEB_SETTINGS.copy()
+
+
+def save_web_settings(settings: dict[str, Any]) -> None:
+    """
+    Saves the given settings to the web_settings.json file.
+    """
+    try:
+        current: dict[str, Any] = {}
+        if Path(web_settings_file).exists():
+            with Path(web_settings_file).open("r", encoding="utf-8") as f:
+                try:
+                    loaded = json.load(f)
+                    if isinstance(loaded, dict):
+                        current = loaded
+                except json.JSONDecodeError:
+                    pass
+
+        current.update(settings)
+        with Path(web_settings_file).open("w", encoding="utf-8") as f:
+            json.dump(current, f, indent=4)
+    except OSError as e:
+        print(f"Error saving web settings: {e}")
+
+
 def start_web_server() -> None:
     """
     Start the web server
@@ -118,6 +191,11 @@ def start_web_server() -> None:
                     self.wfile.write(
                         json.dumps({"lending_paused": Lending.lending_paused}).encode("utf-8")
                     )
+                elif self.path == "/get_settings":
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps(get_web_settings()).encode("utf-8"))
                 else:
                     super().do_GET()
 
@@ -136,6 +214,10 @@ def start_web_server() -> None:
                                 Lending.log.log(
                                     f"Settings updated by user: FRR Delta Min={Lending.frrdelta_min}%, Max={Lending.frrdelta_max}%"
                                 )
+
+                            # Save all received settings specific to web persistence
+                            save_web_settings(config_data)
+
                             response = {
                                 "success": True,
                                 "frrdelta_min": str(Lending.frrdelta_min),
@@ -144,7 +226,14 @@ def start_web_server() -> None:
                         except (ValueError, TypeError, InvalidOperation) as e:
                             response = {"success": False, "error": str(e)}
                     else:
-                        response = {"success": False, "error": "Invalid configuration key"}
+                        # Even if FRR params aren't present (partial update?), save what we have
+                        # But typically the UI sends everything or specific subsets.
+                        # For now, let's allow partial updates for other web settings
+                        try:
+                            save_web_settings(config_data)
+                            response = {"success": True}
+                        except Exception as e:
+                            response = {"success": False, "error": str(e)}
 
                     self.send_response(200 if response["success"] else 400)
                     self.send_header("Content-Type", "application/json")
