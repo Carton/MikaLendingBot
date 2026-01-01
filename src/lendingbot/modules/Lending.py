@@ -1,6 +1,7 @@
 import sched
 import threading
 import time
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
@@ -11,6 +12,20 @@ from .Utils import format_amount_currency, format_rate_pct
 
 
 SATOSHI = Decimal(10) ** -8
+
+
+@dataclass
+class RateCalcInfo:
+    """Rate calculation details for generating clear log output."""
+
+    final_rate: Decimal  # The final rate to use
+    min_rate: Decimal  # Configured minimum rate
+    frr_enabled: bool  # Whether FRR as min is enabled
+    frr_base: Decimal | None = None  # FRR base rate (only when frr_enabled=True)
+    frr_delta: Decimal | None = None  # FRR delta value (only when frr_enabled=True)
+    frr_delta_step: int | None = None  # Current delta step (1-5)
+    frr_used: bool = False  # Whether FRR was actually used (FRR+delta > min_rate)
+
 
 sleep_time_active: float = 0
 sleep_time_inactive: float = 0
@@ -379,7 +394,8 @@ def create_lend_offer(
         rate: The daily interest rate (as a float or decimal).
         days: The duration of the loan in days.
     """
-    rate_f = float(rate)
+    original_rate = float(rate)
+    rate_f = original_rate
     if rate_f > 0.0001:
         rate_f = rate_f - 0.000001  # lend offer just below the competing one
     amt_s = f"{Decimal(amt):.8f}"
@@ -428,7 +444,8 @@ def create_lend_offer(
             if log:
                 log.notify(text, notify_conf)
         if log:
-            log.offer(amt_s, currency, rate_f, days, msg)
+            # Pass original_rate to show compete adjustment info
+            log.offer(amt_s, currency, rate_f, days, msg, original_rate)
 
 
 def cancel_all() -> None:
@@ -507,13 +524,13 @@ def lend_all() -> None:
     set_sleep_time(usable_currencies)
 
 
-def get_frr_or_min_daily_rate(cur: str) -> Decimal:
+def get_frr_or_min_daily_rate(cur: str) -> RateCalcInfo:
     """
-    Checks the Flash Return Rate of cur against the min daily rate and returns the better of the two. If not using
-    bitfinex then it will always return the min daily rate for the currency.
+    Checks the Flash Return Rate of cur against the min daily rate and returns
+    detailed rate calculation info.
 
     :param cur: The currency which to check
-    :return: The better of the two rates (FRR and min daily rate)
+    :return: RateCalcInfo containing the rate and calculation details
     """
     global frrdelta_cur_step, frrdelta_min, frrdelta_max
     if cfg := coin_cfg.get(cur):
@@ -537,24 +554,40 @@ def get_frr_or_min_daily_rate(cur: str) -> Decimal:
     if frrdelta_cur_step > frrdelta_steps:
         frrdelta_cur_step = 0
     frrdelta_val = frr_d_min + (frrdelta_step * frrdelta_cur_step)
+    current_step = frrdelta_cur_step + 1  # 1-indexed for display
     frrdelta_cur_step += 1
 
-    if log:
-        log.log(f"Using frrasmin {frr_as_min} for {cur}")
-        log.log(
-            f"Using frrdelta {format_rate_pct(frr_d_min)} + {format_rate_pct(frrdelta_val - frr_d_min)} = {format_rate_pct(frrdelta_val)} for {cur}"
-        )
-
     if exchange == "BITFINEX" and frr_as_min:
-        frr_rate = Decimal(api.get_frr(cur)) + frrdelta_val
+        frr_base = Decimal(api.get_frr(cur))
+        frr_rate = frr_base + frrdelta_val
         if frr_rate > min_rate:
-            if log:
-                log.log(f"Using FRR as mindailyrate {format_rate_pct(frr_rate)} for {cur}")
-            return frr_rate
+            return RateCalcInfo(
+                final_rate=frr_rate,
+                min_rate=min_rate,
+                frr_enabled=True,
+                frr_base=frr_base,
+                frr_delta=frrdelta_val,
+                frr_delta_step=current_step,
+                frr_used=True,
+            )
+        else:
+            # FRR enabled but rate too low, use min_rate
+            return RateCalcInfo(
+                final_rate=min_rate,
+                min_rate=min_rate,
+                frr_enabled=True,
+                frr_base=frr_base,
+                frr_delta=frrdelta_val,
+                frr_delta_step=current_step,
+                frr_used=False,
+            )
 
-    if log:
-        log.log(f"Using min_daily_rate {format_rate_pct(min_rate)} for {cur}")
-    return min_rate
+    # FRR not enabled or not on Bitfinex
+    return RateCalcInfo(
+        final_rate=min_rate,
+        min_rate=min_rate,
+        frr_enabled=False,
+    )
 
 
 def get_min_daily_rate(cur: str) -> Decimal | bool:
@@ -569,29 +602,64 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
         Decimal: The minimum daily rate to use.
         bool: False if the currency is disabled (maxactive == 0).
     """
-    cur_min_daily_rate = get_frr_or_min_daily_rate(cur)
-    if cfg := coin_cfg.get(cur):
-        if cfg.maxactive == 0:
-            if cur not in max_active_alerted:  # Only alert once per coin.
-                max_active_alerted[cur] = True
-                if log:
-                    log.log(f"maxactive amount for {cur} set to 0, won't lend.")
-            return False
-        if cur not in coin_cfg_alerted:  # Only alert once per coin.
-            coin_cfg_alerted[cur] = True
+    rate_info = get_frr_or_min_daily_rate(cur)
+
+    # Check if currency is disabled
+    if (cfg := coin_cfg.get(cur)) and cfg.maxactive == 0:
+        if cur not in max_active_alerted:  # Only alert once per coin.
+            max_active_alerted[cur] = True
             if log:
-                log.log(
-                    f"Using custom mindailyrate {format_rate_pct(cur_min_daily_rate)} for {cur}"
-                )
+                log.log(f"[{cur}] Disabled: maxactive=0, skipping")
+        return False
+
+    # Generate rate calculation log
+    if log:
+        _log_rate_calculation(cur, rate_info)
+
+    # Check for Market Analysis suggestion
     if Analysis and cur in currencies_to_analyse:
-        # TODO: Check how the suggested rate is calculated here.
         recommended_min = Analysis.get_rate_suggestion(cur, method=analysis_method)
-        if cur_min_daily_rate < Decimal(str(recommended_min)) and log:
+        if rate_info.final_rate < Decimal(str(recommended_min)) and log:
+            log.log(f"[{cur}] Tip: {analysis_method} suggests {format_rate_pct(recommended_min)}")
+
+    return rate_info.final_rate
+
+
+def _log_rate_calculation(cur: str, info: RateCalcInfo) -> None:
+    """
+    Log rate calculation details in a unified format.
+
+    Args:
+        cur: Currency symbol
+        info: Rate calculation details
+    """
+    if not log:
+        return
+
+    if info.frr_enabled:
+        # FRR mode
+        assert info.frr_base is not None
+        assert info.frr_delta is not None
+        assert info.frr_delta_step is not None
+
+        frr_total = info.frr_base + info.frr_delta
+        if info.frr_used:
+            # FRR+delta > min_rate, use FRR
             log.log(
-                f"Suggest to use {analysis_method} as mindailyrate {format_rate_pct(recommended_min)} for {cur}"
+                f"[{cur}] Rate: FRR {format_rate_pct(info.frr_base)} + "
+                f"delta {format_rate_pct(info.frr_delta)} (step {info.frr_delta_step}/5) = "
+                f"{format_rate_pct(frr_total)} (> min {format_rate_pct(info.min_rate)}) ✓"
             )
-            # cur_min_daily_rate = recommended_min
-    return Decimal(cur_min_daily_rate)
+        else:
+            # FRR+delta <= min_rate, use min_rate
+            log.log(
+                f"[{cur}] Rate: FRR {format_rate_pct(info.frr_base)} + "
+                f"delta {format_rate_pct(info.frr_delta)} (step {info.frr_delta_step}/5) = "
+                f"{format_rate_pct(frr_total)} (< min {format_rate_pct(info.min_rate)}, using min)"
+            )
+    else:
+        # Non-FRR mode
+        log.log(f"[{cur}] Rate: min_rate {format_rate_pct(info.min_rate)}")
 
 
 def construct_order_books(active_cur: str) -> bool | list[dict[str, Any]]:

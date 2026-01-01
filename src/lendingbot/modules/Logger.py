@@ -122,11 +122,25 @@ class Logger:
             print(log_message)
         self.refreshStatus()
 
-    def offer(self, amt: Any, cur: str, rate: Any, days: str, msg: Any) -> None:
-        line = (
-            f"{self.timestamp()} Placing {format_amount_currency(amt, cur)} at {format_rate_pct(rate)} for "
-            f"{days} days... {self.digestApiMsg(msg)}"
-        )
+    def offer(
+        self,
+        amt: Any,
+        cur: str,
+        rate: Any,
+        days: str,
+        msg: Any,
+        original_rate: float | None = None,
+    ) -> None:
+        rate_info = format_rate_pct(rate)
+        # If original_rate provided and compete adjustment happened, show it
+        if original_rate is not None and abs(float(rate) - original_rate) > 1e-10:
+            adjustment = float(rate) - original_rate
+            rate_info = f"{format_rate_pct(rate)} ({adjustment * 100:+.5f}% compete)"
+
+        result = self.digestApiMsg(msg)
+        status = "✓" if result == "Loan order placed." else result
+
+        line = f"{self.timestamp()} [{cur}] Loan: {format_amount_currency(amt, cur)} @ {rate_info} for {days} days {status}"
         self.output.printline(line)
         self.refreshStatus()
 
