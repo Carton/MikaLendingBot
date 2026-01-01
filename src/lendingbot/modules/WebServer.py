@@ -151,7 +151,7 @@ def start_web_server() -> None:
 
         global server
         socketserver.TCPServer.allow_reuse_address = True
-        server = socketserver.TCPServer((host, port), QuietHandler)
+        server = socketserver.ThreadingTCPServer((host, port), QuietHandler)
         if host == "0.0.0.0":
             # Get all addresses that we could listen on the port specified
             addresses = [
