@@ -24,7 +24,7 @@ def maxtolend_module():
 
 class TestMaxToLend:
     def test_maxtolend_init(self, maxtolend_module):
-        from lendingbot.modules.Configuration import CoinConfig
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
 
         mock_config = MagicMock()
         mock_config.get_coin_cfg.return_value = {
@@ -37,7 +37,7 @@ class TestMaxToLend:
                 gapmode="raw",
                 gapbottom=Decimal("10"),
                 gaptop=Decimal("20"),
-                frrasmin=True,
+                lending_strategy=LendingStrategy.FRR,
                 frrdelta_min=Decimal("0.00001"),
                 frrdelta_max=Decimal("0.00005"),
             )
@@ -86,7 +86,7 @@ class TestMaxToLend:
         assert res == Decimal("10")
 
     def test_amount_to_lend_coin_cfg_override(self, maxtolend_module):
-        from lendingbot.modules.Configuration import CoinConfig
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
 
         maxtolend_module.log = MagicMock()
         maxtolend_module.coin_cfg = {
@@ -99,7 +99,7 @@ class TestMaxToLend:
                 gapmode="raw",
                 gapbottom=Decimal("10"),
                 gaptop=Decimal("20"),
-                frrasmin=True,
+                lending_strategy=LendingStrategy.FRR,
                 frrdelta_min=Decimal("0.00001"),
                 frrdelta_max=Decimal("0.00005"),
             )

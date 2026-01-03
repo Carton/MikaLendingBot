@@ -52,7 +52,6 @@ loans_provided: list[dict[str, Any]] = []
 gap_mode_default: Config.GapMode | bool | str = ""
 scheduler: sched.scheduler | None = None
 exchange: str = ""
-frrasmin: bool = False
 
 frrdelta_cur_step: int = 0
 frrdelta_min: Decimal = Decimal(0)
@@ -103,7 +102,6 @@ def _reset_globals() -> None:
         analysis_method, \
         currencies_to_analyse, \
         all_currencies, \
-        frrasmin, \
         frrdelta_min, \
         frrdelta_max, \
         frrdelta_cur_step, \
@@ -141,7 +139,6 @@ def _reset_globals() -> None:
     analysis_method = "percentile"
     currencies_to_analyse = []
     all_currencies = []
-    frrasmin = False
     frrdelta_min = Decimal(0)
     frrdelta_max = Decimal(0)
     frrdelta_cur_step = 0
@@ -218,7 +215,6 @@ def init(
         analysis_method, \
         currencies_to_analyse, \
         all_currencies, \
-        frrasmin, \
         frrdelta_min, \
         frrdelta_max, \
         lending_paused
@@ -246,7 +242,6 @@ def init(
     currencies_to_analyse = Config.get_currencies_list("analyseCurrencies", "MarketAnalysis")
     keep_stuck_orders = Config.getboolean("BOT", "keepstuckorders", True)
     hide_coins = Config.getboolean("BOT", "hideCoins", True)
-    frrasmin = Config.getboolean("BOT", "frrasmin", False)
     frrdelta_min = Decimal(Config.get("BOT", "frrdelta_min", -10))
     frrdelta_max = Decimal(Config.get("BOT", "frrdelta_max", 10))
 
@@ -592,7 +587,7 @@ def get_frr_or_min_daily_rate(cur: str) -> RateCalcInfo:
         frr_d_max = cfg.frrdelta_max
     else:
         min_rate = Decimal(Config.get("BOT", "mindailyrate", None, 0.003, 5)) / 100
-        frr_as_min = Config.getboolean("BOT", "frrasmin", False)
+        frr_as_min = False
         frr_d_min = frrdelta_min
         frr_d_max = frrdelta_max
 
@@ -831,7 +826,11 @@ def construct_orders(
     Returns:
         dict: A dictionary containing lists of 'amounts' and 'rates' for the orders.
     """
-    cur_spread = get_cur_spread(spread_lend, cur_active_bal, cur)
+    if (cfg := coin_cfg.get(cur)) and cfg.lending_strategy == Config.LendingStrategy.FRR:
+        cur_spread = 1
+    else:
+        cur_spread = get_cur_spread(spread_lend, cur_active_bal, cur)
+
     if cur_spread == 1:
         # print('skip get_gap_mode_rates ...')
         rate_step = Decimal(0)

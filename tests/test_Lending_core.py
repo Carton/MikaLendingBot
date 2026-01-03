@@ -140,17 +140,30 @@ class TestLendingCore:
         assert rate_info.frr_enabled is False
 
     def test_get_frr_or_min_daily_rate_bitfinex_frr(self, lending_module):
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
+
         lending_module.exchange = "BITFINEX"
         lending_module.Config = Mock()
-        lending_module.Config.get.return_value = "0.1"
-        lending_module.Config.getboolean.side_effect = (
-            lambda _s, k, d: True if k == "frrasmin" else d
-        )
+        lending_module.Config.LendingStrategy = LendingStrategy
+
+        lending_module.coin_cfg = {
+            "BTC": CoinConfig(
+                minrate=Decimal("0.001"),
+                maxactive=Decimal(100),
+                maxtolend=Decimal(0),
+                maxpercenttolend=Decimal(0),
+                maxtolendrate=Decimal(0),
+                gapmode=False,
+                gapbottom=Decimal(0),
+                gaptop=Decimal(0),
+                lending_strategy=LendingStrategy.FRR,
+                frrdelta_min=Decimal(0),
+                frrdelta_max=Decimal(0),
+            )
+        }
+
         lending_module.api = Mock()
         lending_module.api.get_frr.return_value = "0.002"
-
-        lending_module.frrdelta_min = Decimal(0)
-        lending_module.frrdelta_max = Decimal(0)
 
         rate_info = lending_module.get_frr_or_min_daily_rate("BTC")
         assert rate_info.final_rate == Decimal("0.002")
@@ -158,7 +171,7 @@ class TestLendingCore:
         assert rate_info.frr_used is True
 
     def test_get_min_daily_rate_coin_cfg(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
@@ -170,7 +183,7 @@ class TestLendingCore:
                 gapmode=False,
                 gapbottom=Decimal(0),
                 gaptop=Decimal(0),
-                frrasmin=False,
+                lending_strategy=LendingStrategy.SPREAD,
                 frrdelta_min=Decimal(0),
                 frrdelta_max=Decimal(0),
             )
@@ -187,7 +200,7 @@ class TestLendingCore:
             assert rate == Decimal("0.005")
 
     def test_get_min_daily_rate_disabled(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
@@ -199,7 +212,7 @@ class TestLendingCore:
                 gapmode=False,
                 gapbottom=Decimal(0),
                 gaptop=Decimal(0),
-                frrasmin=False,
+                lending_strategy=LendingStrategy.SPREAD,
                 frrdelta_min=Decimal(0),
                 frrdelta_max=Decimal(0),
             )
@@ -475,7 +488,7 @@ class TestLendingCore:
             assert rates == [lending_module.max_daily_rate, lending_module.max_daily_rate]
 
     def test_get_gap_mode_rates_coin_cfg(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
@@ -487,7 +500,7 @@ class TestLendingCore:
                 maxtolend=Decimal(0),
                 maxpercenttolend=Decimal(0),
                 maxtolendrate=Decimal(0),
-                frrasmin=False,
+                lending_strategy=LendingStrategy.SPREAD,
                 frrdelta_min=Decimal(0),
                 frrdelta_max=Decimal(0),
             )
