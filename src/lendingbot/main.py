@@ -144,6 +144,7 @@ def main() -> NoReturn:
     log.log(f"Welcome to {Config.get('BOT', 'label', 'Lending Bot')} on {exchange}")
 
     try:
+        last_summary_time = 0.0
         while True:
             try:
                 dns_cache.clear()  # Flush DNS Cache
@@ -163,7 +164,10 @@ def main() -> NoReturn:
                     Lending.lend_all()
                     PluginsManager.after_lending()
 
-                log.log(Data.stringify_total_lent(Data.get_total_lent()))
+                lent_status_str = Data.stringify_total_lent(Data.get_total_lent())
+                if time.time() - last_summary_time >= Lending.get_sleep_time_inactive():
+                    log.log(lent_status_str)
+                    last_summary_time = time.time()
                 log.persistStatus()
                 sys.stdout.flush()
                 time.sleep(Lending.get_sleep_time())

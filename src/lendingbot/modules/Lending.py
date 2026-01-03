@@ -317,6 +317,8 @@ def get_sleep_time() -> float:
     Returns:
         float: The sleep time in seconds.
     """
+    if lending_paused:
+        return sleep_time_inactive
     return sleep_time
 
 
@@ -329,6 +331,16 @@ def set_sleep_time(usable: int) -> None:
     """
     global sleep_time
     sleep_time = sleep_time_inactive if usable == 0 else sleep_time_active
+
+
+def get_sleep_time_inactive() -> float:
+    """
+    Returns the configured sleep time for inactive state.
+
+    Returns:
+        float: The inactive sleep time in seconds.
+    """
+    return sleep_time_inactive
 
 
 def notify_summary(sleep_time_val: float) -> None:
