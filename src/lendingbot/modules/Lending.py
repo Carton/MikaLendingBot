@@ -79,6 +79,7 @@ def _reset_globals() -> None:
     Primarily used for testing to ensure a clean state between test cases.
     """
     global \
+        Config, \
         sleep_time, \
         sleep_time_active, \
         sleep_time_inactive, \
@@ -152,6 +153,7 @@ def _reset_globals() -> None:
     MaxToLend = None  # type: ignore[assignment]
     Analysis = None
     notify_conf = {}
+    Config = None  # type: ignore[assignment]
 
 
 def debug_log(msg: str) -> None:

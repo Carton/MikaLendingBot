@@ -14,6 +14,9 @@ from lendingbot.modules import Lending
 def lending_module():
     # Reset globals using the new function
     Lending._reset_globals()
+    from lendingbot.modules import Configuration
+
+    Lending.Config = Configuration
 
     # Setup basic required globals for tests
     Lending.min_loan_size = Decimal("0.01")

@@ -7,13 +7,14 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from lendingbot.modules import Lending
+from lendingbot.modules import Configuration, Lending
 from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
 
 
 @pytest.fixture(autouse=True)
 def setup_lending():
     Lending._reset_globals()
+    Lending.Config = Configuration
     Lending.Data = MagicMock()
     Lending.Data.truncate.side_effect = lambda x, _: Decimal(x).quantize(Decimal("1.00000000"))
 
