@@ -1,15 +1,16 @@
 # Implementation Plan - Lending Strategy Selection
 
-## Phase 1: Core Configuration and Logic Refactoring
+## Phase 1: Core Configuration and Logic Refactoring [checkpoint: b7f4708]
 - [x] Task: Remove `frrasmin` and implement `lending_strategy` in Configuration 52a829a
-    - [ ] Sub-task: Create tests for new config validation (ensure FRR fails on non-Bitfinex).
-    - [ ] Sub-task: Refactor `Configuration.py` to replace `frrasmin` with `lending_strategy`.
-    - [ ] Sub-task: Implement validation logic to reject FRR strategy on unsupported exchanges.
+    - [x] Sub-task: Create tests for new config validation (ensure FRR fails on non-Bitfinex).
+    - [x] Sub-task: Refactor `Configuration.py` to replace `frrasmin` with `lending_strategy`.
+    - [x] Sub-task: Implement validation logic to reject FRR strategy on unsupported exchanges.
+    - [x] Sub-task: Fix inheritance of `lending_strategy` from `[BOT]` section. b7f4708
 - [x] Task: Update Lending Logic for Strategy Enforcing 3192ea4
-    - [ ] Sub-task: Create tests ensuring `spread_lend=1` is forced when Strategy is FRR.
-    - [ ] Sub-task: Refactor `Lending.py` to branch logic based on `lending_strategy`.
-    - [ ] Sub-task: Remove legacy `frrasmin` logic branches.
-- [ ] Task: Conductor - User Manual Verification 'Core Configuration and Logic Refactoring' (Protocol in workflow.md)
+    - [x] Sub-task: Create tests ensuring `spread_lend=1` is forced when Strategy is FRR.
+    - [x] Sub-task: Refactor `Lending.py` to branch logic based on `lending_strategy`.
+    - [x] Sub-task: Remove legacy `frrasmin` logic branches.
+- [x] Task: Conductor - User Manual Verification 'Core Configuration and Logic Refactoring' (Protocol in workflow.md) 3fb4c0f
 
 ## Phase 2: Web UI and API Updates
 - [ ] Task: Expose Strategy via Web API
