@@ -5,7 +5,7 @@
     - [ ] Sub-task: Create tests for new config validation (ensure FRR fails on non-Bitfinex).
     - [ ] Sub-task: Refactor `Configuration.py` to replace `frrasmin` with `lending_strategy`.
     - [ ] Sub-task: Implement validation logic to reject FRR strategy on unsupported exchanges.
-- [ ] Task: Update Lending Logic for Strategy Enforcing
+- [x] Task: Update Lending Logic for Strategy Enforcing 3192ea4
     - [ ] Sub-task: Create tests ensuring `spread_lend=1` is forced when Strategy is FRR.
     - [ ] Sub-task: Refactor `Lending.py` to branch logic based on `lending_strategy`.
     - [ ] Sub-task: Remove legacy `frrasmin` logic branches.
