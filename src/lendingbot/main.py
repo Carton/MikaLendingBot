@@ -124,6 +124,11 @@ def main() -> NoReturn:
 
     Lending.init(Config, api, log, Data, MaxToLend, dry_run, analysis, notify_conf)
 
+    # Log active lending strategies (must be after Lending.init where coin_cfg is populated)
+    if Lending.coin_cfg:
+        strategies_log = [f"{cur}: {cfg.lending_strategy}" for cur, cfg in Lending.coin_cfg.items()]
+        print(f"Active Lending Strategies: {', '.join(strategies_log)}")
+
     # Load plugins
     PluginsManager.init(Config, api, log, notify_conf)
 

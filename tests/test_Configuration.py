@@ -259,11 +259,29 @@ def test_get_coin_cfg(mock_config_file):
     assert "BTC" in coin_cfg
     assert coin_cfg["BTC"].minrate == Decimal("0.0002")  # 0.02 / 100
 
-    # Test missing section (should just skip)
-    with patch(
-        "lendingbot.modules.Configuration.get_all_currencies", return_value=["NON_EXISTENT"]
-    ):
-        assert Configuration.get_coin_cfg() == {}
+    # Test missing section (should inherit defaults)
+    # Test missing section (should inherit defaults)
+    with patch("lendingbot.modules.Configuration.get_all_currencies", return_value=["BTC"]):
+        # Ensure we have default BOT values to inherit from
+        def mock_get(section, option):
+            if section == "BOT":
+                if option == "gapmode":
+                    return "raw"
+                if option == "lending_strategy":
+                    return "Spread"
+                if option == "mindailyrate":
+                    return "0.01"
+            return "0"
+
+        with patch.object(Configuration.config, "get", side_effect=mock_get):
+            # Remove [BTC] section to test inheritance
+            if Configuration.config.has_section("BTC"):
+                Configuration.config.remove_section("BTC")
+
+            cfg = Configuration.get_coin_cfg()
+            assert "BTC" in cfg
+            # verify it inherited from BOT (mindailyrate=0.01 => 0.0001)
+            assert cfg["BTC"].minrate == Decimal("0.0001")
 
     # Test parsing error
     with (
@@ -418,22 +436,35 @@ def test_get_coin_cfg_returns_dataclass(tmp_path):
     """
     config_file = tmp_path / "test.cfg"
     content = """
-[BITFINEX]
-all_currencies = BTC
+    [BOT]
+    mindailyrate = 0.01
+    maxactiveamount = 100
+    maxtolend = 1000
+    maxpercenttolend = 0.5
+    maxtolendrate = 0.05
+    gapmode = raw
+    gapbottom = 10
+    gaptop = 20
+    frrdelta_min = 0.0001
+    frrdelta_max = 0.0005
+    lending_strategy = Spread
 
-[BTC]
-mindailyrate = 0.02
-maxactiveamount = 50
-maxtolend = 500
-maxpercenttolend = 25
-maxtolendrate = 0.025
-gapmode = raw
-gapbottom = 5
-gaptop = 15
-frrasmin = True
-frrdelta_min = 0.0001
-frrdelta_max = 0.0005
-"""
+    [BITFINEX]
+    all_currencies = BTC
+
+    [BTC]
+    mindailyrate = 0.02
+    maxactiveamount = 50
+    maxtolend = 500
+    maxpercenttolend = 25
+    maxtolendrate = 0.025
+    gapmode = raw
+    gapbottom = 5
+    gaptop = 15
+    frrasmin = True
+    frrdelta_min = 0.0001
+    frrdelta_max = 0.0005
+    """
     config_file.write_text(content)
     Configuration.init(str(config_file))
 

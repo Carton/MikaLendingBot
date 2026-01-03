@@ -146,20 +146,49 @@ def get_exchange() -> str:
 
 def get_coin_cfg() -> dict[str, CoinConfig]:
     coin_cfg: dict[str, CoinConfig] = {}
-    default_strategy = get("BOT", "lending_strategy", "Spread")
-    for cur in get_all_currencies():
-        if config.has_section(cur):
-            try:
-                minrate = (Decimal(config.get(cur, "mindailyrate"))) / 100
-                maxactive = Decimal(config.get(cur, "maxactiveamount"))
-                maxtolend = Decimal(config.get(cur, "maxtolend"))
-                maxpercenttolend = (Decimal(config.get(cur, "maxpercenttolend"))) / 100
-                maxtolendrate = (Decimal(config.get(cur, "maxtolendrate"))) / 100
-                gapmode = get_gap_mode(cur, "gapmode")
-                gapbottom = Decimal(get(cur, "gapbottom", False, 0))
-                gaptop = Decimal(get(cur, "gaptop", False, gapbottom))
 
-                raw_strategy = get(cur, "lending_strategy", default_strategy)
+    for cur in get_all_currencies():
+        try:
+            # Helper to get config with explicit default from BOT section, then default value
+            def get_val(option: str, default: Any = None, currency: str = cur) -> Any:
+                # Try currency section first, then BOT section
+                for section in (currency, "BOT"):
+                    if has_option(section, option):
+                        return get(section, option)
+
+                # Return default if provided
+                if default is not None:
+                    return default
+
+                # Mandatory option is missing in both [CUR] and [BOT]
+                if config.has_section(currency):
+                    # Section exists but option missing -> CRASH
+                    print(
+                        f"ERROR: [{currency}]-{option} is not allowed to be left unset. Please check your config."
+                    )
+                    exit(1)
+                else:
+                    # Section missing, implicit config requested but missing -> SKIP this currency
+                    raise ValueError("SKIP_CURRENCY")
+
+            try:
+                minrate = (Decimal(get_val("mindailyrate"))) / 100
+                # maxactive: -1 means unlimited (0 means disabled/skip this coin)
+                # maxtolend/maxpercenttolend/maxtolendrate: 0 means unlimited/no restriction
+                maxactive = Decimal(get_val("maxactiveamount", -1))
+                maxtolend = Decimal(get_val("maxtolend", 0))
+                maxpercenttolend = (Decimal(get_val("maxpercenttolend", 0))) / 100
+                maxtolendrate = (Decimal(get_val("maxtolendrate", 0))) / 100
+
+                gapmode = get_gap_mode(cur, "gapmode")
+                if not gapmode:
+                    gapmode = get_gap_mode("BOT", "gapmode")
+
+                gapbottom = Decimal(get_val("gapbottom", 0))
+                gaptop = Decimal(get_val("gaptop", gapbottom))
+
+                raw_strategy = get_val("lending_strategy", "Spread")
+
                 try:
                     lending_strategy = LendingStrategy(raw_strategy)
                 except ValueError:
@@ -174,8 +203,8 @@ def get_coin_cfg() -> dict[str, CoinConfig]:
                         f"FRR strategy is only supported on Bitfinex. Invalid config for [{cur}]."
                     )
 
-                frrdelta_min = Decimal(get(cur, "frrdelta_min", -10))
-                frrdelta_max = Decimal(get(cur, "frrdelta_max", 10))
+                frrdelta_min = Decimal(get_val("frrdelta_min", -10))
+                frrdelta_max = Decimal(get_val("frrdelta_max", 10))
 
                 coin_cfg[cur] = CoinConfig(
                     minrate=minrate,
@@ -191,14 +220,19 @@ def get_coin_cfg() -> dict[str, CoinConfig]:
                     frrdelta_max=frrdelta_max,
                 )
 
-            except Exception as ex:
-                msg = str(ex)
-                print(
-                    f"Coin Config for {cur} parsed incorrectly, please refer to the documentation. "
-                    f"Error: {msg}"
-                )
-                # Need to raise this exception otherwise the bot will continue if you configured one cur correctly
-                raise
+            except ValueError as val_err:
+                if str(val_err) == "SKIP_CURRENCY":
+                    continue
+                raise val_err
+
+        except Exception as ex:
+            msg = str(ex)
+            print(
+                f"Coin Config for {cur} parsed incorrectly, please refer to the documentation. "
+                f"Error: {msg}"
+            )
+            # Need to raise this exception otherwise the bot will continue if you configured one cur correctly
+            raise
     return coin_cfg
 
 
