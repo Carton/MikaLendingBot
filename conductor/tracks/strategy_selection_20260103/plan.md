@@ -21,8 +21,8 @@
     - [x] Sub-task: Update `lendingbot.js` to hide/show groups based on `lending_strategy`.
 - [x] Task: Conductor - User Manual Verification 'Web UI and API Updates' (Protocol in workflow.md) 66f8969
 
-## Phase 3: Documentation and Final Cleanup
-- [ ] Task: Update Configuration Documentation
-    - [ ] Sub-task: Update `default.cfg.example` to feature `lending_strategy` and remove `frrasmin`.
-    - [ ] Sub-task: Rewrite relevant sections in `docs/configuration.rst`.
-- [ ] Task: Conductor - User Manual Verification 'Documentation and Final Cleanup' (Protocol in workflow.md)
+## Phase 3: Documentation and Final Cleanup [checkpoint: 1476f4a]
+- [x] Task: Update Configuration Documentation 1476f4a
+    - [x] Sub-task: Update `default.cfg.example` to feature `lending_strategy` and remove `frrasmin`.
+    - [x] Sub-task: Rewrite relevant sections in `docs/configuration.rst`.
+- [x] Task: Conductor - User Manual Verification 'Documentation and Final Cleanup' (Protocol in workflow.md) 1476f4a
