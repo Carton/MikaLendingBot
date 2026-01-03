@@ -16,7 +16,7 @@ class Charts(Plugin):
         self.db: sqlite3.Connection | None = None
         self.last_dump: float = 0
         self.dump_interval: int = 21600
-        self.history_file: str = "www/history.json"
+        self.history_file: str = "logs/history.json"
         self.activeCurrencies: list[str] = []
 
     def on_bot_init(self) -> None:
@@ -32,7 +32,7 @@ class Charts(Plugin):
         self.db = sqlite3.connect(DB_PATH, check_same_thread=False)
         self.last_dump = 0
         self.dump_interval = int(self.config.get("CHARTS", "DumpInterval", 21600))
-        self.history_file = self.config.get("CHARTS", "HistoryFile", "www/history.json")
+        # Note: history_file is hardcoded because frontend expects it at logs/history.json
         self.activeCurrencies = self.config.get_all_currencies()
 
     def before_lending(self) -> None:

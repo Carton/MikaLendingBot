@@ -18,7 +18,7 @@ COPY www ./www
 RUN uv sync --frozen --no-cache --no-dev
 
 # Create directory for persistent data (configs, logs, etc.)
-RUN mkdir -p /data/conf /data/market_data /data/log
+RUN mkdir -p /data/conf /data/market_data /data/log logs
 
 # Default environment variables
 ENV PYTHONUNBUFFERED=1 \

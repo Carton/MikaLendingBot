@@ -77,7 +77,7 @@ def has_option(category: str, option: str) -> bool:
 def getboolean(category: str, option: str, default_value: bool = False) -> bool:
     if has_option(category, option):
         env_val = os.environ.get(f"{category}_{option}")
-        if env_val is not None:
+        if env_val:
             return env_val.lower() in ("true", "1", "t", "y", "yes")
         return config.getboolean(category, option)
     else:
@@ -93,7 +93,7 @@ def get(
 ) -> Any:
     if has_option(category, option):
         value = os.environ.get(f"{category}_{option}")
-        if value is None:
+        if value is None or value == "":
             value = config.get(category, option)
         try:
             if lower_limit is not False and float(value) < float(lower_limit):
@@ -131,7 +131,9 @@ def get_exchange() -> str:
     Returns used exchange
     """
     try:
-        val = os.environ.get("API_EXCHANGE", get("API", "exchange", "Poloniex"))
+        val = os.environ.get("API_EXCHANGE")
+        if not val:
+            val = get("API", "exchange", "Poloniex")
         return str(val).upper()
     except Exception:
         return "POLONIEX"

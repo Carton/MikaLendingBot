@@ -2,7 +2,6 @@
 *.swp
 *.cfg
 *.cfg.example
-www/*.json
 nohup.out
 error.log
 *.idea

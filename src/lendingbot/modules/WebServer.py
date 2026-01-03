@@ -133,21 +133,24 @@ def start_web_server() -> None:
         # Do not attempt to fix code warnings in the below class, it is perfect.
         class QuietHandler(http.server.SimpleHTTPRequestHandler):
             real_server_path = Path(web_server_template).resolve()
+            logs_path = Path("logs").resolve()
 
             # quiet server logs
             def log_message(self, _format_str: str, *_args: Any) -> None:
                 return
 
             def translate_path(self, path: str) -> str:
-                # In Python 3, translate_path is a bit different.
-                # We need to prepend the web_server_template to the path.
-
-                # Simple implementation:
-                root = Path.cwd() / web_server_template
-                # Strip query parameters and fragments
+                # Strip query parameters and fragments first
                 url_path = path.split("?", 1)[0]
                 url_path = url_path.split("#", 1)[0]
                 url_path = url_path.lstrip("/")
+
+                # Handle /logs/ virtual path - map to project root logs/ directory
+                if url_path.startswith("logs/"):
+                    return str(Path.cwd() / url_path)
+
+                # Default: serve from web_server_template (www/)
+                root = Path.cwd() / web_server_template
                 if not url_path:
                     url_path = "index.html"
 
@@ -166,9 +169,10 @@ def start_web_server() -> None:
                 local_path = self.translate_path(self.path)
                 # Security check to prevent directory traversal
                 resolved_path = Path(local_path).resolve()
-                if resolved_path.parent != self.real_server_path and not str(
-                    resolved_path
-                ).startswith(str(self.real_server_path)):
+                # Allow access to both www/ and logs/ directories
+                in_www = str(resolved_path).startswith(str(self.real_server_path))
+                in_logs = str(resolved_path).startswith(str(self.logs_path))
+                if not (in_www or in_logs):
                     self.send_error(404, "These aren't the droids you're looking for")
                     return None
                 return super().send_head()

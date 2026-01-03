@@ -25,7 +25,7 @@
 
       function drawChart() {
 
-        $.getJSON("history.json", function(jsonHistory) {
+        $.getJSON("logs/history.json", function(jsonHistory) {
 
           // loop over each coin and make the data array for each chart
           $.each(jsonHistory, function(coin, coinData) {

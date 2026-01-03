@@ -95,23 +95,18 @@ def main() -> NoReturn:
     output_currency = str(Config.get("BOT", "outputCurrency", "BTC"))
     exchange = Config.get_exchange()
 
-    json_output_enabled = Config.has_option("BOT", "jsonfile") and Config.has_option(
-        "BOT", "jsonlogsize"
-    )
-    json_file = str(Config.get("BOT", "jsonfile", ""))
-
-    # Configure web server
+    # Configure web server and JSON logging
+    # Note: When webserver is enabled, json logging is always enabled with hardcoded paths
+    # because the frontend expects files at specific locations (logs/botlog.json)
     web_server_enabled = Config.getboolean("BOT", "startWebServer")
-    if web_server_enabled:
-        if not json_output_enabled:
-            # User wants webserver enabled. Must have JSON enabled. Force logging with defaults.
-            json_output_enabled = True
-            json_file = str(Config.get("BOT", "jsonfile", "www/botlog.json"))
+    json_file = "logs/botlog.json" if web_server_enabled else ""
+    json_log_size = int(Config.get("BOT", "jsonlogsize", 200))
 
+    if web_server_enabled:
         WebServer.initialize_web_server(Config)
 
     # Configure logging
-    log = Logger(json_file, int(Config.get("BOT", "jsonlogsize", 200)), exchange)
+    log = Logger(json_file, json_log_size, exchange)
 
     # Initialize the remaining stuff
     api = ExchangeApiFactory.createApi(exchange, Config, log)
@@ -152,7 +147,7 @@ def main() -> NoReturn:
         while True:
             try:
                 dns_cache.clear()  # Flush DNS Cache
-                Data.update_conversion_rates(output_currency, json_output_enabled)
+                Data.update_conversion_rates(output_currency, web_server_enabled)
 
                 if Lending.lending_paused != Lending.last_lending_status:
                     if not Lending.lending_paused:

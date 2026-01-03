@@ -105,15 +105,11 @@ hideCoins = True
 frrdelta_min = -10
 frrdelta_max = 10
 
-#This option creates a json log file instead of console output which includes the most recent status.
-#Uncomment both jsonfile and jsonlogsize to enable.
-#Keep this in the default location if you want to use the webserver.
-#jsonfile = www/botlog.json
-
-#Limits the amount of log lines to save.
+#Limits the amount of log lines to save in botlog.json.
 #jsonlogsize = 200
 
 #Enables a webserver for the www folder, in order to easily use the lendingbot.html with the .json log.
+#JSON logging is automatically enabled when the webserver is enabled (output to logs/botlog.json).
 #startWebServer = true
 
 #Customize the IP and port that the webserver is hosted on. Defaults respectively to 0.0.0.0 and 8000
@@ -138,7 +134,6 @@ frrdelta_max = 10
 
 #[CHARTS]
 #DumpInterval = 21600
-#HistoryFile = www/history.json
 
 # Currencies can be configured here.
 #[BTC]

@@ -257,7 +257,7 @@ function loadData() {
         setTimeout('loadData()', refreshRate * 1000)
     } else {
         // expect the botlog.json to be in the same folder on the webserver
-        var file = 'botlog.json?_t=' + new Date().getTime();
+        var file = 'logs/botlog.json?_t=' + new Date().getTime();
         $.getJSON(file, function (data) {
             updateJson(data);
             // reload every 30sec

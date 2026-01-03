@@ -309,24 +309,17 @@ Configuration should look like this::
 Advanced logging and Web Display
 --------------------------------
 
-- ``jsonfile`` is the location where the bot will log to a .json file instead of into console.
-
-    - Default value: Commented out, uncomment to enable.
-    - Format: ``www/botlog.json``
-    - This is the location relative to the running instance of the bot where it will store the .json file. The default location or a path inside the ``customWebServerTemplate`` folder is recommended if using the webserver functionality.
-
-- ``jsonlogsize`` is the amount of lines the botlog will keep before deleting the oldest event.
-
-    - Default value: Commented out, uncomment to enable.
-    - Format: ``200``
-    - Reasons to lower this include: you are conscious of bandwidth when hosting your webserver, you prefer (slightly) faster loading times and less RAM usage of bot.
-
 - ``startWebServer`` if true, this enables a webserver on the www/ folder.
 
     - Default value: Commented out, uncomment to enable.
     - The server page can be accessed locally, at ``http://localhost:8000/lendingbot.html`` by default.
-    - Forces ``jsonfile`` to be set using ``www/botlog.json`` (unless otherwise configured)
+    - When enabled, JSON logging is automatically enabled with output to ``logs/botlog.json``.
     - You must close bot with a keyboard interrupt (CTRL-C on Windows) to properly shutdown the server and release the socket, otherwise you may have to wait several minutes for it to release itself.
+
+- ``jsonlogsize`` is the amount of lines the botlog will keep before deleting the oldest event.
+
+    - Default value: 200
+    - Reasons to lower this include: you are conscious of bandwidth when hosting your webserver, you prefer (slightly) faster loading times and less RAM usage of bot.
 
 - ``customWebServerAddress`` is the IP address that the webserver can be found at.
 
@@ -351,7 +344,7 @@ Advanced logging and Web Display
 
     - Default value: www, uncomment to enable.
     - Format: ``PATH``
-    - This is the location relative to the running HTML GUI instance used by the bot. Be sure the ``jsonfile`` belongs to this folder.
+    - This is the location relative to the running HTML GUI instance used by the bot.
 
 
 - ``outputCurrency`` this is the ticker of the coin which you would like the website to report your summary earnings in.
@@ -406,11 +399,12 @@ To enable the plugin add ``Charts`` to the ``plugins`` config options, example::
 
     plugins = AccountStats,Charts
 
-There is an optional setting to change how frequently this plugin dumps data and where that data file is located. By default, four times per day. Example::
+There is an optional setting to change how frequently this plugin dumps data. By default, four times per day. Example::
 
     [CHARTS]
     DumpInterval = 21600
-    HistoryFile = www/history.json
+
+The history data is automatically saved to ``logs/history.json``.
 
 On a new installation, the AccountStats database may not be up to date on first iteration of the Charts plugin and no data will get dumped. Simply wait for the next interval or restart the bot after the AccountStats plugin is finished.
 
