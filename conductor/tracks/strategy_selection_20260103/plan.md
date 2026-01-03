@@ -12,14 +12,14 @@
     - [x] Sub-task: Remove legacy `frrasmin` logic branches.
 - [x] Task: Conductor - User Manual Verification 'Core Configuration and Logic Refactoring' (Protocol in workflow.md) 3fb4c0f
 
-## Phase 2: Web UI and API Updates
-- [ ] Task: Expose Strategy via Web API
-    - [ ] Sub-task: Update `WebServer.py` to include `lending_strategy` in the json output.
-    - [ ] Sub-task: Verify API response includes the new field.
-- [ ] Task: Update Frontend to React to Strategy
-    - [ ] Sub-task: Modify `lendingbot.html` to group FRR/Spread controls.
-    - [ ] Sub-task: Update `lendingbot.js` to hide/show groups based on `lending_strategy`.
-- [ ] Task: Conductor - User Manual Verification 'Web UI and API Updates' (Protocol in workflow.md)
+## Phase 2: Web UI and API Updates [checkpoint: 66f8969]
+- [x] Task: Expose Strategy via Web API 66f8969
+    - [x] Sub-task: Update `WebServer.py` to include `lending_strategy` in the json output.
+    - [x] Sub-task: Verify API response includes the new field.
+- [x] Task: Update Frontend to React to Strategy 66f8969
+    - [x] Sub-task: Modify `lendingbot.html` to group FRR/Spread controls.
+    - [x] Sub-task: Update `lendingbot.js` to hide/show groups based on `lending_strategy`.
+- [x] Task: Conductor - User Manual Verification 'Web UI and API Updates' (Protocol in workflow.md) 66f8969
 
 ## Phase 3: Documentation and Final Cleanup
 - [ ] Task: Update Configuration Documentation
