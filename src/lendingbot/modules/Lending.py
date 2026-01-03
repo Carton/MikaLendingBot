@@ -586,7 +586,7 @@ def get_frr_or_min_daily_rate(cur: str) -> RateCalcInfo:
     global frrdelta_cur_step, frrdelta_min, frrdelta_max
     if cfg := coin_cfg.get(cur):
         min_rate = cfg.minrate
-        frr_as_min = cfg.frrasmin
+        frr_as_min = cfg.lending_strategy == Config.LendingStrategy.FRR
         # Config values are now percentages (e.g., -10 means -10%)
         frr_d_min = cfg.frrdelta_min
         frr_d_max = cfg.frrdelta_max

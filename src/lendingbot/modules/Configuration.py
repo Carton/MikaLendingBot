@@ -18,6 +18,11 @@ class GapMode(StrEnum):
     RELATIVE = "relative"
 
 
+class LendingStrategy(StrEnum):
+    SPREAD = "Spread"
+    FRR = "FRR"
+
+
 @dataclass
 class CoinConfig:
     minrate: Decimal
@@ -28,7 +33,7 @@ class CoinConfig:
     gapmode: GapMode | bool
     gapbottom: Decimal
     gaptop: Decimal
-    frrasmin: bool
+    lending_strategy: LendingStrategy
     frrdelta_min: Decimal
     frrdelta_max: Decimal
 
@@ -152,7 +157,22 @@ def get_coin_cfg() -> dict[str, CoinConfig]:
                 gapmode = get_gap_mode(cur, "gapmode")
                 gapbottom = Decimal(get(cur, "gapbottom", False, 0))
                 gaptop = Decimal(get(cur, "gaptop", False, gapbottom))
-                frrasmin = getboolean(cur, "frrasmin", getboolean("BOT", "frrasmin"))
+
+                raw_strategy = get(cur, "lending_strategy", "Spread")
+                try:
+                    lending_strategy = LendingStrategy(raw_strategy)
+                except ValueError:
+                    print(
+                        f"ERROR: Invalid entry '{raw_strategy}' for [{cur}]-lending_strategy. "
+                        f"Allowed values are: {', '.join([s.value for s in LendingStrategy])}"
+                    )
+                    exit(1)
+
+                if lending_strategy == LendingStrategy.FRR and get_exchange() != "BITFINEX":
+                    raise Exception(
+                        f"FRR strategy is only supported on Bitfinex. Invalid config for [{cur}]."
+                    )
+
                 frrdelta_min = Decimal(get(cur, "frrdelta_min", -10))
                 frrdelta_max = Decimal(get(cur, "frrdelta_max", 10))
 
@@ -165,7 +185,7 @@ def get_coin_cfg() -> dict[str, CoinConfig]:
                     gapmode=gapmode,
                     gapbottom=gapbottom,
                     gaptop=gaptop,
-                    frrasmin=frrasmin,
+                    lending_strategy=lending_strategy,
                     frrdelta_min=frrdelta_min,
                     frrdelta_max=frrdelta_max,
                 )

@@ -391,7 +391,7 @@ def test_coin_config_dataclass():
     This test will fail until CoinConfig is implemented as a dataclass.
     """
     # This will raise AttributeError until implemented
-    from lendingbot.modules.Configuration import CoinConfig
+    from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
 
     cfg = CoinConfig(
         minrate=Decimal("0.0001"),
@@ -402,13 +402,14 @@ def test_coin_config_dataclass():
         gapmode="raw",
         gapbottom=Decimal("10"),
         gaptop=Decimal("20"),
-        frrasmin=True,
+        lending_strategy=LendingStrategy.SPREAD,
         frrdelta_min=Decimal("0.00001"),
         frrdelta_max=Decimal("0.00005"),
     )
 
     assert cfg.minrate == Decimal("0.0001")
     assert cfg.gapmode == "raw"
+    assert cfg.lending_strategy == LendingStrategy.SPREAD
 
 
 def test_get_coin_cfg_returns_dataclass(tmp_path):
