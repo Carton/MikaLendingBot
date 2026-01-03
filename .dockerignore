@@ -1,7 +1,6 @@
 *.pyc
 *.swp
 *.cfg
-*.cfg.example
 nohup.out
 error.log
 *.idea

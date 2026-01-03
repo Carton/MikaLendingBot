@@ -7,7 +7,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /usr/src/app
 
 # Copy dependency files first for better caching
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock README.md default.cfg.example ./
 RUN uv sync --frozen --no-cache --no-dev --no-install-project
 
 # Copy source code (excluding configs per .dockerignore)

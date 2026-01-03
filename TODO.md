@@ -7,3 +7,5 @@
 - [ ] Check and make sure new docker works
 - [ ] Make my added features configurable in web settings (like frrdelta) and add proper docs for them
 - [ ] Make rate:dur mapping configurable in Settings
+- [ ] Try to make default config usable for most user
+- [ ] Clean unused options in config
