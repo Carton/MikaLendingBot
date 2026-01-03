@@ -160,34 +160,27 @@ If ``spreadlend = 1`` and ``gapbottom = 0``, it will behave as simple lending bo
 Variable loan Length
 --------------------
 
-These values allow you to lock in a better rate for a longer period of time, as per your configuration.
+This setting allows you to lock in a better rate for a longer period of time.
 
-- ``xdaythreshold`` is the rate (in percent) where the bot will begin attempting to lend for a longer period of time.
+- ``xdaythreshold`` is a comma-separated list of rate:days pairs that defines the lending period for different interest rates.
 
-    - Default value: 0.2 percent
-    - Allowed range: 0 to 5 percent
+    - Default value: Empty (disabled)
+    - Format: ``rate1:days1,rate2:days2,rate3:days3,...``
+    - Rate values are in percent (0 to 5), days are integers (2 to 120).
+    - The bot uses linear interpolation between defined thresholds.
+    - Poloniex max lending period: 60 days
+    - Bitfinex max lending period: 120 days
 
-- ``xdays`` is the length(in days) of any loan whose rate exceeds the set xdaythreshold.
+    - Example: ``xdaythreshold = 0.050:20,0.058:30,0.060:45,0.063:60,0.070:120``
 
-    - Default value: 60 days
-    - Allowed range: 2 to 60 days
+      With this configuration:
 
-- ``xdayspread`` will spread the lending days by incrementing linear from 2 days at (xdaythreshold/xdayspread) rate to xdays days at xdaythreshold rate
-
-    - Default value: 0 (disabled)
-    - Allowed range: 0 to 10 as float
-
-    - Example: Using values: xdaythreshold = 0.2, xdays = 60, xdayspread = 2, the bot will lend:
-
-      - rates < 0.1% (=xdaythreshold/xdayspread) for 2 days
-      - rates between 0.1% and 0.2%: days will be incremented from 2 to 60 days
-
-      .. code-block:: text
-
-         (e.g. 0.1%/2d, 0.11%/8d, 0.12%/14d, 0.13%/20d, 0.14%/26d, 0.15%/32d, 0.16%/38d,
-         0.17%/44d, 0.18%/50d, 0.19%/56d, 0.20%/60d)
-
-      - rates > 0.2% for 60 days
+      - rates < 0.050% → 2 days (minimum)
+      - rates = 0.050% → 20 days
+      - rates = 0.058% → 30 days
+      - rates between thresholds → interpolated (e.g., 0.054% → ~25 days)
+      - rates = 0.070% → 120 days
+      - rates > 0.070% → 120 days (maximum configured)
 
 Auto-transfer from Exchange Balance
 -----------------------------------
