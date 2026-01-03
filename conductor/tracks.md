@@ -29,5 +29,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Lending Strategy Selection: Explicit configuration for Spread vs FRR strategies.
-*Link: [./conductor/tracks/strategy_selection_20260103/](./conductor/tracks/strategy_selection_20260103/)*
+## [x] Track: Lending Strategy Selection: Explicit configuration for Spread vs FRR strategies.
+*Link: [./conductor/archive/strategy_selection_20260103/](./conductor/archive/strategy_selection_20260103/)*

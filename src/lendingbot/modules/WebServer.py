@@ -198,16 +198,16 @@ def start_web_server() -> None:
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
-                    
-                    strategies = {cur: cfg.lending_strategy for cur, cfg in Lending.coin_cfg.items()}
-                    
+
+                    strategies = {
+                        cur: cfg.lending_strategy for cur, cfg in Lending.coin_cfg.items()
+                    }
+
                     status_data = {
                         "lending_paused": Lending.lending_paused,
-                        "lending_strategies": strategies
+                        "lending_strategies": strategies,
                     }
-                    self.wfile.write(
-                        json.dumps(status_data).encode("utf-8")
-                    )
+                    self.wfile.write(json.dumps(status_data).encode("utf-8"))
                 elif self.path == "/get_settings":
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")

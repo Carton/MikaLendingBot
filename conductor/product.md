@@ -18,6 +18,7 @@ Mika Lending Bot is an automated cryptocurrency lending tool designed for exchan
 - **Python 3 Modernization:** Complete the transition to Python 3.12+ to leverage modern language features and maintainability.
 
 ## Key Features & Technical Requirements
+- **Strategy Selection:** Explicit, mutually exclusive configuration for lending strategies (e.g., Spread vs. FRR), including robust validation for exchange compatibility.
 - **Modern Migration:** Full migration of syntax and libraries to Python 3.12+, removing legacy Python 2 dependencies.
 - **Modern Tooling:** Integration of `uv` for dependency management, `ruff` for linting/formatting, and `mypy` for strict type checking.
 - **Containerization:** Update Docker and Docker Compose configurations for seamless, cross-environment deployment.
