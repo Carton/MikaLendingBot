@@ -158,10 +158,14 @@ def start_web_server() -> None:
                 return str(final_path)
 
             def end_headers(self) -> None:
-                # Prevent caching for JSON files (dynamic data)
-                if self.path.split("?")[0].endswith(".json"):
-                    self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+                # Prevent caching for JSON files (dynamic data) and static assets to ensure updates are seen immediately
+                path = self.path.split("?")[0]
+                if path.endswith((".json", ".js", ".css", ".html", ".htm")):
+                    # "no-cache" means: cache is allowed, but MUST revalidate with server (check ETag/Last-Modified) before use.
+                    # This allows 304 Not Modified responses (fast) while ensuring updates are seen.
+                    self.send_header("Cache-Control", "no-cache, must-revalidate")
                     self.send_header("Pragma", "no-cache")
+                    # Expires 0 is still good for broad compatibility to force revalidation check
                     self.send_header("Expires", "0")
                 super().end_headers()
 
