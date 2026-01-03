@@ -1,7 +1,7 @@
 # Implementation Plan - Lending Strategy Selection
 
 ## Phase 1: Core Configuration and Logic Refactoring
-- [~] Task: Remove `frrasmin` and implement `lending_strategy` in Configuration
+- [x] Task: Remove `frrasmin` and implement `lending_strategy` in Configuration 52a829a
     - [ ] Sub-task: Create tests for new config validation (ensure FRR fails on non-Bitfinex).
     - [ ] Sub-task: Refactor `Configuration.py` to replace `frrasmin` with `lending_strategy`.
     - [ ] Sub-task: Implement validation logic to reject FRR strategy on unsupported exchanges.
