@@ -260,6 +260,7 @@ function loadData() {
         var file = 'logs/botlog.json?_t=' + new Date().getTime();
         $.getJSON(file, function (data) {
             updateJson(data);
+            fetchStatus(); // Update status/strategy info along with data
             // reload every 30sec
             setTimeout('loadData()', refreshRate * 1000)
         }).fail(function (d, textStatus, error) {
@@ -508,11 +509,31 @@ function updateButtonStatus(isPaused) {
     }
 }
 
+function fetchStatus() {
+    if (window.location.protocol !== "file:") {
+        $.get('/get_status', function (data) {
+            updateButtonStatus(data.lending_paused);
+            
+            // Handle strategies
+            if (data.lending_strategies) {
+                var strategyNames = Object.values(data.lending_strategies);
+                var uniqueStrategies = [...new Set(strategyNames)];
+                var strategyText = uniqueStrategies.join(", ");
+                $('#current-strategy-name').text(strategyText);
+                
+                // Show/Hide FRR panel
+                if (uniqueStrategies.indexOf('FRR') !== -1) {
+                    $('#frr-strategy-panel').show();
+                } else {
+                    $('#frr-strategy-panel').hide();
+                }
+            }
+        });
+    }
+}
+
 function handle_pause_button() {
-    // Query the current status
-    $.get('/get_status', function (data) {
-        updateButtonStatus(data.lending_paused);
-    });
+    fetchStatus();
 
     $('#pauseButton').click(function () {
         var isPaused = $('#pauseButton').text().trim() == 'Resume Lending';

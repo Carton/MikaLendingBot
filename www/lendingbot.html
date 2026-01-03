@@ -173,48 +173,16 @@
                     <h4 class="modal-title">Settings</h4>
                 </div>
                 <div class="modal-body">
+                    <div id="active-strategy-info" class="alert alert-info" style="margin-bottom: 15px; padding: 8px 15px;">
+                        <strong>Current Strategy:</strong> <span id="current-strategy-name">Loading...</span>
+                    </div>
                     <form>
                         <div class="form-group">
                             <label for="refresh_interval">Page Refresh interval (10-60 seconds)</label>
                             <input type="number" class="form-control" id="refresh_interval" placeholder="(10-60)">
                         </div>
 
-                        <!-- COMMENTED OUT: These settings are not currently used
-                        <div class="form-group">
-                            <h5>Date ranges to display earnings for</h5>
-                            <label class="checkbox-inline">
-                                <input data-timespan="Hour" type="checkbox"> Hourly
-                            </label>
-                            <label class="checkbox-inline">
-                                <input data-timespan="Day" type="checkbox"> Daily
-                            </label>
-                            <label class="checkbox-inline">
-                                <input data-timespan="Week" type="checkbox"> Weekly
-                            </label>
-                            <label class="checkbox-inline">
-                                <input data-timespan="Month" type="checkbox"> Monthly
-                            </label>
-                            <label class="checkbox-inline">
-                                <input data-timespan="Year" type="checkbox"> Yearly
-                            </label>
-                        </div>
-
-                        <div class="form-group">
-                            <h5>Bitcoin Display Unit</h5>
-                            <label class="radio-inline">
-                                <input value="BTC" type="radio" name="btcDisplayUnit"> BTC
-                            </label>
-                            <label class="radio-inline">
-                                <input value="mBTC" type="radio" name="btcDisplayUnit"> mBTC
-                            </label>
-                            <label class="radio-inline">
-                                <input value="Bits" type="radio" name="btcDisplayUnit"> Bits
-                            </label>
-                            <label class="radio-inline">
-                                <input value="Satoshi" type="radio" name="btcDisplayUnit"> Satoshi
-                            </label>
-                        </div>
-                        -->
+                        <!-- ... (skipping commented out blocks) ... -->
 
                         <div class="form-group">
                             <h5>Which earnings are displayed in selected output currency</h5>
@@ -237,7 +205,7 @@
                             </label>
                         </div>
 
-                        <div class="form-group">
+                        <div id="frr-strategy-panel" class="form-group" style="display: none;">
                             <h5>FRR Rate Adjustment</h5>
                             <p class="small">Adjusts lending rate relative to FRR (Flash Return Rate). Bot cycles through 5 steps.<br>Example: -20% means rate = FRR × 0.80</p>
                             <div id="frr-slider" style="margin: 35px 10px 25px 10px;"></div>
