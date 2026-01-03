@@ -15,6 +15,11 @@ all_currencies = STR,BTC,BTS,CLAM,DOGE,DASH,LTC,MAID,XMR,XRP,ETH,FCT,#BTG
 all_currencies = USD,BTC,BCH,ETH,XRP,IOT,XMR,LTC,OMG,ETC,EOS,DSH,ZEC,#BTG
 
 [BOT]
+#Lending Strategy Selection. "Spread" or "FRR" (Bitfinex only).
+# Spread: Standard gap/spread based lending.
+# FRR: Flash Return Rate based lending. Forces spreadlend = 1.
+lending_strategy = Spread
+
 #Debug mode, set to True to enable API related verbose debug messages in the console
 api_debug_log = False
 
@@ -90,14 +95,10 @@ hideCoins = True
 #If set to 0 or commented: the bot will use the maxtolend or maxpercenttolend all the time. (0.0031-5)
 #maxtolendrate = 0
 
-#FRR as min, tells the bot whether or not to use the flash return rate (https://support.bitfinex.com/hc/en-us/articles/213919009-What-is-the-Flash-Return-Rate-)
-#instead of mindailyrate. This only works on bitfinex.
-#frrasmin = False
-
 # FRR Rate Adjustment (frrdelta_min/max) adjusts the lending rate relative to FRR.
 # Values are percentages: -10 means 10% below FRR, +20 means 20% above FRR.
 # The bot cycles through 5 steps between min and max. Range: -50 to +50.
-# This only works on Bitfinex with frrasmin = True.
+# This only works on Bitfinex with lending_strategy = FRR.
 frrdelta_min = -10
 frrdelta_max = 10
 
@@ -143,9 +144,10 @@ plugins = AccountStats,Charts
 #gapmode = RawBTC
 #gapbottom = 20
 #gaptop = 400
-#frrasmin = False
 #frrdelta_min = -10
 #frrdelta_max = 10
+#lending_strategy = Spread
+#lending_strategy = Spread
 
 #[CLAM]
 #minloansize = 1
@@ -157,9 +159,9 @@ plugins = AccountStats,Charts
 #gapmode = raw
 #gapbottom = 10
 #gaptop = 20
-#frrasmin = False
 #frrdelta_min = -10
 #frrdelta_max = 10
+#lending_strategy = Spread
 
 
 [notifications]

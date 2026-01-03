@@ -98,17 +98,28 @@ Min and Max Rates
     - Allowed range: 0.0031 to 5 percent
     - 2% is the default value offered by the exchange, but there is little reason not to set it higher if you feel optimistic.
 
-- ``frrasmin`` tells the bot whether or not to use the `flash return rate <https://support.bitfinex.com/hc/en-us/articles/213919009-What-is-the-Flash-Return-Rate->`_ for ``mindailyrate``.
-    - Default value: False
-    - Allowed range: True or False
-    - This will only be used if the frr is above your ``mindailyrate``. So which ever is highest at the time of the loan will be used.
-    - This options only works on Bitfinex.
+Lending Strategies
+------------------
 
-- ``frrdelta_min`` and ``frrdelta_max`` are the delta range based on the `flash return rate <https://support.bitfinex.com/hc/en-us/articles/115003284729-What-is-the-FRR-Delta->`
-    - Default value: 0.0000/0.00008
-    - Allowed range: 
-    - This will only be used if the frr is above your ``mindailyrate``. So which ever is highest at the time of the loan will be used.
-    - This options only works on Bitfinex.
+The bot supports different lending strategies. You can select the active strategy using the ``lending_strategy`` parameter.
+
+- ``lending_strategy`` determines the logic used for placing lend offers.
+
+    - Allowed values: ``Spread``, ``FRR``
+    - Default value: ``Spread``
+    - **Spread Strategy**: Standard gap/spread based lending. Uses ``spreadlend``, ``gapMode``, ``gapbottom``, and ``gaptop`` to distribute offers across the order book.
+    - **FRR Strategy**: Flash Return Rate based lending (Bitfinex only). It uses the exchange's FRR as a dynamic base for your ``mindailyrate``.
+        - When active, it forces ``spreadlend = 1`` internally.
+        - It enables the use of ``frrdelta_min`` and ``frrdelta_max`` for rate adjustments.
+        - If selected on a non-Bitfinex exchange, the bot will fail to start.
+
+- ``frrdelta_min`` and ``frrdelta_max`` are the adjustment range (in percent) relative to the `flash return rate <https://support.bitfinex.com/hc/en-us/articles/115003284729-What-is-the-FRR-Delta->`_.
+
+    - Default value: ``-10`` / ``10``
+    - Range: -50 to +50
+    - These values are relative percentages of the FRR. For example, a setting of ``-20`` means the target rate will be ``FRR * 0.80``.
+    - The bot cycles through 5 steps between min and max to improve chances of being filled.
+    - This option only works on Bitfinex when ``lending_strategy = FRR``.
 
 
 Spreading your Lends
@@ -294,9 +305,9 @@ Configuration should look like this::
     gapmode = raw
     gapbottom = 10
     gaptop = 20
-    frrasmin = true
-    frrdelta_min = 0.00000
-    frrdelta_max = 0.00008
+    lending_strategy = FRR
+    frrdelta_min = -10
+    frrdelta_max = 10
 
 
 Advanced logging and Web Display
