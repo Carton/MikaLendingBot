@@ -146,6 +146,7 @@ def get_exchange() -> str:
 
 def get_coin_cfg() -> dict[str, CoinConfig]:
     coin_cfg: dict[str, CoinConfig] = {}
+    default_strategy = get("BOT", "lending_strategy", "Spread")
     for cur in get_all_currencies():
         if config.has_section(cur):
             try:
@@ -158,7 +159,7 @@ def get_coin_cfg() -> dict[str, CoinConfig]:
                 gapbottom = Decimal(get(cur, "gapbottom", False, 0))
                 gaptop = Decimal(get(cur, "gaptop", False, gapbottom))
 
-                raw_strategy = get(cur, "lending_strategy", "Spread")
+                raw_strategy = get(cur, "lending_strategy", default_strategy)
                 try:
                     lending_strategy = LendingStrategy(raw_strategy)
                 except ValueError:

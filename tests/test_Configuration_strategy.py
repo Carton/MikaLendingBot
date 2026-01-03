@@ -124,13 +124,43 @@ lending_strategy = FRR
     Configuration.init(str(config_file))
 
     # Depending on implementation, this might raise SystemExit or specific Exception
-    # The current code uses print and raise in get_coin_cfg
     with patch("builtins.print"), pytest.raises(Exception) as cm:
         Configuration.get_coin_cfg()
 
-    assert "FRR strategy is only supported on Bitfinex" in str(
-        cm.value
-    ) or "parsed incorrectly" in str(cm.value)
+    assert "FRR strategy is only supported on Bitfinex" in str(cm.value)
+
+
+def test_lending_strategy_global_bot_config_validation(tmp_path):
+    """
+    Test that a global [BOT] lending_strategy=FRR is inherited and validated.
+    It should raise an error if Exchange is not Bitfinex.
+    """
+    config_file = tmp_path / "global_strategy.cfg"
+    content = """
+[API]
+exchange = Poloniex
+
+[BOT]
+lending_strategy = FRR
+
+[BTC]
+mindailyrate = 0.01
+maxactiveamount = 100
+maxtolend = 1000
+maxpercenttolend = 0.5
+maxtolendrate = 0.05
+gapmode = raw
+gapbottom = 10
+gaptop = 20
+"""
+    config_file.write_text(content)
+    Configuration.init(str(config_file))
+
+    # This SHOULD raise an exception because [BOT] has FRR and Exchange is Poloniex
+    with patch("builtins.print"), pytest.raises(Exception) as cm:
+        Configuration.get_coin_cfg()
+
+    assert "FRR strategy is only supported on Bitfinex" in str(cm.value)
 
 
 def test_coin_config_fields():
