@@ -3,11 +3,13 @@ from __future__ import annotations
 import tomllib
 from decimal import Decimal
 from enum import Enum
-# FIXME: Fix noqa and type: ignore below
-from pathlib import Path  # noqa: TC003
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
+
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # --- Enums ---
@@ -36,6 +38,7 @@ class ApiConfig(BaseModel):
     exchange: Exchange = Exchange.BITFINEX
     apikey: SecretStr | None = None
     secret: SecretStr | None = None
+    all_currencies: list[str] = Field(default_factory=list)
 
 
 class WebServerConfig(BaseModel):
@@ -52,6 +55,8 @@ class BotConfig(BaseModel):
     period_inactive: float = Field(300.0, ge=1, le=3600)
     request_timeout: int = Field(30, ge=1, le=180)
     api_debug_log: bool = False
+    json_file: str = "www/botlog.json"
+    json_log_size: int = 200
     output_currency: str = "BTC"
     keep_stuck_orders: bool = True
     hide_coins: bool = True
@@ -126,7 +131,9 @@ class MarketAnalysisConfig(BaseModel):
 class PluginsConfig(BaseModel):
     account_stats: dict[str, Any] = Field(default_factory=dict)
     charts: dict[str, Any] = Field(default_factory=dict)
-    market_analysis: MarketAnalysisConfig = Field(default_factory=lambda: MarketAnalysisConfig())
+    market_analysis: MarketAnalysisConfig = Field(
+        default_factory=lambda: MarketAnalysisConfig()
+    )
 
 
 class NotificationConfig(BaseModel):
@@ -159,7 +166,7 @@ class RootConfig(BaseModel):
         2. [coin.default] settings
         3. Pydantic Model defaults
         """
-        defaults = self.coin.get("default", CoinConfig())  # type: ignore[call-arg]
+        defaults = self.coin.get("default", CoinConfig())
         default_dict = defaults.model_dump(exclude_unset=True)
 
         specific = self.coin.get(symbol)
@@ -172,7 +179,7 @@ class RootConfig(BaseModel):
         merged_dict = default_dict.copy()
         merged_dict.update(specific_dict)
 
-        return CoinConfig(**merged_dict)  # type: ignore[call-arg]
+        return CoinConfig(**merged_dict)
 
 
 # --- Global Instance & accessors ---

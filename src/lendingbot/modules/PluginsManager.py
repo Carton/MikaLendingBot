@@ -1,24 +1,29 @@
 from typing import Any
 
 from .. import plugins
+from . import Configuration
 from .Logger import Logger
 
 
 api: Any = None
 log: Logger | None = None
-config: Any = None
+config: Configuration.RootConfig = None # type: ignore
 notify_config: dict[str, Any] = {}
 active_plugins: list[Any] = []
 
 
-def init(cfg1: Any, api1: Any, log1: Logger, notify_conf1: dict[str, Any]) -> None:
+def init(cfg1: Configuration.RootConfig, api1: Any, log1: Logger, notify_conf1: dict[str, Any]) -> None:
     global api, log, config, notify_config
     api = api1
     log = log1
     config = cfg1
     notify_config = notify_conf1
 
-    plugin_names = config.get_plugins_config()
+    plugin_names = []
+    if config.plugins.account_stats.get("enabled"):
+        plugin_names.append("AccountStats")
+    if config.plugins.charts.get("enabled"):
+        plugin_names.append("Charts")
     for name in plugin_names:
         try:
             plugin_class = getattr(plugins, name)

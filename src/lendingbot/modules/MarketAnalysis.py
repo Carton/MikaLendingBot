@@ -10,7 +10,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .Data import truncate
+from . import Configuration, Data
 from .ExchangeApi import ApiError
 
 
@@ -19,17 +19,15 @@ class MarketDataException(Exception):
 
 
 class MarketAnalysis:
-    def __init__(self, config: Any, api: Any, db_dir: Path | None = None) -> None:
+    def __init__(self, config: Configuration.RootConfig, api: Any, db_dir: Path | None = None) -> None:
         self.config = config
         self.api = api
-        self.currencies_to_analyse = self.config.get_currencies_list(
-            "analyseCurrencies", "MarketAnalysis"
-        )
-        self.update_interval = int(
-            self.config.get("MarketAnalysis", "analyseUpdateInterval", 10, 1, 3600)
-        )
-        self.lending_style = int(self.config.get("MarketAnalysis", "lendingStyle", 75, 1, 99))
-        self.recorded_levels = 10
+        
+        ma_config = self.config.plugins.market_analysis
+        
+        self.currencies_to_analyse = ma_config.analyse_currencies
+        self.update_interval = ma_config.update_interval
+        self.lending_style = ma_config.lending_style
 
         self.modules_dir = Path(__file__).resolve().parent
         self.top_dir = self.modules_dir.parent
@@ -38,49 +36,23 @@ class MarketAnalysis:
         else:
             self.db_dir = self.top_dir / "market_data"
 
-        self.recorded_levels = int(self.config.get("MarketAnalysis", "recorded_levels", 3, 1, 100))
-        self.data_tolerance = float(self.config.get("MarketAnalysis", "data_tolerance", 15, 10, 90))
-        self.ma_debug_log = self.config.getboolean("MarketAnalysis", "ma_debug_log")
-        self.MACD_long_win_seconds = int(
-            self.config.get(
-                "MarketAnalysis", "MACD_long_win_seconds", 60 * 30, 60, 60 * 60 * 24 * 7
-            )
-        )
-        self.percentile_seconds = int(
-            self.config.get(
-                "MarketAnalysis", "percentile_seconds", 60 * 60 * 24, 60 * 60, 60 * 60 * 24 * 14
-            )
-        )
+        self.recorded_levels = ma_config.recorded_levels
+        self.data_tolerance = ma_config.data_tolerance
+        self.ma_debug_log = ma_config.ma_debug_log
+        self.MACD_long_win_seconds = ma_config.macd_long_window
+        self.percentile_seconds = ma_config.percentile_window
+        
+        # Derived values logic
         keep_sec = max(self.MACD_long_win_seconds, self.percentile_seconds)
-        self.keep_history_seconds = int(
-            self.config.get(
-                "MarketAnalysis",
-                "keep_history_seconds",
-                int(keep_sec * 1.1),
-                int(keep_sec * 1.1),
-                60 * 60 * 24 * 14,
-            )
-        )
-        self.MACD_short_win_seconds = int(
-            self.config.get(
-                "MarketAnalysis",
-                "MACD_short_win_seconds",
-                int(self.MACD_long_win_seconds / 12),
-                1,
-                self.MACD_long_win_seconds / 2,
-            )
-        )
-        self.daily_min_multiplier = float(self.config.get("Daily_min", "multiplier", 1.05, 1))
-        self.delete_thread_sleep = float(
-            self.config.get(
-                "MarketAnalysis",
-                "delete_thread_sleep",
-                self.keep_history_seconds / 2,
-                60,
-                60 * 60 * 2,
-            )
-        )
-        self.exchange = self.config.get_exchange()
+        self.keep_history_seconds = int(keep_sec * 1.1)
+        
+        self.MACD_short_win_seconds = int(self.MACD_long_win_seconds / 12)
+        
+        self.daily_min_multiplier = ma_config.daily_min_multiplier
+        
+        self.delete_thread_sleep = float(self.keep_history_seconds / 2)
+        
+        self.exchange = self.config.api.exchange.value
 
         if len(self.currencies_to_analyse) != 0:
             for currency in self.currencies_to_analyse:
@@ -249,7 +221,7 @@ class MarketAnalysis:
         Query the database (cur) for rates that are within the supplied number of seconds and now.
         """
         request_seconds = int(seconds * 1.1)
-        full_list = self.config.get_all_currencies()
+        full_list = self.config.api.all_currencies
         if isinstance(cur, sqlite3.Connection):
             db_con = cur
         else:
@@ -335,7 +307,7 @@ class MarketAnalysis:
                     rates_df.rate0.values.tolist(), float(self.lending_style)
                 )
             if method == "MACD":
-                macd_rate = truncate(self.get_MACD_rate(cur, rates_df), 6)
+                macd_rate = Data.truncate(self.get_MACD_rate(cur, rates_df), 6)
                 if self.ma_debug_log:
                     print(
                         f"Cur:{cur}, MACD:{macd_rate:.6f}, Perc:{self.get_percentile(rates_df.rate0.values.tolist(), float(self.lending_style)):.6f}, Best:{rates_df.rate0.iloc[-1]:.6f}"
@@ -369,10 +341,10 @@ class MarketAnalysis:
             lending_style: The percentile to target (1-99).
 
         Returns:
-            The calculated percentile rate, truncated to 6 decimals.
+            The calculated percentile rate, Data.truncated to 6 decimals.
         """
         result = float(np.percentile(rates, int(lending_style)))
-        return float(truncate(result, 6))
+        return float(Data.truncate(result, 6))
 
     def get_MACD_rate(self, cur: str, rates_df: pd.DataFrame) -> float:
         """
@@ -414,7 +386,7 @@ class MarketAnalysis:
 
     def create_connection(self, cur: str, db_path: str | None = None) -> sqlite3.Connection | None:
         if db_path is None:
-            prefix = self.config.get_exchange()
+            prefix = self.config.api.exchange.value
 
             db_path_obj = self.db_dir / f"{prefix}-{cur}.db"
             db_path = str(db_path_obj)

@@ -21,8 +21,8 @@ import urllib.error
 from pathlib import Path
 from typing import Any, NoReturn
 
-from .modules import Configuration as Config
-from .modules import Data, Lending, MaxToLend, PluginsManager, WebServer
+from .modules import Configuration
+from .modules import Data, Lending, MaxToLend, PluginsManager, WebServer, MarketAnalysis
 from .modules.ExchangeApi import ApiError
 from .modules.ExchangeApiFactory import ExchangeApiFactory
 from .modules.Logger import Logger
@@ -83,54 +83,67 @@ def main() -> NoReturn:
     dry_run = bool(args.dryrun)
     config_location = args.config or "default.cfg"
 
-    # 1. Load config
-    Config.init(config_location)
+    # Load configuration
+    try:
+        # Default to 'default.toml' if it exists
+        config_path = Path("default.toml")
+        if args.config:
+            config_path = Path(args.config)
+            if config_path.suffix == '.cfg':
+                print("Warning: .cfg files are legacy. Please migrate to .toml.")
+                # We could support legacy loading via a bridge, but for now we enforce TOML
+                # or we just fail. User instruction says 'migrate'
+        
+        config = Configuration.load_config(config_path)
+    except FileNotFoundError:
+        print(f"Config file '{config_path}' not found. Please create one.")
+        sys.exit(1)
+    except Exception as ex:
+        print(f"Error loading configuration: {ex}")
+        sys.exit(1)
 
-    if args.verbose:
-        Lending.debug_on = True
-        if not Config.config.has_section("BOT"):
-            Config.config.add_section("BOT")
-        Config.config.set("BOT", "api_debug_log", "True")
+    try:
+        # Data module doesn't need config init anymore based on our analysis
+        pass 
+    except Exception as ex:
+        print("Error initializing Data module: {0}".format(ex))
+        sys.exit(1)
 
-    output_currency = str(Config.get("BOT", "outputCurrency", "BTC"))
-    exchange = Config.get_exchange()
+    # ... Logger init ...
+    # Initialize the logger with the new config structure
+    try:
+        log = Logger(
+            json_file=config.bot.json_file,
+            json_log_size=config.bot.json_log_size,
+            exchange=config.api.exchange.value,
+            label=config.bot.label,
+        )
+    except Exception as ex:
+        print("Error initializing Logger: {0}".format(ex))
+        sys.exit(1)
 
-    # Configure web server and JSON logging
-    # Note: When webserver is enabled, json logging is always enabled with hardcoded paths
-    # because the frontend expects files at specific locations (logs/botlog.json)
-    web_server_enabled = Config.getboolean("BOT", "startWebServer")
-    json_file = "logs/botlog.json" if web_server_enabled else ""
-    json_log_size = int(Config.get("BOT", "jsonlogsize", 200))
+    try:
+        api = ExchangeApiFactory.createApi(config.api.exchange.value, config, log)
+    except Exception as ex:
+        print("Error initializing API: {0}".format(ex))
+        sys.exit(1)
 
-    if web_server_enabled:
-        WebServer.initialize_web_server(Config)
-
-    # Configure logging
-    log = Logger(json_file, json_log_size, exchange)
-
-    # Initialize the remaining stuff
-    api = ExchangeApiFactory.createApi(exchange, Config, log)
-    MaxToLend.init(Config, log)
-    Data.init(api, log)
-    Config.init(config_location, Data)
-    notify_conf = Config.get_notification_config()
-
-    analysis = None
-    if Config.has_option("MarketAnalysis", "analyseCurrencies"):
-        from .modules.MarketAnalysis import MarketAnalysis
-
-        analysis = MarketAnalysis(Config, api)
-        analysis.run()
-
-    Lending.init(Config, api, log, Data, MaxToLend, dry_run, analysis, notify_conf)
+    # Initialize sub-modules
+    try:
+        notify_conf = config.notifications.model_dump()
+        # Pass the new config object
+        Lending.init(config, api, log, Data, MaxToLend, args.dryrun, MarketAnalysis, notify_conf)
+    except Exception as ex:
+        print("Error initializing Lending: {0}".format(ex))
+        sys.exit(1)
 
     # Log active lending strategies (must be after Lending.init where coin_cfg is populated)
     if Lending.coin_cfg:
-        strategies_log = [f"{cur}: {cfg.lending_strategy}" for cur, cfg in Lending.coin_cfg.items()]
+        strategies_log = [f"{cur}: {cfg.strategy}" for cur, cfg in Lending.coin_cfg.items()]
         print(f"Active Lending Strategies: {', '.join(strategies_log)}")
 
     # Load plugins
-    PluginsManager.init(Config, api, log, notify_conf)
+    PluginsManager.init(config, api, log, notify_conf)
 
     # Start DNS cache management
     prv_getaddrinfo = socket.getaddrinfo
@@ -146,14 +159,14 @@ def main() -> NoReturn:
 
     socket.getaddrinfo = new_getaddrinfo  # type: ignore[assignment]
 
-    log.log(f"Welcome to {Config.get('BOT', 'label', 'Lending Bot')} on {exchange}")
+    log.log(f"Welcome to {config.bot.label} on {config.api.exchange.value}")
 
     try:
         last_summary_time = 0.0
         while True:
             try:
                 dns_cache.clear()  # Flush DNS Cache
-                Data.update_conversion_rates(output_currency, web_server_enabled)
+                Data.update_conversion_rates(config.bot.output_currency, config.bot.web.enabled)
 
                 if Lending.lending_paused != Lending.last_lending_status:
                     if not Lending.lending_paused:
@@ -217,7 +230,7 @@ def main() -> NoReturn:
                 time.sleep(Lending.get_sleep_time())
 
     except KeyboardInterrupt:
-        if web_server_enabled:
+        if config.bot.web.enabled:
             WebServer.stop_web_server()
         PluginsManager.on_bot_stop()
         log.log("bye")

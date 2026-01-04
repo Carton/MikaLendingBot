@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-from . import Lending
+from . import Configuration, Lending
 
 
 server: socketserver.TCPServer | None = None
@@ -16,29 +16,16 @@ web_server_port: str = "8000"
 web_server_template: str = "www"
 
 
-def initialize_web_server(config: Any) -> None:
+def initialize_web_server(config: Configuration.RootConfig) -> None:
     """
     Setup the web server, retrieving the configuration parameters
     and starting the web server thread
     """
     global web_server_ip, web_server_port, web_server_template
 
-    # Check for custom web server address
-    composite_web_server_address = config.get("BOT", "customWebServerAddress", "0.0.0.0").split(":")
-
-    # associate web server ip address
-    web_server_ip = composite_web_server_address[0]
-
-    # check for IP:PORT legacy format
-    if len(composite_web_server_address) > 1:
-        # associate web server port
-        web_server_port = composite_web_server_address[1]
-    else:
-        # Check for custom web server port
-        web_server_port = config.get("BOT", "customWebServerPort", "8000")
-
-    # Check for custom web server template
-    web_server_template = config.get("BOT", "customWebServerTemplate", "www")
+    web_server_ip = config.bot.web.host
+    web_server_port = str(config.bot.web.port)
+    web_server_template = config.bot.web.template
 
     print(
         f"Starting WebServer at {web_server_ip} on port {web_server_port} with template {web_server_template}"
@@ -200,7 +187,7 @@ def start_web_server() -> None:
                     self.end_headers()
 
                     strategies = {
-                        cur: cfg.lending_strategy for cur, cfg in Lending.coin_cfg.items()
+                        cur: cfg.strategy for cur, cfg in Lending.coin_cfg.items()
                     }
 
                     status_data = {

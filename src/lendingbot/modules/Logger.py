@@ -7,7 +7,6 @@ import time
 from collections import deque
 from typing import Any
 
-from . import Configuration as Config
 from .Notify import send_notification
 from .Utils import format_amount_currency, format_rate_pct
 
@@ -42,7 +41,7 @@ class ConsoleOutput:
 
 
 class JsonOutput:
-    def __init__(self, file_path: str, log_limit: int, exchange: str = "") -> None:
+    def __init__(self, file_path: str, log_limit: int, exchange: str = "", label: str = "Lending Bot") -> None:
         self.jsonOutputFile: str = file_path
         self.jsonOutput: dict[str, Any] = {}
         self.jsonOutputCoins: dict[str, Any] = {}
@@ -50,7 +49,7 @@ class JsonOutput:
         self.clearStatusValues()
         self.jsonOutputLog: deque[str] = deque(maxlen=log_limit)
         self.jsonOutput["exchange"] = exchange
-        self.jsonOutput["label"] = Config.get("BOT", "label", "Lending Bot")
+        self.jsonOutput["label"] = label
 
     def status(self, status: str, time_str: str, days_remaining_msg: str) -> None:
         self.jsonOutput["last_update"] = time_str + days_remaining_msg
@@ -95,12 +94,13 @@ class Logger:
         json_file: str = "",
         json_log_size: int = -1,
         exchange: str = "",
+        label: str = "Lending Bot",
     ) -> None:
         self._lent: str = ""
         self._daysRemaining: str = ""
         self.output: JsonOutput | ConsoleOutput
         if json_file != "" and json_log_size != -1:
-            self.output = JsonOutput(json_file, json_log_size, exchange)
+            self.output = JsonOutput(json_file, json_log_size, exchange, label)
         else:
             self.output = ConsoleOutput()
         self.refreshStatus()

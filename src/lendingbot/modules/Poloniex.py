@@ -9,37 +9,30 @@ from typing import Any, cast
 
 import requests
 
-from . import Configuration as Config
+from . import Configuration
 from .ExchangeApi import ApiError, ExchangeApi
 
-
-def post_process(before: dict[str, Any]) -> dict[str, Any]:
-    after = before
-
-    # Add timestamps if there isn't one but is a datetime
-    if "return" in after and isinstance(after["return"], list):
-        for x in range(len(after["return"])):
-            item = after["return"][x]
-            if isinstance(item, dict) and "datetime" in item and "timestamp" not in item:
-                item["timestamp"] = float(ExchangeApi.create_time_stamp(item["datetime"]))
-
-    return after
-
+def post_process(json_ret: Any) -> Any:
+    if isinstance(json_ret, dict) and "error" in json_ret:
+        raise ApiError(json_ret["error"])
+    return json_ret
 
 class Poloniex(ExchangeApi):
-    def __init__(self, cfg: Any, log: Any) -> None:
+    def __init__(self, cfg: Configuration.RootConfig, log: Any) -> None:
         super().__init__(cfg, log)
         self.cfg = cfg
         self.log = log
-        self.APIKey = self.cfg.get("API", "apikey", None)
-        self.Secret = self.cfg.get("API", "secret", None)
+        # Handle SecretStr: get_secret_value() if they are not None
+        self.APIKey = self.cfg.api.apikey.get_secret_value() if self.cfg.api.apikey else ""
+        self.Secret = self.cfg.api.secret.get_secret_value() if self.cfg.api.secret else ""
         self.req_per_period = 6
         self.default_req_period = 1000  # milliseconds
         self.req_period = float(self.default_req_period)
         self.req_time_log: deque[float] = deque(maxlen=self.req_per_period)
         self.lock = threading.RLock()
-        socket.setdefaulttimeout(int(Config.get("BOT", "timeout", 30, 1, 180)))
-        self.api_debug_log = self.cfg.getboolean("BOT", "api_debug_log")
+        
+        socket.setdefaulttimeout(self.cfg.bot.request_timeout)
+        self.api_debug_log = self.cfg.bot.api_debug_log
 
     def limit_request_rate(self) -> None:
         super().limit_request_rate()
@@ -73,7 +66,7 @@ class Poloniex(ExchangeApi):
 
         try:
             headers = {"Connection": "close"}
-            timeout = int(Config.get("BOT", "timeout", 30, 1, 180))
+            timeout = int(self.cfg.bot.request_timeout)
 
             if command in ("returnTicker", "return24hVolume"):
                 url = f"https://poloniex.com/public?command={command}"

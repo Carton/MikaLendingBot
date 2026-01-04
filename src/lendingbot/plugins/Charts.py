@@ -31,9 +31,9 @@ class Charts(Plugin):
 
         self.db = sqlite3.connect(DB_PATH, check_same_thread=False)
         self.last_dump = 0
-        self.dump_interval = int(self.config.get("CHARTS", "DumpInterval", 21600))
+        self.dump_interval = int(self.config.plugins.charts.get("DumpInterval", 21600))
         # Note: history_file is hardcoded because frontend expects it at logs/history.json
-        self.activeCurrencies = self.config.get_all_currencies()
+        self.activeCurrencies = self.config.api.all_currencies
 
     def before_lending(self) -> None:
         return

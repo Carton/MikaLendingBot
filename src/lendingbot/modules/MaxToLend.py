@@ -14,7 +14,7 @@ min_loan_size: Decimal = Decimal("0.001")
 log: Logger | None = None
 
 
-def init(config: Any, log1: Logger) -> None:
+def init(config: Configuration.RootConfig, log1: Logger) -> None:
     """
     Initializes the MaxToLend module with configuration settings.
 
@@ -23,11 +23,17 @@ def init(config: Any, log1: Logger) -> None:
         log1: The logger instance.
     """
     global coin_cfg, max_to_lend_rate, max_to_lend, max_percent_to_lend, min_loan_size, log
-    coin_cfg = config.get_coin_cfg()
-    max_to_lend = Decimal(config.get("BOT", "maxtolend", False, 0))
-    max_percent_to_lend = Decimal(config.get("BOT", "maxpercenttolend", False, 0, 100)) / 100
-    max_to_lend_rate = Decimal(config.get("BOT", "maxtolendrate", False, 0.003, 5)) / 100
-    min_loan_size = Decimal(config.get("BOT", "minloansize", None, 0.001))
+    
+    # Populate coin_cfg with configured coins (merged with defaults by get_coin_config)
+    coin_cfg = {}
+    for symbol in config.coin:
+         coin_cfg[symbol] = config.get_coin_config(symbol)
+         
+    default_coin = config.get_coin_config("default")
+    max_to_lend = default_coin.max_to_lend
+    max_percent_to_lend = default_coin.max_percent_to_lend
+    max_to_lend_rate = default_coin.max_to_lend_rate
+    min_loan_size = default_coin.min_loan_size
     log = log1
 
 
@@ -60,9 +66,9 @@ def amount_to_lend(
     cur_max_percent_to_lend = max_percent_to_lend
 
     if cfg := coin_cfg.get(active_cur):
-        cur_max_to_lend_rate = cfg.maxtolendrate
-        cur_max_to_lend = cfg.maxtolend
-        cur_max_percent_to_lend = cfg.maxpercenttolend
+        cur_max_to_lend_rate = cfg.max_to_lend_rate
+        cur_max_to_lend = cfg.max_to_lend
+        cur_max_percent_to_lend = cfg.max_percent_to_lend
 
     if (cur_max_to_lend_rate == 0 and low_rate > 0) or cur_max_to_lend_rate >= low_rate > 0:
         log_data = (

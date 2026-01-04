@@ -50,7 +50,7 @@ class AccountStats(Plugin):
         super().on_bot_init()
         self.init_db()
         self.check_upgrade()
-        self.report_interval = int(self.config.get("ACCOUNTSTATS", "ReportInterval", 86400))
+        self.report_interval = int(self.config.plugins.account_stats.get("ReportInterval", 86400))
 
     def before_lending(self) -> None:
         for coin in self.earnings:

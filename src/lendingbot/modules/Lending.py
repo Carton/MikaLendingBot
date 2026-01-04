@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
-from . import Configuration as Config
+from . import Configuration
 from . import Data, MaxToLend
 from .Logger import Logger
 from .Utils import format_amount_currency, format_rate_pct
@@ -39,7 +39,9 @@ xday_threshold: str = ""
 min_loan_size: Decimal = Decimal(0)
 min_loan_sizes: dict[str, Decimal] = {}
 end_date: str | None = None
-coin_cfg: dict[str, Config.CoinConfig] = {}
+# coin_cfg now stores Configuration.CoinConfig objects
+coin_cfg: dict[str, Configuration.CoinConfig] = {}
+default_coin_cfg: Configuration.CoinConfig = Configuration.CoinConfig()
 dry_run: bool = False
 transferable_currencies: list[str] = []
 currencies_to_analyse: list[str] = []
@@ -49,7 +51,7 @@ coin_cfg_alerted: dict[str, bool] = {}
 max_active_alerted: dict[str, bool] = {}
 notify_conf: dict[str, Any] = {}
 loans_provided: list[dict[str, Any]] = []
-gap_mode_default: Config.GapMode | bool | str = ""
+gap_mode_default: Configuration.GapMode | bool | str = ""
 scheduler: sched.scheduler | None = None
 exchange: str = ""
 
@@ -71,6 +73,9 @@ log: Logger | None = None
 Analysis: Any = None
 analysis_method: str = "percentile"
 all_currencies: list[str] = []
+
+# Global Config Object (New)
+Config: Configuration.RootConfig = None # type: ignore[assignment]
 
 
 def _reset_globals() -> None:
@@ -162,7 +167,7 @@ def debug_log(msg: str) -> None:
 
 
 def init(
-    cfg: Any,
+    cfg: Configuration.RootConfig,
     api1: Any,
     log1: Logger,
     data: Any,
@@ -221,31 +226,49 @@ def init(
         frrdelta_max, \
         lending_paused
 
-    exchange = Config.get_exchange()
+    exchange = Config.api.exchange.value
 
-    sleep_time_active = float(Config.get("BOT", "sleeptimeactive", None, 1, 3600))
-    sleep_time_inactive = float(Config.get("BOT", "sleeptimeinactive", None, 1, 3600))
-    exchange_max = 7 if exchange == "BITFINEX" else 5
-    min_daily_rate = Decimal(Config.get("BOT", "mindailyrate", None, 0.003, exchange_max)) / 100
-    max_daily_rate = Decimal(Config.get("BOT", "maxdailyrate", None, 0.003, exchange_max)) / 100
-    spread_lend = int(Config.get("BOT", "spreadlend", None, 1, 20))
-    gap_mode_default = Config.get_gap_mode("BOT", "gapMode")
-    gap_bottom_default = Decimal(Config.get("BOT", "gapbottom", None, 0))
-    gap_top_default = Decimal(Config.get("BOT", "gaptop", None, float(gap_bottom_default)))
-    xday_threshold = str(Config.get("BOT", "xdaythreshold"))
-    # maxPeriod = 120 if exchange == 'BITFINEX' else 60
-    min_loan_size = Decimal(Config.get("BOT", "minloansize", None, 0.01))
-    end_date = Config.get("BOT", "endDate")
-    coin_cfg = Config.get_coin_cfg()
-    min_loan_sizes = Config.get_min_loan_sizes()
+    sleep_time_active = Config.bot.period_active
+    sleep_time_inactive = Config.bot.period_inactive
+    
+    # Defaults from 'default' coin config
+    default_coin_cfg = Config.get_coin_config("default")
+    
+    min_daily_rate = default_coin_cfg.min_daily_rate
+    max_daily_rate = default_coin_cfg.max_daily_rate
+    spread_lend = default_coin_cfg.spread_lend
+    gap_mode_default = default_coin_cfg.gap_mode
+    gap_bottom_default = default_coin_cfg.gap_bottom
+    gap_top_default = default_coin_cfg.gap_top if default_coin_cfg.gap_top is not None else default_coin_cfg.gap_bottom
+
+    # xday string reconstruction
+    xdays = default_coin_cfg.xday_thresholds
+    if xdays:
+        xday_threshold = ",".join([f"{x.rate}:{x.days}" for x in xdays])
+    else:
+        xday_threshold = ""
+
+    min_loan_size = default_coin_cfg.min_loan_size
+    end_date = Config.bot.end_date
+
+    # Populate coin_cfg and min_loan_sizes
+    coin_cfg = {}
+    min_loan_sizes = {}
+    for symbol in Config.coin:
+         cc = Config.get_coin_config(symbol)
+         coin_cfg[symbol] = cc
+         min_loan_sizes[symbol] = cc.min_loan_size
+
     dry_run = dry_run1
-    transferable_currencies = Config.get_currencies_list("transferableCurrencies")
-    all_currencies = Config.get_all_currencies()
-    currencies_to_analyse = Config.get_currencies_list("analyseCurrencies", "MarketAnalysis")
-    keep_stuck_orders = Config.getboolean("BOT", "keepstuckorders", True)
-    hide_coins = Config.getboolean("BOT", "hideCoins", True)
-    frrdelta_min = Decimal(Config.get("BOT", "frrdelta_min", -10))
-    frrdelta_max = Decimal(Config.get("BOT", "frrdelta_max", 10))
+    transferable_currencies = []
+    
+    all_currencies = Config.api.all_currencies
+    currencies_to_analyse = Config.plugins.market_analysis.analyse_currencies
+    keep_stuck_orders = Config.bot.keep_stuck_orders
+    hide_coins = Config.bot.hide_coins
+    
+    frrdelta_min = default_coin_cfg.frr_delta_min
+    frrdelta_max = default_coin_cfg.frr_delta_max
 
     # Web Settings Precedence Rule: Web Settings > Default Config
     # If a web_settings.json exists, it takes priority.
@@ -277,22 +300,16 @@ def init(
     except Exception as e:
         print(f"Failed to load web settings: {e}")
 
-    try:
-        analysis_method = Config.AnalysisMethod(Config.get("Daily_min", "method", "percentile"))
-    except ValueError:
-        allowed = ", ".join([m.value for m in Config.AnalysisMethod])
-        raise ValueError(
-            f'analysis_method: "{Config.get("Daily_min", "method")}" is not valid, must be {allowed}'
-        ) from None
+    analysis_method = "percentile"
 
     sleep_time = sleep_time_active  # Start with active mode
 
     # Check precedence logging
     if log and (
-        frrdelta_min != Decimal(Config.get("BOT", "frrdelta_min", -10))
-        or frrdelta_max != Decimal(Config.get("BOT", "frrdelta_max", 10))
+        frrdelta_min != default_coin_cfg.frr_delta_min
+        or frrdelta_max != default_coin_cfg.frr_delta_max
     ):
-        log.log("Loaded FRR settings from Web Configuration. Values in default.cfg are ignored.")
+        log.log("Loaded FRR settings from Web Configuration. Values in default config are ignored.")
 
     # create the scheduler thread
     scheduler = sched.scheduler(time.time, time.sleep)
@@ -472,7 +489,7 @@ def create_lend_offer(
             f"Lending {format_amount_currency(amt_s, currency)} by rate {format_rate_pct(rate_f)} for {days} days"
         )
 
-    if Config.has_option("BOT", "endDate") and end_date:
+    if end_date:
         days_remaining = int(Data.get_max_duration(end_date, "order"))
         if days_remaining <= 2:
             print("endDate reached. Bot can no longer lend.\nExiting...")
@@ -505,7 +522,7 @@ def cancel_all() -> None:
     for cur in loan_offers:
         if cur not in all_currencies:
             continue
-        if (cfg := coin_cfg.get(cur)) and cfg.maxactive == 0:
+        if (cfg := coin_cfg.get(cur)) and cfg.max_active_amount == 0:
             # don't cancel disabled coin
             continue
         if keep_stuck_orders:
@@ -553,7 +570,7 @@ def lend_all() -> None:
         ticker = api.return_ticker()  # Only call ticker once for all orders
     else:
         for cur_name in coin_cfg:
-            if coin_cfg[cur_name].gapmode == "rawbtc":
+            if coin_cfg[cur_name].gap_mode == "rawbtc":
                 ticker = api.return_ticker()
                 break
 
@@ -580,16 +597,16 @@ def get_frr_or_min_daily_rate(cur: str) -> RateCalcInfo:
     :param cur: The currency which to check
     :return: RateCalcInfo containing the rate and calculation details
     """
-    global frrdelta_cur_step, frrdelta_min, frrdelta_max
+    global frrdelta_cur_step, frrdelta_min, frrdelta_max, default_coin_cfg
     if cfg := coin_cfg.get(cur):
-        min_rate = cfg.minrate
-        frr_as_min = cfg.lending_strategy == Config.LendingStrategy.FRR
+        min_rate = cfg.min_daily_rate
+        frr_as_min = cfg.strategy == Configuration.LendingStrategy.FRR
         # Config values are now percentages (e.g., -10 means -10%)
-        frr_d_min = cfg.frrdelta_min
-        frr_d_max = cfg.frrdelta_max
+        frr_d_min = cfg.frr_delta_min
+        frr_d_max = cfg.frr_delta_max
     else:
-        min_rate = Decimal(Config.get("BOT", "mindailyrate", None, 0.003, 5)) / 100
-        frr_as_min = False
+        min_rate = default_coin_cfg.min_daily_rate
+        frr_as_min = default_coin_cfg.strategy == Configuration.LendingStrategy.FRR
         frr_d_min = frrdelta_min
         frr_d_max = frrdelta_max
 
@@ -655,7 +672,7 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
     rate_info = get_frr_or_min_daily_rate(cur)
 
     # Check if currency is disabled
-    if (cfg := coin_cfg.get(cur)) and cfg.maxactive == 0:
+    if (cfg := coin_cfg.get(cur)) and cfg.max_active_amount == 0:
         if cur not in max_active_alerted:  # Only alert once per coin.
             max_active_alerted[cur] = True
             if log:
@@ -828,7 +845,7 @@ def construct_orders(
     Returns:
         dict: A dictionary containing lists of 'amounts' and 'rates' for the orders.
     """
-    if (cfg := coin_cfg.get(cur)) and cfg.lending_strategy == Config.LendingStrategy.FRR:
+    if (cfg := coin_cfg.get(cur)) and cfg.strategy == Configuration.LendingStrategy.FRR:
         cur_spread = 1
     else:
         cur_spread = get_cur_spread(spread_lend, cur_active_bal, cur)
@@ -895,15 +912,15 @@ def get_gap_mode_rates(
 
     if (
         (cfg := coin_cfg.get(cur))
-        and cfg.gapmode
-        and cfg.gapbottom is not None
-        and cfg.gaptop is not None
+        and cfg.gap_mode
+        and cfg.gap_bottom is not None
+        and cfg.gap_top is not None
     ):
         # Only overwrite default if all three are set
         use_gap_cfg = True
-        gap_mode = str(cfg.gapmode)
-        gap_bottom = cfg.gapbottom
-        gap_top = cfg.gaptop
+        gap_mode = str(cfg.gap_mode)
+        gap_bottom = cfg.gap_bottom
+        gap_top = cfg.gap_top
 
     if gap_mode == "rawbtc":
         btc_value = Decimal(1)
@@ -925,9 +942,9 @@ def get_gap_mode_rates(
     else:
         if use_gap_cfg:
             print(f"WARN: Invalid setting for gapMode for [{cur}], using defaults...")
-            coin_cfg[cur].gapmode = Config.GapMode.RAWBTC
-            coin_cfg[cur].gapbottom = Decimal(10)
-            coin_cfg[cur].gaptop = Decimal(100)
+            coin_cfg[cur].gap_mode = Configuration.GapMode.RAW_BTC
+            coin_cfg[cur].gap_bottom = Decimal(10)
+            coin_cfg[cur].gap_top = Decimal(100)
         else:
             print("WARN: Invalid setting for gapMode, using defaults...")
             gap_mode_default = "relative"

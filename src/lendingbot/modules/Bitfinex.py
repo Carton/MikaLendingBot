@@ -9,13 +9,14 @@ from typing import Any
 
 import requests
 
+from . import Configuration
 from .Bitfinex2Poloniex import Bitfinex2Poloniex
 from .ExchangeApi import ApiError, ExchangeApi
 from .Utils import format_amount_currency, format_rate_pct
 
 
 class Bitfinex(ExchangeApi):
-    def __init__(self, cfg: Any, log: Any) -> None:
+    def __init__(self, cfg: Configuration.RootConfig, log: Any) -> None:
         super().__init__(cfg, log)
         self.cfg = cfg
         self.log = log
@@ -25,17 +26,21 @@ class Bitfinex(ExchangeApi):
         self.req_period = self.default_req_period
         self.req_time_log: deque[float] = deque(maxlen=self.req_per_period)
         self.url = "https://api.bitfinex.com"
-        self.key = self.cfg.get("API", "apikey", None)
-        self.secret = self.cfg.get("API", "secret", None)
+        
+        self.key = self.cfg.api.apikey.get_secret_value() if self.cfg.api.apikey else None
+        self.secret = self.cfg.api.secret.get_secret_value() if self.cfg.api.secret else None
+        
         self.apiVersion = "v1"
         self.symbols: list[str] = []
         self.ticker: dict[str, dict[str, Any]] = {}
         self.tickerTime = 0
         self.baseCurrencies = ["USD", "BTC", "ETH"]
-        self.all_currencies = self.cfg.get_all_currencies()
+        
+        self.all_currencies = self.cfg.api.all_currencies
+        
         self.usedCurrencies: list[str] = []
-        self.timeout = int(self.cfg.get("BOT", "timeout", 30, 1, 180))
-        self.api_debug_log = self.cfg.getboolean("BOT", "api_debug_log")
+        self.timeout = int(self.cfg.bot.request_timeout)
+        self.api_debug_log = self.cfg.bot.api_debug_log
         # Initialize usedCurrencies
         _ = self.return_available_account_balances("lending")
 
@@ -63,8 +68,14 @@ class Bitfinex(ExchangeApi):
         j = json.dumps(payload)
         data = base64.standard_b64encode(j.encode("utf8"))
 
+        if self.secret is None:
+            raise ApiError("API Secret is not set")
+
         h = hmac.new(self.secret.encode("utf8"), data, hashlib.sha384)
         signature = h.hexdigest()
+        if self.key is None:
+            raise ApiError("API Key is not set")
+
         return {
             "X-BFX-APIKEY": self.key,
             "X-BFX-SIGNATURE": signature,
@@ -323,7 +334,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-wallet-balances
         """
         balances = self.return_available_account_balances("exchange")
-        return_dict = dict.fromkeys(self.cfg.get_all_currencies(), "0.00000000")
+        return_dict = dict.fromkeys(self.cfg.api.all_currencies, "0.00000000")
         if "exchange" in balances:
             return_dict.update(balances["exchange"])
         return return_dict
@@ -360,7 +371,7 @@ class Bitfinex(ExchangeApi):
         https://bitfinex.readme.io/v1/reference#rest-auth-balance-history
         """
         history = []
-        all_currencies = self.cfg.get_all_currencies()
+        all_currencies = self.cfg.api.all_currencies
         for curr in all_currencies:
             payload = {
                 "currency": curr,
