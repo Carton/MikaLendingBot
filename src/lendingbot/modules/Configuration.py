@@ -1,399 +1,200 @@
-import configparser
-import os
-import shutil
-from dataclasses import dataclass
+
+from __future__ import annotations
+
+import sys
 from decimal import Decimal
-from enum import StrEnum
-from typing import Any
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
+try:
+    import tomllib  # type: ignore[import-not-found]
+except ImportError:
+    import tomli as tomllib  # type: ignore[no-redef]
 
-class AnalysisMethod(StrEnum):
-    PERCENTILE = "percentile"
-    MACD = "MACD"
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 
+# --- Enums ---
 
-class GapMode(StrEnum):
-    RAW = "raw"
-    RAWBTC = "rawbtc"
-    RELATIVE = "relative"
+class Exchange(str, Enum):
+    POLONIEX = "Poloniex"
+    BITFINEX = "Bitfinex"
 
-
-class LendingStrategy(StrEnum):
+class LendingStrategy(str, Enum):
     SPREAD = "Spread"
     FRR = "FRR"
 
+class GapMode(str, Enum):
+    RAW = "Raw"
+    RAW_BTC = "RawBTC"
+    RELATIVE = "Relative"
 
-@dataclass
-class CoinConfig:
-    minrate: Decimal
-    maxactive: Decimal
-    maxtolend: Decimal
-    maxpercenttolend: Decimal
-    maxtolendrate: Decimal
-    gapmode: GapMode | bool
-    gapbottom: Decimal
-    gaptop: Decimal
-    lending_strategy: LendingStrategy
-    frrdelta_min: Decimal
-    frrdelta_max: Decimal
+# --- Sub-Models ---
 
+class ApiConfig(BaseModel):
+    exchange: Exchange = Exchange.BITFINEX
+    apikey: Optional[SecretStr] = None
+    secret: Optional[SecretStr] = None
 
-config = configparser.ConfigParser()
-Data: Any = None
-# This module is the middleman between the bot and a ConfigParser object, so that we can add extra functionality
-# without clogging up lendingbot.py with all the config logic. For example, added a default value to get().
+class WebServerConfig(BaseModel):
+    enabled: bool = True
+    host: str = "0.0.0.0"
+    port: int = Field(8000, ge=1, le=65535)
+    template: str = "www"
+    json_log_size: int = 200
 
+class BotConfig(BaseModel):
+    label: str = "Lending Bot"
+    period_active: float = Field(60.0, ge=1, le=3600)
+    period_inactive: float = Field(300.0, ge=1, le=3600)
+    request_timeout: int = Field(30, ge=1, le=180)
+    api_debug_log: bool = False
+    output_currency: str = "BTC"
+    keep_stuck_orders: bool = True
+    hide_coins: bool = True
+    end_date: Optional[str] = None
+    plugins: List[str] = Field(default_factory=list)
+    web: WebServerConfig = Field(default_factory=WebServerConfig)
 
-def init(file_location: str, data: Any = None) -> configparser.ConfigParser:
-    global Data
-    Data = data
-    loaded_files = config.read(file_location, encoding="utf-8")
-    if len(loaded_files) != 1:
-        print(f"Failed to load config file: {file_location}: {loaded_files}")
-        # Copy default config file if not found
-        try:
-            shutil.copy("default.cfg.example", file_location)
-            print(
-                f"\ndefault.cfg.example has been copied to {file_location}\n"
-                "Edit it with your API key and custom settings.\n"
-            )
-            input("Press Enter to acknowledge and exit...")
-            exit(1)
-        except Exception as ex:
-            msg = str(ex)
-            print(f"Failed to automatically copy config. Please do so manually. Error: {msg}")
-            exit(1)
-    if config.has_option("BOT", "coinconfig"):
-        print(
-            "'coinconfig' has been removed, please use section coin config instead.\n"
-            "See: http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html#config-per-coin"
-        )
-        exit(1)
+    @field_validator("exchange", mode="before", check_fields=False)
+    @classmethod
+    def case_insensitive_exchange(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.capitalize()
+        return v
+
+class XDayThreshold(BaseModel):
+    rate: Decimal
+    days: int
+
+class CoinConfig(BaseModel):
+    # Core Lending Settings
+    min_daily_rate: Decimal = Field(Decimal("0.005"), ge=0, le=5)
+    max_daily_rate: Decimal = Field(Decimal("5.0"), ge=0, le=5)
+    min_loan_size: Decimal = Field(Decimal("0.01"), ge=Decimal("0.005"))
+    max_active_amount: Decimal = Decimal("-1")
+    max_to_lend: Decimal = Decimal("0")
+    max_percent_to_lend: Decimal = Field(Decimal("0"), ge=0, le=100)
+    max_to_lend_rate: Decimal = Decimal("0")
+    
+    # Strategy
+    strategy: LendingStrategy = LendingStrategy.SPREAD
+    
+    # Spread Strategy
+    spread_lend: int = Field(3, ge=1, le=20)
+    gap_mode: GapMode = GapMode.RAW_BTC
+    gap_bottom: Decimal = Decimal("0")
+    gap_top: Optional[Decimal] = None # Defaults to gap_bottom if None
+
+    # FRR Strategy
+    frr_delta_min: Decimal = Decimal("-10.0")
+    frr_delta_max: Decimal = Decimal("10.0")
+
+    # XDay
+    xday_thresholds: List[XDayThreshold] = Field(default_factory=list)
+
+    @model_validator(mode='after')
+    def check_gap_top(self) -> CoinConfig:
+        if self.gap_top is None:
+            self.gap_top = self.gap_bottom
+        return self
+
+# --- Top Model ---
+
+class MarketAnalysisConfig(BaseModel):
+    analyse_currencies: List[str] = Field(default_factory=list)
+    update_interval: int = Field(10, ge=1, le=3600)
+    lending_style: int = Field(75, ge=1, le=99)
+    recorded_levels: int = Field(3, ge=1, le=100)
+    data_tolerance: float = Field(15.0, ge=10.0, le=90.0)
+    ma_debug_log: bool = False
+    macd_long_window: int = Field(1800, ge=60, le=604800)
+    percentile_window: int = Field(86400, ge=3600, le=1209600)
+    daily_min_multiplier: float = Field(1.05, ge=1.0)
+
+    # Derived/Hidden fields managed via property or init logic in original code
+    # We keep them simple here.
+
+class PluginsConfig(BaseModel):
+    account_stats: Dict[str, Any] = Field(default_factory=dict)
+    charts: Dict[str, Any] = Field(default_factory=dict)
+    market_analysis: MarketAnalysisConfig = Field(default_factory=MarketAnalysisConfig)
+
+class NotificationConfig(BaseModel):
+    enabled: bool = False
+    # ... add other fields as mapping existing structure ...
+    # For now utilizing generic dict to catch all for notification plugins
+    # pending detailed improved struct
+    email: Dict[str, Any] = Field(default_factory=dict, alias="email")
+    slack: Dict[str, Any] = Field(default_factory=dict)
+    telegram: Dict[str, Any] = Field(default_factory=dict)
+    pushbullet: Dict[str, Any] = Field(default_factory=dict)
+    irc: Dict[str, Any] = Field(default_factory=dict)
+    
+    # Common settings
+    notify_new_loans: bool = False
+    notify_tx_coins: bool = False
+    notify_xday_threshold: bool = False
+    notify_summary_minutes: int = 0
+    notify_caught_exception: bool = False
+
+class RootConfig(BaseModel):
+    api: ApiConfig = Field(default_factory=ApiConfig)
+    bot: BotConfig = Field(default_factory=BotConfig)
+    notifications: NotificationConfig = Field(default_factory=NotificationConfig)
+    plugins: PluginsConfig = Field(default_factory=PluginsConfig)
+    coin: Dict[str, CoinConfig] = Field(default_factory=dict)
+
+    def get_coin_config(self, symbol: str) -> CoinConfig:
+        """
+        Returns the merged configuration for a specific coin.
+        Priority:
+        1. [coin.SYMBOL] settings
+        2. [coin.default] settings
+        3. Pydantic Model defaults
+        """
+        # Start with defaults
+        defaults = self.coin.get("default", CoinConfig())
+        default_dict = defaults.model_dump(exclude_unset=True)
+        
+        # Get specific overrides
+        specific = self.coin.get(symbol)
+        
+        if not specific:
+            return defaults
+            
+        specific_dict = specific.model_dump(exclude_unset=True)
+        
+        # Merge: Default updated by Specific
+        # Note: We must re-validate to ensure consistency if needed, 
+        # but CoinConfig is flat enough that simple dict merge usually works.
+        # However, for deep merging (like lists), standard update is replace.
+        # TOML behavior for re-definition is usually 'replace'.
+        
+        merged_dict = default_dict.copy()
+        merged_dict.update(specific_dict)
+        
+        return CoinConfig(**merged_dict)
+
+# --- Global Instance & accessors ---
+
+_current_config: Optional[RootConfig] = None
+
+def load_config(file_path: Path) -> RootConfig:
+    global _current_config
+    
+    if not file_path.exists():
+        raise FileNotFoundError(f"Config file not found: {file_path}")
+        
+    with open(file_path, "rb") as f:
+        data = tomllib.load(f)
+        
+    config = RootConfig(**data)
+    _current_config = config
     return config
 
+def get_config() -> RootConfig:
+    if _current_config is None:
+        raise RuntimeError("Configuration not initialized. Call load_config() first.")
+    return _current_config
 
-def has_option(category: str, option: str) -> bool:
-    try:
-        return bool(os.environ.get(f"{category}_{option}")) or config.has_option(category, option)
-    except Exception:
-        return config.has_option(category, option)
-
-
-def getboolean(category: str, option: str, default_value: bool = False) -> bool:
-    if has_option(category, option):
-        env_val = os.environ.get(f"{category}_{option}")
-        if env_val:
-            return env_val.lower() in ("true", "1", "t", "y", "yes")
-        return config.getboolean(category, option)
-    else:
-        return default_value
-
-
-def get(
-    category: str,
-    option: str,
-    default_value: Any = False,
-    lower_limit: float | bool | Decimal = False,
-    upper_limit: float | bool | Decimal = False,
-) -> Any:
-    if has_option(category, option):
-        value = os.environ.get(f"{category}_{option}")
-        if value is None or value == "":
-            value = config.get(category, option)
-        try:
-            if lower_limit is not False and float(value) < float(lower_limit):
-                print(
-                    f"WARN: [{category}]-{option}'s value: '{value}' is below the minimum limit: {lower_limit}, which will be used instead."
-                )
-                value = str(lower_limit)
-            if upper_limit is not False and float(value) > float(upper_limit):
-                print(
-                    f"WARN: [{category}]-{option}'s value: '{value}' is above the maximum limit: {upper_limit}, which will be used instead."
-                )
-                value = str(upper_limit)
-            return value
-        except ValueError:
-            if default_value is None:
-                print(
-                    f"ERROR: [{category}]-{option} is not allowed to be left empty. Please check your config."
-                )
-                exit(1)
-            return default_value
-    else:
-        if default_value is None:
-            print(
-                f"ERROR: [{category}]-{option} is not allowed to be left unset. Please check your config."
-            )
-            exit(1)
-        return default_value
-
-
-# Below: functions for returning some config values that require special treatment.
-
-
-def get_exchange() -> str:
-    """
-    Returns used exchange
-    """
-    try:
-        val = os.environ.get("API_EXCHANGE")
-        if not val:
-            val = get("API", "exchange", "Poloniex")
-        return str(val).upper()
-    except Exception:
-        return "POLONIEX"
-
-
-def get_coin_cfg() -> dict[str, CoinConfig]:
-    coin_cfg: dict[str, CoinConfig] = {}
-
-    for cur in get_all_currencies():
-        try:
-            # Helper to get config with explicit default from BOT section, then default value
-            def get_val(option: str, default: Any = None, currency: str = cur) -> Any:
-                # Try currency section first, then BOT section
-                for section in (currency, "BOT"):
-                    if has_option(section, option):
-                        return get(section, option)
-
-                # Return default if provided
-                if default is not None:
-                    return default
-
-                # Mandatory option is missing in both [CUR] and [BOT]
-                if config.has_section(currency):
-                    # Section exists but option missing -> CRASH
-                    print(
-                        f"ERROR: [{currency}]-{option} is not allowed to be left unset. Please check your config."
-                    )
-                    exit(1)
-                else:
-                    # Section missing, implicit config requested but missing -> SKIP this currency
-                    raise ValueError("SKIP_CURRENCY")
-
-            try:
-                minrate = (Decimal(get_val("mindailyrate"))) / 100
-                # maxactive: -1 means unlimited (0 means disabled/skip this coin)
-                # maxtolend/maxpercenttolend/maxtolendrate: 0 means unlimited/no restriction
-                maxactive = Decimal(get_val("maxactiveamount", -1))
-                maxtolend = Decimal(get_val("maxtolend", 0))
-                maxpercenttolend = (Decimal(get_val("maxpercenttolend", 0))) / 100
-                maxtolendrate = (Decimal(get_val("maxtolendrate", 0))) / 100
-
-                gapmode = get_gap_mode(cur, "gapmode")
-                if not gapmode:
-                    gapmode = get_gap_mode("BOT", "gapmode")
-
-                gapbottom = Decimal(get_val("gapbottom", 0))
-                gaptop = Decimal(get_val("gaptop", gapbottom))
-
-                raw_strategy = get_val("lending_strategy", "Spread")
-
-                try:
-                    lending_strategy = LendingStrategy(raw_strategy)
-                except ValueError:
-                    print(
-                        f"ERROR: Invalid entry '{raw_strategy}' for [{cur}]-lending_strategy. "
-                        f"Allowed values are: {', '.join([s.value for s in LendingStrategy])}"
-                    )
-                    exit(1)
-
-                if lending_strategy == LendingStrategy.FRR and get_exchange() != "BITFINEX":
-                    raise Exception(
-                        f"FRR strategy is only supported on Bitfinex. Invalid config for [{cur}]."
-                    )
-
-                frrdelta_min = Decimal(get_val("frrdelta_min", -10))
-                frrdelta_max = Decimal(get_val("frrdelta_max", 10))
-
-                coin_cfg[cur] = CoinConfig(
-                    minrate=minrate,
-                    maxactive=maxactive,
-                    maxtolend=maxtolend,
-                    maxpercenttolend=maxpercenttolend,
-                    maxtolendrate=maxtolendrate,
-                    gapmode=gapmode,
-                    gapbottom=gapbottom,
-                    gaptop=gaptop,
-                    lending_strategy=lending_strategy,
-                    frrdelta_min=frrdelta_min,
-                    frrdelta_max=frrdelta_max,
-                )
-
-            except ValueError as val_err:
-                if str(val_err) == "SKIP_CURRENCY":
-                    continue
-                raise val_err
-
-        except Exception as ex:
-            msg = str(ex)
-            print(
-                f"Coin Config for {cur} parsed incorrectly, please refer to the documentation. "
-                f"Error: {msg}"
-            )
-            # Need to raise this exception otherwise the bot will continue if you configured one cur correctly
-            raise
-    return coin_cfg
-
-
-def get_min_loan_sizes() -> dict[str, Decimal]:
-    min_loan_sizes: dict[str, Decimal] = {}
-    for cur in get_all_currencies():
-        if config.has_section(cur):
-            try:
-                min_loan_sizes[cur] = Decimal(get(cur, "minloansize", lower_limit=0.005))
-            except Exception as ex:
-                msg = str(ex)
-                print(
-                    f"minloansize for {cur} parsed incorrectly, please refer to the documentation. "
-                    f"Error: {msg}"
-                )
-                # Bomb out if something isn't configured correctly
-                raise
-    return min_loan_sizes
-
-
-def get_currencies_list(option: str, section: str = "BOT") -> list[str]:
-    if config.has_option(section, option):
-        full_list = get_all_currencies()
-        cur_list: list[str] = []
-        raw_cur_list = config.get(section, option).split(",")
-        for raw_cur in raw_cur_list:
-            cur = raw_cur.strip(" ").upper()
-            if cur == "ALL":
-                return full_list
-            elif cur == "ACTIVE":
-                if Data:
-                    cur_list += Data.get_lending_currencies()
-            else:
-                if cur in full_list:
-                    cur_list.append(cur)
-        return list(set(cur_list))
-    else:
-        return []
-
-
-def get_gap_mode(category: str, option: str) -> GapMode | bool:
-    if config.has_option(category, option):
-        raw_val = get(category, "gapmode", False)
-        if not raw_val:
-            return False
-        value = str(raw_val).lower().strip(" ")
-        try:
-            return GapMode(value)
-        except ValueError:
-            allowed = ", ".join([m.value for m in GapMode])
-            print(
-                f"ERROR: Invalid entry '{value}' for [{category}]-gapMode. Please check your config. Allowed values are: {allowed}"
-            )
-            exit(1)
-    else:
-        return False
-
-
-def get_all_currencies() -> list[str]:
-    """
-    Get list of all supported currencies by exchange
-    """
-    exchange = get_exchange()
-    if config.has_option(exchange, "all_currencies"):
-        cur_list = []
-        raw_cur_list = config.get(exchange, "all_currencies").split(",")
-        for raw_cur in raw_cur_list:
-            cur = raw_cur.strip(" ").upper()
-            if cur and cur[0] != "#":  # Blacklisting: E.g. ETH, #BTG, QTUM
-                cur_list.append(cur)
-        return cur_list
-    elif exchange == "POLONIEX":
-        # default, compatibility to old 'Poloniex only' config
-        return [
-            "STR",
-            "BTC",
-            "BTS",
-            "CLAM",
-            "DOGE",
-            "DASH",
-            "LTC",
-            "MAID",
-            "XMR",
-            "XRP",
-            "ETH",
-            "FCT",
-        ]
-    else:
-        raise Exception(
-            f"ERROR: List of supported currencies must defined in [{exchange}] all_currencies."
-        )
-
-
-def get_notification_config() -> dict[str, Any]:
-    notify_conf: dict[str, Any] = {"enable_notifications": config.has_section("notifications")}
-
-    # For boolean parameters
-    for conf in [
-        "notify_tx_coins",
-        "notify_xday_threshold",
-        "notify_new_loans",
-        "notify_caught_exception",
-        "email",
-        "slack",
-        "telegram",
-        "pushbullet",
-        "irc",
-    ]:
-        notify_conf[conf] = getboolean("notifications", conf)
-
-    # For string-based parameters
-    for conf in ["notify_prefix"]:
-        _val = get("notifications", conf, "").strip()
-        if len(_val) > 0:
-            notify_conf[conf] = _val
-
-    # in order not to break current config, parsing for False
-    notify_summary_minutes_raw = get("notifications", "notify_summary_minutes")
-    notify_conf["notify_summary_minutes"] = (
-        0 if notify_summary_minutes_raw == "False" else int(notify_summary_minutes_raw)
-    )
-
-    if notify_conf["email"]:
-        for conf in [
-            "email_login_address",
-            "email_login_password",
-            "email_smtp_server",
-            "email_smtp_port",
-            "email_to_addresses",
-            "email_smtp_starttls",
-        ]:
-            notify_conf[conf] = get("notifications", conf)
-        notify_conf["email_to_addresses"] = notify_conf["email_to_addresses"].split(",")
-
-    if notify_conf["slack"]:
-        for conf in ["slack_token", "slack_channels", "slack_username"]:
-            notify_conf[conf] = get("notifications", conf)
-        notify_conf["slack_channels"] = notify_conf["slack_channels"].split(",")
-        if not notify_conf["slack_username"]:
-            notify_conf["slack_username"] = "Slack API Tester"
-
-    if notify_conf["telegram"]:
-        for conf in ["telegram_bot_id", "telegram_chat_ids"]:
-            notify_conf[conf] = get("notifications", conf)
-        notify_conf["telegram_chat_ids"] = notify_conf["telegram_chat_ids"].split(",")
-
-    if notify_conf["pushbullet"]:
-        for conf in ["pushbullet_token", "pushbullet_deviceid"]:
-            notify_conf[conf] = get("notifications", conf)
-
-    if notify_conf["irc"]:
-        for conf in ["irc_host", "irc_port", "irc_nick", "irc_ident", "irc_realname", "irc_target"]:
-            notify_conf[conf] = get("notifications", conf)
-        notify_conf["irc_port"] = int(notify_conf["irc_port"])
-        notify_conf["irc_debug"] = getboolean("notifications", "irc_debug")
-
-    return notify_conf
-
-
-def get_plugins_config() -> list[str]:
-    active_plugins: list[str] = []
-    if config.has_option("BOT", "plugins"):
-        active_plugins = [p.strip() for p in config.get("BOT", "plugins").split(",") if p.strip()]
-    return active_plugins
