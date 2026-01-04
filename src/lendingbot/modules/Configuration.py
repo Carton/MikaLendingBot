@@ -3,7 +3,8 @@ from __future__ import annotations
 import tomllib
 from decimal import Decimal
 from enum import Enum
-from pathlib import Path
+# FIXME: Fix noqa and type: ignore below
+from pathlib import Path  # noqa: TC003
 from typing import Any
 
 from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
@@ -56,7 +57,7 @@ class BotConfig(BaseModel):
     hide_coins: bool = True
     end_date: str | None = None
     plugins: list[str] = Field(default_factory=list)
-    web: WebServerConfig = Field(default_factory=WebServerConfig)
+    web: WebServerConfig = Field(default_factory=lambda: WebServerConfig())
 
     @field_validator("exchange", mode="before", check_fields=False)
     @classmethod
@@ -125,7 +126,7 @@ class MarketAnalysisConfig(BaseModel):
 class PluginsConfig(BaseModel):
     account_stats: dict[str, Any] = Field(default_factory=dict)
     charts: dict[str, Any] = Field(default_factory=dict)
-    market_analysis: MarketAnalysisConfig = Field(default_factory=MarketAnalysisConfig)
+    market_analysis: MarketAnalysisConfig = Field(default_factory=lambda: MarketAnalysisConfig())
 
 
 class NotificationConfig(BaseModel):
@@ -144,10 +145,10 @@ class NotificationConfig(BaseModel):
 
 
 class RootConfig(BaseModel):
-    api: ApiConfig = Field(default_factory=ApiConfig)
-    bot: BotConfig = Field(default_factory=BotConfig)
-    notifications: NotificationConfig = Field(default_factory=NotificationConfig)
-    plugins: PluginsConfig = Field(default_factory=PluginsConfig)
+    api: ApiConfig = Field(default_factory=lambda: ApiConfig())
+    bot: BotConfig = Field(default_factory=lambda: BotConfig())
+    notifications: NotificationConfig = Field(default_factory=lambda: NotificationConfig())
+    plugins: PluginsConfig = Field(default_factory=lambda: PluginsConfig())
     coin: dict[str, CoinConfig] = Field(default_factory=dict)
 
     def get_coin_config(self, symbol: str) -> CoinConfig:
@@ -158,7 +159,7 @@ class RootConfig(BaseModel):
         2. [coin.default] settings
         3. Pydantic Model defaults
         """
-        defaults = self.coin.get("default", CoinConfig())
+        defaults = self.coin.get("default", CoinConfig())  # type: ignore[call-arg]
         default_dict = defaults.model_dump(exclude_unset=True)
 
         specific = self.coin.get(symbol)
@@ -171,7 +172,7 @@ class RootConfig(BaseModel):
         merged_dict = default_dict.copy()
         merged_dict.update(specific_dict)
 
-        return CoinConfig(**merged_dict)
+        return CoinConfig(**merged_dict)  # type: ignore[call-arg]
 
 
 # --- Global Instance & accessors ---

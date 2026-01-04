@@ -9,14 +9,14 @@ from lendingbot.modules.Configuration import LendingStrategy
 
 
 class TestConfiguration(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         self.test_dir = tempfile.TemporaryDirectory()
         self.toml_path = Path(self.test_dir.name) / "test_config.toml"
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         self.test_dir.cleanup()
 
-    def test_load_basic(self):
+    def test_load_basic(self) -> None:
         content = """
         [api]
         exchange = "Poloniex"
@@ -26,7 +26,7 @@ class TestConfiguration(unittest.TestCase):
         [bot]
         period_active = 120
         """
-        with open(self.toml_path, "w", encoding="utf-8") as f:
+        with self.toml_path.open("w", encoding="utf-8") as f:
             f.write(content)
 
         config = Conf.load_config(self.toml_path)
@@ -35,7 +35,7 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(config.bot.period_active, 120)
         self.assertEqual(config.bot.period_inactive, 300)  # Default
 
-    def test_coin_defaults_and_overrides(self):
+    def test_coin_defaults_and_overrides(self) -> None:
         # Override strategy in BTC, inherit min_loan_size
         content = """
         [coin.default]
@@ -47,7 +47,7 @@ class TestConfiguration(unittest.TestCase):
         strategy = "FRR"
         gap_bottom = 20
         """
-        with open(self.toml_path, "w", encoding="utf-8") as f:
+        with self.toml_path.open("w", encoding="utf-8") as f:
             f.write(content)
 
         config = Conf.load_config(self.toml_path)
@@ -67,26 +67,26 @@ class TestConfiguration(unittest.TestCase):
         eth_cfg = config.get_coin_config("ETH")
         self.assertEqual(eth_cfg.strategy, LendingStrategy.SPREAD)  # Inherited
 
-    def test_xday_formatting(self):
+    def test_xday_formatting(self) -> None:
         content = """
         [coin.default]
         xday_thresholds = [
             { rate = 0.05, days = 30 }
         ]
         """
-        with open(self.toml_path, "w", encoding="utf-8") as f:
+        with self.toml_path.open("w", encoding="utf-8") as f:
             f.write(content)
 
         config = Conf.load_config(self.toml_path)
         cfg = config.get_coin_config("BTC")
         self.assertEqual(cfg.xday_thresholds[0].days, 30)
 
-    def test_validation_error(self):
+    def test_validation_error(self) -> None:
         content = """
         [bot]
         period_active = -5  # Invalid
         """
-        with open(self.toml_path, "w", encoding="utf-8") as f:
+        with self.toml_path.open("w", encoding="utf-8") as f:
             f.write(content)
 
         from pydantic import ValidationError
