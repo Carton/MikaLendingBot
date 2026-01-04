@@ -1,0 +1,207 @@
+# Need help configuring? View the Documentation: docs/configuration.rst
+
+[api]
+# Where to work? "Bitfinex" or "Poloniex". Default is "Bitfinex"
+exchange = "Bitfinex"
+# apikey = "YourAPIKey"
+# secret = "YourSecret"
+
+[bot]
+# Custom name of the bot, that will be displayed in html page
+label = "Lending Bot"
+
+# Sleeps between active iterations, time in seconds (1-3600)
+period_active = 60
+
+# Sleeps between inactive iterations, time in seconds (1-3600)
+# Set to the same value as period_active to disable
+period_inactive = 300
+
+# Timeout in seconds, the bot shall wait for a response during each request
+request_timeout = 30
+
+# Debug mode, set to True to enable API related verbose debug messages in the console
+api_debug_log = false
+
+# The currency that the HTML Overview will present the earnings summary in.
+# Options are BTC, USDT (USD on Bitfinex), ETH or anything as long as it has a direct BTC market. The default is BTC.
+output_currency = "USD"
+
+# Keep Stuck Orders - Sometimes an order gets partially filled. When this happens it may leave the remainder of your coin under the set min_loan_size.
+# If this happens, keep_stuck_orders will keep your order where it is so maybe it can be filled. Otherwise it will be canceled and held until orders expire.
+keep_stuck_orders = true
+
+# Hide coins - Instead of keeping your coins lent out at min_daily_rate when it is not met, the bot will hold them and wait for the rate to surpass it.
+hide_coins = true
+
+# End date for lending, bot will try to make sure all your loans are done by this date so you can withdraw or do whatever you need.
+# Uncomment to enable. Format: YEAR-MONTH-DAY
+# end_date = "2016-12-25"
+
+# Plugins allow extending Bot functionality with extra features.
+plugins = ["AccountStats", "Charts"]
+
+[bot.web]
+# Enables a webserver for the www folder, in order to easily use the lendingbot.html with the .json log.
+enabled = true
+# Customize the IP and port that the webserver is hosted on.
+host = "127.0.0.1"
+port = 8000
+# Customize or select the desired template for the webserver.
+template = "www"
+# Limits the amount of log lines to save in botlog.json.
+json_log_size = 200
+
+# Currencies can be configured here.
+# [coin.default] serves as the base (default) configuration for all currencies.
+# If a specific coin (e.g. [coin.BTC]) has a setting, it overrides the value here.
+[coin.default]
+# Minimum daily lend rate in percent (0.0031-5)
+# Setting to 0.0031 is about 1% a year, not worth it.
+min_daily_rate = 0.005
+
+# Maximum lending rate. 2% is good choice because it's default at margin trader interface.
+# 5% is the maximum rate accepted by the exchange (0.003-5)
+max_daily_rate = 5.0
+
+# Minimum loan size, the minimum size of offers to make, bigger values prevent the bot from loaning small available amounts but reduce loan fragmentation.
+min_loan_size = 0.01
+
+# Maximum active amount to lend. -1 means unlimited (0 means disabled/skip this coin)
+max_active_amount = -1
+
+# How much to lend out
+# Raw maximum amount to lend if under max_to_lend_rate. 0 or commented = check max_percent_to_lend
+max_to_lend = 0
+# Maximum percent to lend if under max_to_lend_rate. 0 or commented = 100%
+max_percent_to_lend = 0
+# Max to lend conditional rate. If > 0, the limits above apply when rate <= max_to_lend_rate.
+max_to_lend_rate = 0
+
+# Lending Strategy Selection. "Spread" or "FRR" (Bitfinex only).
+# Spread: Standard gap/spread based lending.
+# FRR: Flash Return Rate based lending. Forces spread_lend = 1.
+strategy = "Spread"
+
+# --- Spread Strategy Settings ---
+
+# The number of offers to split the available balance across the [gap_top, gap_bottom] range. (1-20)
+spread_lend = 3
+
+# Gap modes: Raw, RawBTC, Relative
+gap_mode = "RawBTC"
+
+# The depth of lendbook to move through before placing the first (gap_bottom) and last (gap_top) offer.
+# If gap_bottom is set to 0, the first offer will be at the lowest possible rate.
+# However some low value is recommended to skip dust offers.
+gap_bottom = 40
+gap_top = 200
+
+# --- FRR Strategy Settings ---
+
+# FRR Rate Adjustment (frr_delta_min/max) adjusts the lending rate relative to FRR.
+# Values are percentages: -10 means 10% below FRR, +20 means 20% above FRR.
+# The bot cycles through 5 steps between min and max. Range: -50 to +50.
+# This only works on Bitfinex with lending_strategy = FRR.
+frr_delta_min = -10.0
+frr_delta_max = 10.0
+
+# Daily lend rate threshold after which we offer lends for x days as opposed to 2.
+# If set to 0 all offers will be placed for a 2 day period (0.003-5)
+# Poloniex max lending period: 60 days
+# Bitfinex max lending period: 120 days
+# Format: Array of inline tables { rate = <rate>, days = <days> }
+xday_thresholds = [
+    { rate = 0.050, days = 20 },
+    { rate = 0.058, days = 30 },
+    { rate = 0.060, days = 45 },
+    { rate = 0.063, days = 60 },
+    { rate = 0.070, days = 120 },
+]
+
+# --- Specific Coin Overrides ---
+
+# [coin.BTC]
+# min_loan_size = 0.01
+# min_daily_rate = 0.18
+# max_active_amount = 1
+# gap_mode = "RawBTC"
+# gap_bottom = 20
+# gap_top = 400
+# strategy = "Spread"
+
+
+[notifications]
+enabled = false
+notify_new_loans = false
+notify_tx_coins = false
+notify_xday_threshold = false
+notify_summary_minutes = 0
+notify_caught_exception = false
+# notify_prefix = "[Polo]"
+
+[notifications.email]
+enabled = false
+# login_address = "me@gmail.com"
+# login_password = "secretPassword"
+# smtp_server = "smtp.gmail.com"
+# smtp_port = 465
+# smtp_starttls = false
+# to_addresses = ["me@gmail.com", "you@gmail.com"]
+
+[notifications.slack]
+enabled = false
+# token = "1234567890abcdef"
+# channels = ["#cryptocurrency", "@someUser"]
+# username = "Poloniex Bot"
+
+[notifications.telegram]
+enabled = false
+# bot_id = "1234567890abcdef"
+# chat_ids = ["@polopolo", "@cryptocurrency"]
+
+[notifications.pushbullet]
+enabled = false
+# token = "1234567890abcdef"
+# deviceid = "1234567890abcdef"
+
+[notifications.irc]
+enabled = false
+# host = "irc.freenode.net"
+# port = 6667
+# nick = "LendingBot"
+# ident = "lendingbot"
+# realname = "Poloniex lending bot"
+# target = "#bitbotfactory"
+# debug = false
+
+
+# --- Plugin Configurations ---
+
+[plugins.account_stats]
+report_interval = 86400
+
+[plugins.charts]
+dump_interval = 21600
+
+[plugins.market_analysis]
+# PLEASE refer to the docs before attempting to use any of this. There are a lot of things here that will not work
+# correctly unless you understand what you are doing.
+# analyse_currencies = ["STR","BTC","BTS","CLAM","DOGE","DASH","LTC","MAID","XMR","XRP","ETH","FCT"]
+lending_style = 75
+macd_long_window = 1800
+# macd_short_window = 150
+# 3 days = 60 * 60 * 24 * 3 = 259200
+percentile_window = 259200
+# keep_history_seconds > (greater of (percentile_seconds, macd_long_window) * 1.1)
+# keep_history_seconds = 285120
+# recorded_levels = 10
+# 15 %  means we need one data point every 9 seconds. You probably don't need to change this.
+# data_tolerance = 15
+# delete_thread_sleep = 60
+# ma_debug_log = false
+
+[plugins.market_analysis.daily_min]
+# This defaults to percentile, MACD is the moving average calc and should give better rates
+# method = "MACD"
+multiplier = 1.05
