@@ -27,8 +27,6 @@ class RateCalcInfo:
     frr_used: bool = False  # Whether FRR was actually used (FRR+delta > min_rate)
 
 
-sleep_time_active: float = 0
-sleep_time_inactive: float = 0
 sleep_time: float = 0
 min_daily_rate: Decimal = Decimal(0)
 max_daily_rate: Decimal = Decimal(0)
@@ -38,22 +36,22 @@ gap_top_default: Decimal = Decimal(0)
 xday_threshold: str = ""
 min_loan_size: Decimal = Decimal(0)
 min_loan_sizes: dict[str, Decimal] = {}
-end_date: str | None = None
+# end_date: str | None = None # Removed global
 # coin_cfg now stores Configuration.CoinConfig objects
 coin_cfg: dict[str, Configuration.CoinConfig] = {}
 default_coin_cfg: Configuration.CoinConfig = Configuration.CoinConfig()
 dry_run: bool = False
 transferable_currencies: list[str] = []
-currencies_to_analyse: list[str] = []
-keep_stuck_orders: bool = True
-hide_coins: bool = True
+# currencies_to_analyse: list[str] = [] # Removed global
+# keep_stuck_orders: bool = True # Removed global
+# hide_coins: bool = True # Removed global
 coin_cfg_alerted: dict[str, bool] = {}
 max_active_alerted: dict[str, bool] = {}
 notify_conf: dict[str, Any] = {}
 loans_provided: list[dict[str, Any]] = []
 gap_mode_default: Configuration.GapMode | bool | str = ""
 scheduler: sched.scheduler | None = None
-exchange: str = ""
+# exchange: str = "" # Removed global
 
 frrdelta_cur_step: int = 0
 frrdelta_min: Decimal = Decimal(0)
@@ -72,7 +70,7 @@ api: Any = None
 log: Logger | None = None
 Analysis: Any = None
 analysis_method: str = "percentile"
-all_currencies: list[str] = []
+# all_currencies: list[str] = [] # Removed global
 
 # Global Config Object (New)
 Config: Configuration.RootConfig = None # type: ignore[assignment]
@@ -86,8 +84,6 @@ def _reset_globals() -> None:
     global \
         Config, \
         sleep_time, \
-        sleep_time_active, \
-        sleep_time_inactive, \
         min_daily_rate, \
         max_daily_rate, \
         spread_lend, \
@@ -95,19 +91,13 @@ def _reset_globals() -> None:
         gap_top_default, \
         xday_threshold, \
         min_loan_size, \
-        end_date, \
         coin_cfg, \
         min_loan_sizes, \
         dry_run, \
         transferable_currencies, \
-        keep_stuck_orders, \
-        hide_coins, \
         scheduler, \
         gap_mode_default, \
-        exchange, \
         analysis_method, \
-        currencies_to_analyse, \
-        all_currencies, \
         frrdelta_min, \
         frrdelta_max, \
         frrdelta_cur_step, \
@@ -123,8 +113,8 @@ def _reset_globals() -> None:
         notify_conf
 
     sleep_time = 0
-    sleep_time_active = 0
-    sleep_time_inactive = 0
+    # sleep_time_active = 0
+    # sleep_time_inactive = 0
     min_daily_rate = Decimal(0)
     max_daily_rate = Decimal(0)
     spread_lend = 0
@@ -133,18 +123,18 @@ def _reset_globals() -> None:
     xday_threshold = ""
     min_loan_size = Decimal(0)
     min_loan_sizes = {}
-    end_date = None
+    # end_date = None
     coin_cfg = {}
     dry_run = False
     transferable_currencies = []
-    keep_stuck_orders = True
-    hide_coins = True
+    # keep_stuck_orders = True
+    # hide_coins = True
     scheduler = None
     gap_mode_default = ""
-    exchange = ""
+    # exchange = ""
     analysis_method = "percentile"
-    currencies_to_analyse = []
-    all_currencies = []
+    # currencies_to_analyse = []
+    # all_currencies = []
     frrdelta_min = Decimal(0)
     frrdelta_max = Decimal(0)
     frrdelta_cur_step = 0
@@ -200,8 +190,6 @@ def init(
 
     global \
         sleep_time, \
-        sleep_time_active, \
-        sleep_time_inactive, \
         min_daily_rate, \
         max_daily_rate, \
         spread_lend, \
@@ -209,27 +197,20 @@ def init(
         gap_top_default, \
         xday_threshold, \
         min_loan_size, \
-        end_date, \
         coin_cfg, \
         min_loan_sizes, \
         dry_run, \
         transferable_currencies, \
-        keep_stuck_orders, \
-        hide_coins, \
         scheduler, \
         gap_mode_default, \
-        exchange, \
         analysis_method, \
-        currencies_to_analyse, \
-        all_currencies, \
         frrdelta_min, \
         frrdelta_max, \
         lending_paused
 
-    exchange = Config.api.exchange.value
-
-    sleep_time_active = Config.bot.period_active
-    sleep_time_inactive = Config.bot.period_inactive
+    # exchange = Config.api.exchange.value # Removed global
+    # sleep_time_active = Config.bot.period_active # Removed global
+    # sleep_time_inactive = Config.bot.period_inactive # Removed global
     
     # Defaults from 'default' coin config
     default_coin_cfg = Config.get_coin_config("default")
@@ -249,7 +230,7 @@ def init(
         xday_threshold = ""
 
     min_loan_size = default_coin_cfg.min_loan_size
-    end_date = Config.bot.end_date
+    # end_date = Config.bot.end_date # Removed global
 
     # Populate coin_cfg and min_loan_sizes
     coin_cfg = {}
@@ -262,10 +243,10 @@ def init(
     dry_run = dry_run1
     transferable_currencies = []
     
-    all_currencies = Config.api.all_currencies
-    currencies_to_analyse = Config.plugins.market_analysis.analyse_currencies
-    keep_stuck_orders = Config.bot.keep_stuck_orders
-    hide_coins = Config.bot.hide_coins
+    # all_currencies = Config.api.all_currencies # Removed global
+    # currencies_to_analyse = Config.plugins.market_analysis.analyse_currencies # Removed global
+    # keep_stuck_orders = Config.bot.keep_stuck_orders # Removed global
+    # hide_coins = Config.bot.hide_coins # Removed global
     
     frrdelta_min = default_coin_cfg.frr_delta_min
     frrdelta_max = default_coin_cfg.frr_delta_max
@@ -302,7 +283,7 @@ def init(
 
     analysis_method = "percentile"
 
-    sleep_time = sleep_time_active  # Start with active mode
+    sleep_time = Config.bot.period_active  # Start with active mode
 
     # Check precedence logging
     if log and (
@@ -332,7 +313,7 @@ def get_sleep_time() -> float:
         float: The sleep time in seconds.
     """
     if lending_paused:
-        return sleep_time_inactive
+        return Config.bot.period_inactive
     return sleep_time
 
 
@@ -344,7 +325,7 @@ def set_sleep_time(usable: int) -> None:
         usable: The number of currencies that had enough balance to lend.
     """
     global sleep_time
-    sleep_time = sleep_time_inactive if usable == 0 else sleep_time_active
+    sleep_time = Config.bot.period_inactive if usable == 0 else Config.bot.period_active
 
 
 def get_sleep_time_inactive() -> float:
@@ -354,7 +335,7 @@ def get_sleep_time_inactive() -> float:
     Returns:
         float: The inactive sleep time in seconds.
     """
-    return sleep_time_inactive
+    return Config.bot.period_inactive
 
 
 def notify_summary(sleep_time_val: float) -> None:
@@ -489,8 +470,8 @@ def create_lend_offer(
             f"Lending {format_amount_currency(amt_s, currency)} by rate {format_rate_pct(rate_f)} for {days} days"
         )
 
-    if end_date:
-        days_remaining = int(Data.get_max_duration(end_date, "order"))
+    if Config.bot.end_date:
+        days_remaining = int(Data.get_max_duration(Config.bot.end_date, "order"))
         if days_remaining <= 2:
             print("endDate reached. Bot can no longer lend.\nExiting...")
             if log:
@@ -520,12 +501,12 @@ def cancel_all() -> None:
     loan_offers = api.return_open_loan_offers()
     available_balances = api.return_available_account_balances("lending")
     for cur in loan_offers:
-        if cur not in all_currencies:
+        if cur not in Config.api.all_currencies:
             continue
         if (cfg := coin_cfg.get(cur)) and cfg.max_active_amount == 0:
             # don't cancel disabled coin
             continue
-        if keep_stuck_orders:
+        if Config.bot.keep_stuck_orders:
             lending_balances = available_balances["lending"]
             if isinstance(lending_balances, dict) and cur in lending_balances:
                 cur_sum = float(available_balances["lending"][cur])
@@ -576,12 +557,12 @@ def lend_all() -> None:
 
     if log:
         log.log(f"Lending balances: {lending_balances}")
-        log.log(f"All currencies: {all_currencies}")
+        log.log(f"All currencies: {Config.api.all_currencies}")
 
     try:
         if lending_balances:
             for cur in lending_balances:
-                if cur in all_currencies:
+                if cur in Config.api.all_currencies:
                     usable_currencies += lend_cur(cur, total_lent, lending_balances, ticker)
     except StopIteration:  # Restart lending if we stop to raise the request limit.
         lend_all()
@@ -623,6 +604,7 @@ def get_frr_or_min_daily_rate(cur: str) -> RateCalcInfo:
     current_step = frrdelta_cur_step + 1  # 1-indexed for display
     frrdelta_cur_step += 1
 
+    exchange = Config.api.exchange.value
     if exchange == "BITFINEX" and frr_as_min:
         frr_base = Decimal(api.get_frr(cur))
         # Apply relative percentage: rate = FRR * (1 + pct/100)
@@ -684,7 +666,7 @@ def get_min_daily_rate(cur: str) -> Decimal | bool:
         _log_rate_calculation(cur, rate_info)
 
     # Check for Market Analysis suggestion
-    if Analysis and cur in currencies_to_analyse:
+    if Analysis and cur in Config.plugins.market_analysis.analyse_currencies:
         recommended_min = Analysis.get_rate_suggestion(cur, method=analysis_method)
         if rate_info.final_rate < Decimal(str(recommended_min)) and log:
             log.log(f"[{cur}] Tip: {analysis_method} suggests {format_rate_pct(recommended_min)}")
@@ -918,11 +900,13 @@ def get_gap_mode_rates(
     ):
         # Only overwrite default if all three are set
         use_gap_cfg = True
-        gap_mode = str(cfg.gap_mode)
+        gap_mode = cfg.gap_mode.value if hasattr(cfg.gap_mode, "value") else str(cfg.gap_mode)
         gap_bottom = cfg.gap_bottom
         gap_top = cfg.gap_top
 
-    if gap_mode == "rawbtc":
+    gap_mode_lower = str(gap_mode).lower()
+
+    if gap_mode_lower == "rawbtc":
         btc_value = Decimal(1)
         if cur != "BTC":
             for coin in ticker:
@@ -933,10 +917,10 @@ def get_gap_mode_rates(
         bottom_rate = get_gap_rate(cur, bottom_depth, order_book, cur_total_balance, True)
         top_depth = gap_top / btc_value
         top_rate = get_gap_rate(cur, top_depth, order_book, cur_total_balance, True)
-    elif gap_mode == "raw":  # Value stays in altcoin
+    elif gap_mode_lower == "raw":  # Value stays in altcoin
         bottom_rate = get_gap_rate(cur, gap_bottom, order_book, cur_total_balance, True)
         top_rate = get_gap_rate(cur, gap_top, order_book, cur_total_balance, True)
-    elif gap_mode == "relative":
+    elif gap_mode_lower == "relative":
         bottom_rate = get_gap_rate(cur, gap_bottom, order_book, cur_total_balance)
         top_rate = get_gap_rate(cur, gap_top, order_book, cur_total_balance)
     else:
@@ -1015,7 +999,7 @@ def lend_cur(
     ):  # Iterate through prepped orders and create them if they work
         below_min = Decimal(str(orders["rates"][i])) < Decimal(str(cur_min_daily_rate))
 
-        if hide_coins and below_min:
+        if Config.bot.hide_coins and below_min:
             if log:
                 log.log(
                     f"Not lending {active_cur} due to rate below {format_rate_pct(cur_min_daily_rate)} (actual: {format_rate_pct(orders['rates'][i])})"

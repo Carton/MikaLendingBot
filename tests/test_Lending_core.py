@@ -135,15 +135,18 @@ class TestLendingCore:
 
     def test_get_frr_or_min_daily_rate_basic(self, lending_module):
         lending_module.Config = Mock()
-        lending_module.Config.get.return_value = "0.3"
-        lending_module.Config.getboolean.return_value = False
-
+        # lending_module.Config.get is irrelevant here because proper objects are used.
+        # We need to set default_coin_cfg or coin_cfg.
+        
+        # Ensure defaults are what we expect
+        lending_module.default_coin_cfg.min_daily_rate = Decimal("0.003")
+        
         rate_info = lending_module.get_frr_or_min_daily_rate("BTC")
         assert rate_info.final_rate == Decimal("0.003")
         assert rate_info.frr_enabled is False
 
     def test_get_frr_or_min_daily_rate_bitfinex_frr(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy, GapMode
 
         lending_module.exchange = "BITFINEX"
         lending_module.Config = Mock()
@@ -151,17 +154,23 @@ class TestLendingCore:
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
-                minrate=Decimal("0.001"),
-                maxactive=Decimal(100),
-                maxtolend=Decimal(0),
-                maxpercenttolend=Decimal(0),
-                maxtolendrate=Decimal(0),
-                gapmode=False,
-                gapbottom=Decimal(0),
-                gaptop=Decimal(0),
-                lending_strategy=LendingStrategy.FRR,
-                frrdelta_min=Decimal(0),
-                frrdelta_max=Decimal(0),
+                min_daily_rate=Decimal("0.001"),
+                max_active_amount=Decimal(100),
+                max_to_lend=Decimal(0),
+                max_percent_to_lend=Decimal(0),
+                max_to_lend_rate=Decimal(0),
+                # gap_mode is GapMode enum.
+                # In old code it was False?
+                # The Pydantic model requires a GapMode enum or valid string?
+                # OLD code had gapmode=False.
+                # New code: gap_mode is GapMode enum. user must provide one.
+                # But defaults are provided in CoinConfig.
+                gap_mode=GapMode.RAW_BTC, # Mocking a value
+                gap_bottom=Decimal(0),
+                gap_top=Decimal(0),
+                strategy=LendingStrategy.FRR,
+                frr_delta_min=Decimal(0),
+                frr_delta_max=Decimal(0),
             )
         }
 
@@ -174,21 +183,21 @@ class TestLendingCore:
         assert rate_info.frr_used is True
 
     def test_get_min_daily_rate_coin_cfg(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy, GapMode
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
-                minrate=Decimal("0.005"),
-                maxactive=Decimal(100),
-                maxtolend=Decimal(0),
-                maxpercenttolend=Decimal(0),
-                maxtolendrate=Decimal(0),
-                gapmode=False,
-                gapbottom=Decimal(0),
-                gaptop=Decimal(0),
-                lending_strategy=LendingStrategy.SPREAD,
-                frrdelta_min=Decimal(0),
-                frrdelta_max=Decimal(0),
+                min_daily_rate=Decimal("0.005"),
+                max_active_amount=Decimal(100),
+                max_to_lend=Decimal(0),
+                max_percent_to_lend=Decimal(0),
+                max_to_lend_rate=Decimal(0),
+                gap_mode=GapMode.RAW_BTC,
+                gap_bottom=Decimal(0),
+                gap_top=Decimal(0),
+                strategy=LendingStrategy.SPREAD,
+                frr_delta_min=Decimal(0),
+                frr_delta_max=Decimal(0),
             )
         }
         with patch.object(lending_module, "get_frr_or_min_daily_rate") as mock_frr:
@@ -203,21 +212,21 @@ class TestLendingCore:
             assert rate == Decimal("0.005")
 
     def test_get_min_daily_rate_disabled(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy, GapMode
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
-                maxactive=Decimal(0),
-                minrate=Decimal("0.003"),
-                maxtolend=Decimal(0),
-                maxpercenttolend=Decimal(0),
-                maxtolendrate=Decimal(0),
-                gapmode=False,
-                gapbottom=Decimal(0),
-                gaptop=Decimal(0),
-                lending_strategy=LendingStrategy.SPREAD,
-                frrdelta_min=Decimal(0),
-                frrdelta_max=Decimal(0),
+                max_active_amount=Decimal(0),
+                min_daily_rate=Decimal("0.003"),
+                max_to_lend=Decimal(0),
+                max_percent_to_lend=Decimal(0),
+                max_to_lend_rate=Decimal(0),
+                gap_mode=GapMode.RAW_BTC,
+                gap_bottom=Decimal(0),
+                gap_top=Decimal(0),
+                strategy=LendingStrategy.SPREAD,
+                frr_delta_min=Decimal(0),
+                frr_delta_max=Decimal(0),
             )
         }
         assert lending_module.get_min_daily_rate("BTC") is False
@@ -243,7 +252,7 @@ class TestLendingCore:
                     "rates": ["0.01", "0.02", "0.03", "0.04"],
                 },
             ]
-            lending_module.gap_mode_default = "relative"
+            lending_module.gap_mode_default = "Relative" # Use correct casing or Enum if possible, sticking to str for now but capitalized
             lending_module.gap_bottom_default = Decimal("50")
             lending_module.gap_top_default = Decimal("150")
             lending_module.loanOrdersRequestLimit = {"BTC": 10}
@@ -316,12 +325,38 @@ class TestLendingCore:
     def test_init_basic(self, lending_module):
         cfg = Mock()
         cfg.get_exchange.return_value = "POLONIEX"
-        # Setup cfg.get to return sensible defaults for all calls
-        cfg.get.side_effect = (
-            lambda _s, _k, d=None, _min=None, _max=None: d if d is not None else "0"
-        )
-        cfg.get_gap_mode.return_value = "relative"
-        cfg.get_coin_cfg.return_value = {}
+        # Setup mocked usage of cfg.api.exchange.value
+        # But wait, init() uses Config.api.exchange.value
+        # We need to structure the mock to support property access
+        
+        cfg.api.exchange.value = "POLONIEX"
+        cfg.bot.period_active = 60
+        cfg.bot.period_inactive = 300
+        
+        # Helper to return a mock object with attributes
+        def mock_coin_config():
+            c = Mock()
+            c.min_daily_rate = Decimal("0.01")
+            c.max_daily_rate = Decimal("5.0")
+            c.spread_lend = 3
+            c.gap_mode = "Relative"
+            c.gap_bottom = Decimal("0")
+            c.gap_top = Decimal("0")
+            c.min_loan_size = Decimal("0.01")
+            c.xday_thresholds = []
+            c.frr_delta_min = Decimal("-10")
+            c.frr_delta_max = Decimal("10")
+            return c
+            
+        cfg.get_coin_config.return_value = mock_coin_config()
+        cfg.coin = {} # iterator over coin
+        
+        cfg.api.all_currencies = ["BTC"]
+        cfg.plugins.market_analysis.analyse_currencies = []
+        cfg.bot.keep_stuck_orders = True
+        cfg.bot.hide_coins = True
+        cfg.bot.end_date = None
+
         cfg.get_min_loan_sizes.return_value = {}
         cfg.get_currencies_list.return_value = []
         cfg.get_all_currencies.return_value = ["BTC"]
@@ -339,7 +374,7 @@ class TestLendingCore:
             "lending": {"BTC": "1.0"}
         }
         lending_module.all_currencies = ["BTC"]
-        lending_module.gap_mode_default = "relative"
+        lending_module.gap_mode_default = "Relative"
         lending_module.coin_cfg = {}
         lending_module.Data = Mock()
         lending_module.Data.get_total_lent.return_value = LentData(
@@ -481,7 +516,7 @@ class TestLendingCore:
                 {},
                 {"volumes": ["100"], "rates": ["0.01"]},
             ]
-            lending_module.gap_mode_default = "rawbtc"
+            lending_module.gap_mode_default = "RawBTC"
             lending_module.gap_bottom_default = Decimal("10")
             lending_module.gap_top_default = Decimal("20")
             lending_module.loanOrdersRequestLimit = {"ETH": 10}
@@ -491,21 +526,21 @@ class TestLendingCore:
             assert rates == [lending_module.max_daily_rate, lending_module.max_daily_rate]
 
     def test_get_gap_mode_rates_coin_cfg(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
+        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy, GapMode
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
-                gapmode="raw",
-                gapbottom=Decimal(50),
-                gaptop=Decimal(150),
-                minrate=Decimal(0),
-                maxactive=Decimal(100),
-                maxtolend=Decimal(0),
-                maxpercenttolend=Decimal(0),
-                maxtolendrate=Decimal(0),
-                lending_strategy=LendingStrategy.SPREAD,
-                frrdelta_min=Decimal(0),
-                frrdelta_max=Decimal(0),
+                gap_mode=GapMode.RAW, # gapmode="raw" -> GapMode.RAW
+                gap_bottom=Decimal(50),
+                gap_top=Decimal(150),
+                min_daily_rate=Decimal(0),
+                max_active_amount=Decimal(100),
+                max_to_lend=Decimal(0),
+                max_percent_to_lend=Decimal(0),
+                max_to_lend_rate=Decimal(0),
+                strategy=LendingStrategy.SPREAD,
+                frr_delta_min=Decimal(0),
+                frr_delta_max=Decimal(0),
             )
         }
         with patch.object(lending_module, "construct_order_books") as mock_books:
