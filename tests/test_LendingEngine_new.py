@@ -59,8 +59,8 @@ def test_create_lend_offer(mock_config, mock_data, mock_logger, mock_api):
     mock_api.create_loan_offer.assert_called_once()
     args = mock_api.create_loan_offer.call_args[0]
     assert args[0] == "BTC"
-    assert args[1] == "0.10000000"
-    assert args[2] == "2"
+    assert args[1] == 0.1
+    assert args[2] == 2
     # rate is adjusted by -0.000001 if > 0.0001
     assert float(args[4]) == pytest.approx(0.009999)
 
