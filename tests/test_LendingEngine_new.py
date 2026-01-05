@@ -37,13 +37,17 @@ def mock_api():
 @pytest.mark.unit
 def test_lending_engine_init(mock_config, mock_data, mock_logger, mock_api):
     """Test that LendingEngine initializes correctly with dependencies."""
-    engine = LendingEngine(mock_config, mock_data, mock_logger, mock_api)
+    engine = LendingEngine(mock_config, mock_api, mock_logger, mock_data)
     
     assert engine.config == mock_config
-    assert engine.data == mock_data
-    assert engine.log == mock_logger
     assert engine.api == mock_api
+    assert engine.log == mock_logger
+    assert engine.data == mock_data
     
     # Check that core state attributes are initialized
     assert hasattr(engine, 'coin_cfg')
     assert hasattr(engine, 'loans_provided')
+    assert engine.sleep_time == 0
+    assert engine.min_daily_rate == Decimal(0)
+    assert engine.lending_paused is False
+

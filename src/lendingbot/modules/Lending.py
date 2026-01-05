@@ -1064,12 +1064,46 @@ class LendingEngine:
     The core lending logic engine.
     Refactored from module-level functions to a class for Dependency Injection.
     """
-    def __init__(self, config: Configuration.RootConfig, data: Any, log: Logger, api: ExchangeApi):
+    def __init__(self, config: Configuration.RootConfig, api: ExchangeApi, log: Logger, data: Any, analysis: Any = None):
         self.config = config
-        self.data = data
-        self.log = log
         self.api = api
+        self.log = log
+        self.data = data
+        self.analysis = analysis
         
-        # Initialize basic state containers (mirrors of old globals)
+        # Core state (mirrors of old globals)
+        self.sleep_time: float = 0
+        self.min_daily_rate: Decimal = Decimal(0)
+        self.max_daily_rate: Decimal = Decimal(0)
+        self.spread_lend: int = 0
+        self.gap_bottom_default: Decimal = Decimal(0)
+        self.gap_top_default: Decimal = Decimal(0)
+        self.gap_mode_default: Configuration.GapMode | bool | str = ""
+        self.xday_threshold: str = ""
+        self.min_loan_size: Decimal = Decimal(0)
+        self.min_loan_sizes: dict[str, Decimal] = {}
+        
         self.coin_cfg: dict[str, Configuration.CoinConfig] = {}
+        self.default_coin_cfg: Configuration.CoinConfig = Configuration.CoinConfig()
+        
+        self.dry_run: bool = False
+        self.transferable_currencies: list[str] = []
+        self.coin_cfg_alerted: dict[str, bool] = {}
+        self.max_active_alerted: dict[str, bool] = {}
+        self.notify_conf: dict[str, Any] = {}
         self.loans_provided: list[dict[str, Any]] = []
+        
+        self.frrdelta_cur_step: int = 0
+        self.frrdelta_min: Decimal = Decimal(0)
+        self.frrdelta_max: Decimal = Decimal(0)
+        self.debug_on: bool = False
+        self.lending_paused: bool = False
+        self.last_lending_status: bool | None = None
+
+        self.loan_orders_request_limit: dict[str, int] = {}
+        self.default_loan_orders_request_limit: int = 5
+        self.compete_rate: float = 0.00064
+        self.analysis_method: str = "percentile"
+        
+        self.scheduler: sched.scheduler | None = None
+
