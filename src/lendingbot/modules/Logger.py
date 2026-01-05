@@ -41,7 +41,9 @@ class ConsoleOutput:
 
 
 class JsonOutput:
-    def __init__(self, file_path: str, log_limit: int, exchange: str = "", label: str = "Lending Bot") -> None:
+    def __init__(
+        self, file_path: str, log_limit: int, exchange: str = "", label: str = "Lending Bot"
+    ) -> None:
         self.jsonOutputFile: str = file_path
         self.jsonOutput: dict[str, Any] = {}
         self.jsonOutputCoins: dict[str, Any] = {}

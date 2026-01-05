@@ -130,9 +130,7 @@ class MarketAnalysisConfig(BaseModel):
 class PluginsConfig(BaseModel):
     account_stats: dict[str, Any] = Field(default_factory=dict)
     charts: dict[str, Any] = Field(default_factory=dict)
-    market_analysis: MarketAnalysisConfig = Field(
-        default_factory=lambda: MarketAnalysisConfig()
-    )
+    market_analysis: MarketAnalysisConfig = Field(default_factory=lambda: MarketAnalysisConfig())
 
 
 class NotificationConfig(BaseModel):

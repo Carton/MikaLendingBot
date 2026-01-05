@@ -19,12 +19,14 @@ class MarketDataException(Exception):
 
 
 class MarketAnalysis:
-    def __init__(self, config: Configuration.RootConfig, api: Any, db_dir: Path | None = None) -> None:
+    def __init__(
+        self, config: Configuration.RootConfig, api: Any, db_dir: Path | None = None
+    ) -> None:
         self.config = config
         self.api = api
-        
+
         ma_config = self.config.plugins.market_analysis
-        
+
         self.currencies_to_analyse = ma_config.analyse_currencies
         self.update_interval = ma_config.update_interval
         self.lending_style = ma_config.lending_style
@@ -41,17 +43,17 @@ class MarketAnalysis:
         self.ma_debug_log = ma_config.ma_debug_log
         self.MACD_long_win_seconds = ma_config.macd_long_window
         self.percentile_seconds = ma_config.percentile_window
-        
+
         # Derived values logic
         keep_sec = max(self.MACD_long_win_seconds, self.percentile_seconds)
         self.keep_history_seconds = int(keep_sec * 1.1)
-        
+
         self.MACD_short_win_seconds = int(self.MACD_long_win_seconds / 12)
-        
+
         self.daily_min_multiplier = ma_config.daily_min_multiplier
-        
+
         self.delete_thread_sleep = float(self.keep_history_seconds / 2)
-        
+
         self.exchange = self.config.api.exchange.value
 
         if len(self.currencies_to_analyse) != 0:

@@ -22,7 +22,7 @@ class TestConfiguration(unittest.TestCase):
         exchange = "Poloniex"
         apikey = "123"
         secret = "abc"
-        
+
         [bot]
         period_active = 120
         """
@@ -42,7 +42,7 @@ class TestConfiguration(unittest.TestCase):
         min_loan_size = 0.5
         strategy = "Spread"
         gap_bottom = 10
-        
+
         [coin.BTC]
         strategy = "FRR"
         gap_bottom = 20

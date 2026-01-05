@@ -137,16 +137,16 @@ class TestLendingCore:
         lending_module.Config = Mock()
         # lending_module.Config.get is irrelevant here because proper objects are used.
         # We need to set default_coin_cfg or coin_cfg.
-        
+
         # Ensure defaults are what we expect
         lending_module.default_coin_cfg.min_daily_rate = Decimal("0.003")
-        
+
         rate_info = lending_module.get_frr_or_min_daily_rate("BTC")
         assert rate_info.final_rate == Decimal("0.003")
         assert rate_info.frr_enabled is False
 
     def test_get_frr_or_min_daily_rate_bitfinex_frr(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy, GapMode
+        from lendingbot.modules.Configuration import CoinConfig, GapMode, LendingStrategy
 
         lending_module.exchange = "BITFINEX"
         lending_module.Config = Mock()
@@ -165,7 +165,7 @@ class TestLendingCore:
                 # OLD code had gapmode=False.
                 # New code: gap_mode is GapMode enum. user must provide one.
                 # But defaults are provided in CoinConfig.
-                gap_mode=GapMode.RAW_BTC, # Mocking a value
+                gap_mode=GapMode.RAW_BTC,  # Mocking a value
                 gap_bottom=Decimal(0),
                 gap_top=Decimal(0),
                 strategy=LendingStrategy.FRR,
@@ -183,7 +183,7 @@ class TestLendingCore:
         assert rate_info.frr_used is True
 
     def test_get_min_daily_rate_coin_cfg(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy, GapMode
+        from lendingbot.modules.Configuration import CoinConfig, GapMode, LendingStrategy
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
@@ -212,7 +212,7 @@ class TestLendingCore:
             assert rate == Decimal("0.005")
 
     def test_get_min_daily_rate_disabled(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy, GapMode
+        from lendingbot.modules.Configuration import CoinConfig, GapMode, LendingStrategy
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
@@ -252,7 +252,7 @@ class TestLendingCore:
                     "rates": ["0.01", "0.02", "0.03", "0.04"],
                 },
             ]
-            lending_module.gap_mode_default = "Relative" # Use correct casing or Enum if possible, sticking to str for now but capitalized
+            lending_module.gap_mode_default = "Relative"  # Use correct casing or Enum if possible, sticking to str for now but capitalized
             lending_module.gap_bottom_default = Decimal("50")
             lending_module.gap_top_default = Decimal("150")
             lending_module.loanOrdersRequestLimit = {"BTC": 10}
@@ -328,11 +328,11 @@ class TestLendingCore:
         # Setup mocked usage of cfg.api.exchange.value
         # But wait, init() uses Config.api.exchange.value
         # We need to structure the mock to support property access
-        
+
         cfg.api.exchange.value = "POLONIEX"
         cfg.bot.period_active = 60
         cfg.bot.period_inactive = 300
-        
+
         # Helper to return a mock object with attributes
         def mock_coin_config():
             c = Mock()
@@ -347,10 +347,10 @@ class TestLendingCore:
             c.frr_delta_min = Decimal("-10")
             c.frr_delta_max = Decimal("10")
             return c
-            
+
         cfg.get_coin_config.return_value = mock_coin_config()
-        cfg.coin = {} # iterator over coin
-        
+        cfg.coin = {}  # iterator over coin
+
         cfg.api.all_currencies = ["BTC"]
         cfg.plugins.market_analysis.analyse_currencies = []
         cfg.bot.keep_stuck_orders = True
@@ -526,11 +526,11 @@ class TestLendingCore:
             assert rates == [lending_module.max_daily_rate, lending_module.max_daily_rate]
 
     def test_get_gap_mode_rates_coin_cfg(self, lending_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy, GapMode
+        from lendingbot.modules.Configuration import CoinConfig, GapMode, LendingStrategy
 
         lending_module.coin_cfg = {
             "BTC": CoinConfig(
-                gap_mode=GapMode.RAW, # gapmode="raw" -> GapMode.RAW
+                gap_mode=GapMode.RAW,  # gapmode="raw" -> GapMode.RAW
                 gap_bottom=Decimal(50),
                 gap_top=Decimal(150),
                 min_daily_rate=Decimal(0),

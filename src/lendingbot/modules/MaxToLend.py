@@ -1,5 +1,4 @@
 from decimal import Decimal
-from typing import Any
 
 from . import Configuration
 from .Logger import Logger
@@ -23,12 +22,12 @@ def init(config: Configuration.RootConfig, log1: Logger) -> None:
         log1: The logger instance.
     """
     global coin_cfg, max_to_lend_rate, max_to_lend, max_percent_to_lend, min_loan_size, log
-    
+
     # Populate coin_cfg with configured coins (merged with defaults by get_coin_config)
     coin_cfg = {}
     for symbol in config.coin:
-         coin_cfg[symbol] = config.get_coin_config(symbol)
-         
+        coin_cfg[symbol] = config.get_coin_config(symbol)
+
     default_coin = config.get_coin_config("default")
     max_to_lend = default_coin.max_to_lend
     max_percent_to_lend = default_coin.max_percent_to_lend

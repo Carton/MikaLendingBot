@@ -26,18 +26,18 @@ class Bitfinex(ExchangeApi):
         self.req_period = self.default_req_period
         self.req_time_log: deque[float] = deque(maxlen=self.req_per_period)
         self.url = "https://api.bitfinex.com"
-        
+
         self.key = self.cfg.api.apikey.get_secret_value() if self.cfg.api.apikey else None
         self.secret = self.cfg.api.secret.get_secret_value() if self.cfg.api.secret else None
-        
+
         self.apiVersion = "v1"
         self.symbols: list[str] = []
         self.ticker: dict[str, dict[str, Any]] = {}
         self.tickerTime = 0
         self.baseCurrencies = ["USD", "BTC", "ETH"]
-        
+
         self.all_currencies = self.cfg.api.all_currencies
-        
+
         self.usedCurrencies: list[str] = []
         self.timeout = int(self.cfg.bot.request_timeout)
         self.api_debug_log = self.cfg.bot.api_debug_log
