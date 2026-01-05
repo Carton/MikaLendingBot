@@ -1,12 +1,12 @@
 # Implementation Plan: Config Rearch & DI Refactoring
 
-## 阶段 1: 基础设施与测试先行 (TDD Start)
+## 阶段 1: 基础设施与测试先行 (TDD Start) [checkpoint: 074f074]
 本阶段的目标是为新的 `LendingEngine` 类建立测试环境。
 
 - [x] Task 1.1: 在 `tests/` 下创建一个新的测试文件 `tests/test_LendingEngine_new.py`。
 - [x] Task 1.2: 在新测试中定义针对 `LendingEngine` 构造函数和基本属性的测试用例（使用 Mock 的 `RootConfig`）。
 - [x] Task 1.3: 更新 `src/lendingbot/modules/Lending.py`，初步定义 `LendingEngine` 类骨架，以使测试能够导入。
-- [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification '阶段 1' (Protocol in workflow.md) [074f074]
 
 ## 阶段 2: LendingEngine 核心重构
 本阶段是将 `Lending.py` 的逻辑从全局函数迁移到类方法中。
