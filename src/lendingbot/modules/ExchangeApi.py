@@ -167,6 +167,12 @@ class ExchangeApi(abc.ABC):
         Transfers values from one account/wallet to another
         """
 
+    @abc.abstractmethod
+    def get_frr(self, currency: str) -> float:
+        """
+        Retrieves the flash return rate for the given currency
+        """
+
 
 class ApiError(Exception):
     pass

@@ -12,10 +12,12 @@ import requests
 from . import Configuration
 from .ExchangeApi import ApiError, ExchangeApi
 
+
 def post_process(json_ret: Any) -> Any:
     if isinstance(json_ret, dict) and "error" in json_ret:
         raise ApiError(json_ret["error"])
     return json_ret
+
 
 class Poloniex(ExchangeApi):
     def __init__(self, cfg: Configuration.RootConfig, log: Any) -> None:
@@ -30,7 +32,7 @@ class Poloniex(ExchangeApi):
         self.req_period = float(self.default_req_period)
         self.req_time_log: deque[float] = deque(maxlen=self.req_per_period)
         self.lock = threading.RLock()
-        
+
         socket.setdefaulttimeout(self.cfg.bot.request_timeout)
         self.api_debug_log = self.cfg.bot.api_debug_log
 
@@ -257,3 +259,6 @@ class Poloniex(ExchangeApi):
         return cast(
             "dict[str, Any]", self.api_query("toggleAutoRenew", {"orderNumber": order_number})
         )
+
+    def get_frr(self, currency: str) -> float:
+        raise NotImplementedError("FRR is not supported on Poloniex")
