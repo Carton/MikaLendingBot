@@ -71,6 +71,8 @@ ruff.toml
 # Project Specific
 # ───────────────────────────────────────────────────────────────────────────────
 *.cfg
+default.toml
+config.toml
 *.log
 *.db
 *.db*
