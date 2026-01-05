@@ -46,7 +46,6 @@ class WebServerConfig(BaseModel):
     host: str = "0.0.0.0"
     port: int = Field(8000, ge=1, le=65535)
     template: str = "www"
-    json_log_size: int = 200
 
 
 class BotConfig(BaseModel):
