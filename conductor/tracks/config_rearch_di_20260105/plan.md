@@ -8,15 +8,14 @@
 - [x] Task 1.3: 更新 `src/lendingbot/modules/Lending.py`，初步定义 `LendingEngine` 类骨架，以使测试能够导入。
 - [x] Task: Conductor - User Manual Verification '阶段 1' (Protocol in workflow.md) [074f074]
 
-## 阶段 2: LendingEngine 核心重构
+## 阶段 2: LendingEngine 核心重构 [checkpoint: 80cbb9d]
 本阶段是将 `Lending.py` 的逻辑从全局函数迁移到类方法中。
 
-- [ ] Task 2.1: 实现 `LendingEngine.__init__`，将 `RootConfig`, `Data`, `Logger`, `ExchangeApi` 等注入并保存为实例属性。
-- [ ] Task 2.2: 迁移核心状态变量。将原本分散的全局变量（如 `coin_cfg`, `loans_provided`）转化为 `LendingEngine` 的实例属性。
-- [ ] Task 2.3: 迁移核心方法（如 `create_lend_offer`, `get_rate_for_currency`）。
-    - **TDD 步骤**: 为每个方法编写测试 -> 迁移逻辑 -> 修复测试。
-- [ ] Task 2.4: 移除 `Lending.py` 中所有的 `global` 声明和模块级变量复制逻辑。
-- [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task 2.1: 实现 `LendingEngine.__init__`，将 `RootConfig`, `Data`, `Logger`, `ExchangeApi` 等注入并保存为实例属性。 ab67478
+- [x] Task 2.2: 迁移核心状态变量。将原本分散的全局变量（如 `coin_cfg`, `loans_provided`）转化为 `LendingEngine` 的实例属性。 43db79c
+- [x] Task 2.3: 迁移核心方法（如 `create_lend_offer`, `get_rate_for_currency`）。 942af28
+- [x] Task 2.4: 移除 `Lending.py` 中所有的 `global` 声明和模块级变量复制逻辑。 942af28
+- [x] Task: Conductor - User Manual Verification '阶段 2' (Protocol in workflow.md) [80cbb9d]
 
 ## 阶段 3: 外围模块重构 (DI Conversion)
 将其他模块也改为接收注入的 `config` 对象。
