@@ -2,27 +2,19 @@
 Tests for Poloniex module core logic.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 
+from lendingbot.modules.Configuration import ApiConfig, BotConfig, RootConfig
 from lendingbot.modules.Poloniex import ApiError, Poloniex
-
-
-from lendingbot.modules.Configuration import RootConfig, ApiConfig, BotConfig
 
 
 @pytest.fixture
 def poloniex_api():
     mock_config = RootConfig(
-        api=ApiConfig(
-            apikey="test_key",
-            secret="test_secret"
-        ),
-        bot=BotConfig(
-            request_timeout=30
-        )
+        api=ApiConfig(apikey="test_key", secret="test_secret"), bot=BotConfig(request_timeout=30)
     )
     mock_log = MagicMock()
     return Poloniex(mock_config, mock_log)

@@ -1,5 +1,5 @@
 """
-Tests for Charts plugin.
+Tests for Charts plugin using Dependency Injection.
 """
 
 import json
@@ -9,15 +9,17 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+from lendingbot.modules.Configuration import PluginsConfig, RootConfig
 from lendingbot.plugins.Charts import Charts
 
 
 class TestCharts:
     @pytest.fixture
     def charts_plugin(self, tmp_path):
-        mock_cfg = Mock()
-        mock_cfg.get.side_effect = lambda _s, _k, d=None: d
-        mock_cfg.get_all_currencies.return_value = ["BTC"]
+        # Use real configuration object
+        mock_cfg = RootConfig(
+            plugins=PluginsConfig(charts={"enabled": True, "DumpInterval": 21600})
+        )
         mock_api = Mock()
         mock_log = MagicMock()
 

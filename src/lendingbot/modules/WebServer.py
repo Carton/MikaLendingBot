@@ -7,7 +7,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-from . import Configuration, Lending
+from . import Configuration
 
 
 class WebServer:
@@ -246,17 +246,6 @@ class WebServer:
 _web_server: WebServer | None = None
 
 
-def initialize_web_server(config: Configuration.RootConfig) -> None:
-    global _web_server
-    # During migration, we might not have the lending_engine here yet if called from old init flow
-    # But new main.py will use the class directly.
-
-    # Use the internal _engine from Lending module if it exists
-    engine = Lending._engine
-    _web_server = WebServer(config, engine)
-    _web_server.start()
-
-
 def get_web_settings() -> dict[str, Any]:
     if _web_server:
         return _web_server.get_web_settings()
@@ -270,8 +259,3 @@ def get_web_settings() -> dict[str, Any]:
         "frrdelta_min": -10,
         "frrdelta_max": 10,
     }
-
-
-def stop_web_server() -> None:
-    if _web_server:
-        _web_server.stop()

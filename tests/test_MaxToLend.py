@@ -1,5 +1,5 @@
 """
-Tests for MaxToLend module.
+Tests for MaxToLend module using real Configuration models.
 """
 
 from decimal import Decimal
@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from lendingbot.modules import MaxToLend
+from lendingbot.modules.Configuration import CoinConfig, RootConfig
 
 
 @pytest.fixture
@@ -18,41 +19,38 @@ def maxtolend_module():
     MaxToLend.max_to_lend_rate = Decimal(0)
     MaxToLend.coin_cfg = {}
     MaxToLend.log = None
-    MaxToLend.min_loan_size = Decimal("0.01")
+    MaxToLend.min_loan_size = Decimal("0.001")
     return MaxToLend
 
 
 class TestMaxToLend:
     def test_maxtolend_init(self, maxtolend_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
-
-        mock_config = MagicMock()
-        mock_config.get_coin_cfg.return_value = {
-            "BTC": CoinConfig(
-                minrate=Decimal("0.0001"),
-                maxactive=Decimal("100"),
-                maxtolend=Decimal("1.0"),
-                maxpercenttolend=Decimal("0.5"),
-                maxtolendrate=Decimal("0.01"),
-                gapmode="raw",
-                gapbottom=Decimal("10"),
-                gaptop=Decimal("20"),
-                lending_strategy=LendingStrategy.FRR,
-                frrdelta_min=Decimal("0.00001"),
-                frrdelta_max=Decimal("0.00005"),
-            )
-        }
-        mock_config.get.return_value = "0"
+        config = RootConfig(
+            coin={
+                "default": CoinConfig(
+                    max_to_lend=Decimal("0"),
+                    max_percent_to_lend=Decimal("0"),
+                    max_to_lend_rate=Decimal("0"),
+                    min_loan_size=Decimal("0.01"),
+                ),
+                "BTC": CoinConfig(
+                    max_to_lend=Decimal("1.0"),
+                    max_percent_to_lend=Decimal("0.5"),
+                    max_to_lend_rate=Decimal("0.01"),
+                ),
+            }
+        )
 
         log = MagicMock()
-        maxtolend_module.init(mock_config, log)
+        maxtolend_module.init(config, log)
         assert maxtolend_module.max_to_lend == Decimal("0")
+        assert maxtolend_module.min_loan_size == Decimal("0.01")
         # test coin_cfg override
-        assert maxtolend_module.coin_cfg["BTC"].maxtolend == Decimal("1.0")
+        assert maxtolend_module.coin_cfg["BTC"].max_to_lend == Decimal("1.0")
 
     def test_amount_to_lend_no_restriction(self, maxtolend_module):
         maxtolend_module.log = MagicMock()
-        # Balance 10, low_rate 0.01.
+        # Balance 10, low_rate 0.01. No restrictions set.
         res = maxtolend_module.amount_to_lend(Decimal("10"), "BTC", Decimal("10"), Decimal("0.01"))
         assert res == Decimal("10")
 
@@ -62,6 +60,9 @@ class TestMaxToLend:
         maxtolend_module.max_to_lend = Decimal("5")  # only lend up to 5
 
         # Balance 10, low_rate 0.01 (restricted).
+        # We want to lend until total lent is 5.
+        # total_bal = 10, we want to keep 5. lending_balance is 10.
+        # active_bal = 10 - (10 - 5) = 5.
         res = maxtolend_module.amount_to_lend(Decimal("10"), "BTC", Decimal("10"), Decimal("0.01"))
         assert res == Decimal("5")
 
@@ -81,30 +82,22 @@ class TestMaxToLend:
         maxtolend_module.max_to_lend_rate = Decimal("0.02")
         maxtolend_module.max_to_lend = Decimal("9.995")
 
-        # 10 - 9.995 = 0.005 < 0.01. Should just lend all 10.
+        # total_bal = 10, max_to_lend = 9.995.
+        # restricted_amount = 10 - 9.995 = 0.005.
+        # Since 0.005 < min_loan_size (0.01), it should lend all 10.
         res = maxtolend_module.amount_to_lend(Decimal("10"), "BTC", Decimal("10"), Decimal("0.01"))
         assert res == Decimal("10")
 
     def test_amount_to_lend_coin_cfg_override(self, maxtolend_module):
-        from lendingbot.modules.Configuration import CoinConfig, LendingStrategy
-
         maxtolend_module.log = MagicMock()
         maxtolend_module.coin_cfg = {
             "ETH": CoinConfig(
-                minrate=Decimal("0.0001"),
-                maxactive=Decimal("100"),
-                maxtolend=Decimal("2"),
-                maxpercenttolend=Decimal("0"),
-                maxtolendrate=Decimal("0.05"),
-                gapmode="raw",
-                gapbottom=Decimal("10"),
-                gaptop=Decimal("20"),
-                lending_strategy=LendingStrategy.FRR,
-                frrdelta_min=Decimal("0.00001"),
-                frrdelta_max=Decimal("0.00005"),
+                max_to_lend=Decimal("2"),
+                max_to_lend_rate=Decimal("0.05"),
             )
         }
         # Market rate 0.01 <= 0.05 (restricted for ETH)
+        # total_bal=10, max_to_lend=2 -> lend 2.
         res = maxtolend_module.amount_to_lend(Decimal("10"), "ETH", Decimal("10"), Decimal("0.01"))
         assert res == Decimal("2")
 

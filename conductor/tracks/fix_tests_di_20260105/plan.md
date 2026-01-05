@@ -18,8 +18,8 @@
 ## 阶段 3: 全量验证与覆盖率恢复 (Final Audit)
 本阶段目标是确保所有测试回归，并达到质量标准。
 
-- [ ] Task 3.1: 执行全量单元测试 `uv run poe test`，确保 100% 通过。
-- [ ] Task 3.2: 检查代码覆盖率 `uv run poe test-coverage`，确保核心模块覆盖率达标。
-- [ ] Task 3.3: 最终清理。删除 `Lending.py` 中为了兼容性临时保留的模块级包装函数。
-- [ ] Task 3.4: 运行 `uv run poe fix-full` 确保测试代码也符合风格规范。
+- [x] Task 3.1: 执行全量单元测试 `uv run poe test`，确保 100% 通过。
+- [x] Task 3.2: 检查代码覆盖率 `uv run poe test-coverage`，确保核心模块覆盖率达标。
+- [x] Task 3.3: 最终清理。删除 `Lending.py` 中为了兼容性临时保留的模块级包装函数。
+- [x] Task 3.4: 运行 `uv run poe fix-full` 确保测试代码也符合风格规范。
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)

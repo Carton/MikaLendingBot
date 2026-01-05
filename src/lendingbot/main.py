@@ -132,9 +132,6 @@ def main() -> NoReturn:
         engine = Lending.LendingEngine(config, api, log, Data, analysis)
         engine.initialize(dry_run=dry_run)
 
-        # Initialize the backward-compatible global for safety (for now)
-        Lending._engine = engine
-
         if engine.coin_cfg:
             strategies_log = [f"{cur}: {cfg.strategy}" for cur, cfg in engine.coin_cfg.items()]
             print(f"Active Lending Strategies: {', '.join(strategies_log)}")

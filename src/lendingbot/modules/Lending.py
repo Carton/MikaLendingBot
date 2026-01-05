@@ -27,66 +27,6 @@ class RateCalcInfo:
     frr_used: bool = False  # Whether FRR was actually used (FRR+delta > min_rate)
 
 
-# Global instance for backward compatibility during migration
-_engine: "LendingEngine | None" = None
-
-
-def init(
-    cfg: Configuration.RootConfig,
-    api: ExchangeApi,
-    log: Logger,
-    data: Any,
-    maxtolend: Any,
-    dry_run: bool,
-    analysis: Any,
-    notify_conf: dict[str, Any],
-) -> None:
-    """
-    Backward-compatible init function that creates the global LendingEngine instance.
-    """
-    global _engine
-    _engine = LendingEngine(cfg, api, log, data, analysis)
-    _engine.initialize(dry_run=dry_run)
-    _engine.start_scheduler()
-
-
-def get_sleep_time() -> float:
-    if _engine:
-        return _engine.sleep_time
-    return 60.0
-
-
-def lend_all() -> None:
-    if _engine:
-        _engine.lend_all()
-
-
-def cancel_all() -> None:
-    if _engine:
-        _engine.cancel_all()
-
-
-def transfer_balances() -> None:
-    if _engine:
-        _engine.transfer_balances()
-
-
-def get_sleep_time_inactive() -> float:
-    if _engine:
-        return _engine.config.bot.period_inactive
-    return 300.0
-
-
-def parse_xday_threshold(xday_threshold_str: str) -> tuple[list[float], list[str]]:
-    return LendingEngine.parse_xday_threshold(xday_threshold_str)
-
-
-def _reset_globals() -> None:
-    """For testing support."""
-    global _engine
-    _engine = None
-
-
 class LendingEngine:
     """
     The core lending logic engine.
@@ -329,12 +269,9 @@ class LendingEngine:
         current_step = self.frrdelta_cur_step + 1  # 1-indexed for display
         self.frrdelta_cur_step += 1
 
-        exchange = self.config.api.exchange
-        if hasattr(exchange, "value"):
-            exchange = exchange.value
-        exchange = str(exchange).upper()
+        exchange_name = str(self.config.api.exchange.value).upper()
 
-        if exchange == "BITFINEX" and frr_as_min:
+        if exchange_name == "BITFINEX" and frr_as_min:
             frr_base = Decimal(self.api.get_frr(cur))
             # Apply relative percentage: rate = FRR * (1 + pct/100)
             frr_rate = frr_base * (1 + frr_delta_pct / 100)
@@ -454,7 +391,14 @@ class LendingEngine:
 
         return resps
 
-    def get_gap_rate(self, active_cur: str, gap: Decimal, order_book: dict[str, Any], cur_total_balance: Decimal, raw: bool = False) -> Decimal:
+    def get_gap_rate(
+        self,
+        active_cur: str,
+        gap: Decimal,
+        order_book: dict[str, Any],
+        cur_total_balance: Decimal,
+        raw: bool = False,
+    ) -> Decimal:
         """
         Calculates the lending rate at a specific depth (gap) in the order book.
         """

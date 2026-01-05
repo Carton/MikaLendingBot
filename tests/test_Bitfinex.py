@@ -8,22 +8,17 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from lendingbot.modules.Bitfinex import Bitfinex
+from lendingbot.modules.Configuration import ApiConfig, BotConfig, RootConfig
 from lendingbot.modules.ExchangeApi import ApiError
-from lendingbot.modules.Configuration import RootConfig, ApiConfig, BotConfig
 
 
 @pytest.fixture
 def mock_cfg():
     return RootConfig(
         api=ApiConfig(
-            apikey="test_key",
-            secret="test_secret",
-            all_currencies=["BTC", "ETH", "USD"]
+            apikey="test_key", secret="test_secret", all_currencies=["BTC", "ETH", "USD"]
         ),
-        bot=BotConfig(
-            request_timeout=30,
-            api_debug_log=False
-        )
+        bot=BotConfig(request_timeout=30, api_debug_log=False),
     )
 
 

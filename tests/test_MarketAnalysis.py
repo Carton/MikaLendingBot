@@ -8,20 +8,21 @@ from unittest.mock import Mock, patch
 import pandas as pd
 import pytest
 
+from lendingbot.modules.Configuration import (
+    ApiConfig,
+    Exchange,
+    MarketAnalysisConfig,
+    PluginsConfig,
+    RootConfig,
+)
 from lendingbot.modules.MarketAnalysis import MarketAnalysis, MarketDataException
-
-
-from lendingbot.modules.Configuration import RootConfig, PluginsConfig, MarketAnalysisConfig, ApiConfig, Exchange
 
 
 @pytest.fixture
 def ma_module(tmp_path):
     # Use real configuration object
     mock_config = RootConfig(
-        api=ApiConfig(
-            exchange=Exchange.POLONIEX,
-            all_currencies=["BTC", "ETH"]
-        ),
+        api=ApiConfig(exchange=Exchange.POLONIEX, all_currencies=["BTC", "ETH"]),
         plugins=PluginsConfig(
             market_analysis=MarketAnalysisConfig(
                 analyse_currencies=["BTC"],
@@ -32,9 +33,9 @@ def ma_module(tmp_path):
                 ma_debug_log=False,
                 macd_long_window=60,
                 percentile_window=3600,
-                daily_min_multiplier=1.05
+                daily_min_multiplier=1.05,
             )
-        )
+        ),
     )
 
     mock_api = Mock()

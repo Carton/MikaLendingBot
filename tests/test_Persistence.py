@@ -3,35 +3,39 @@ Tests for Persistence logic using Dependency Injection.
 """
 
 import json
-from decimal import Decimal
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+
+from lendingbot.modules.Configuration import RootConfig
 from lendingbot.modules.Lending import LendingEngine
 from lendingbot.modules.WebServer import WebServer
-from lendingbot.modules.Configuration import RootConfig, CoinConfig
 
 
 @pytest.fixture
 def mock_config():
     return RootConfig()
 
+
 @pytest.fixture
 def mock_api():
     return MagicMock()
+
 
 @pytest.fixture
 def mock_log():
     return MagicMock()
 
+
 @pytest.fixture
 def mock_data():
     return MagicMock()
 
+
 class TestPersistence:
     def test_lending_paused_persistence_load(self, mock_config, mock_api, mock_log, mock_data):
         """Verify LendingEngine initializes correctly loads the paused state from mocked WebServer settings."""
-        
+
         # We need to patch the MODULE level WebServer.get_web_settings function
         # because LendingEngine uses the backward compatible wrapper.
         with patch("lendingbot.modules.WebServer.get_web_settings") as mock_get_settings:
@@ -66,10 +70,10 @@ class TestPersistence:
 
     def test_web_endpoint_saves_state(self, mock_config, tmp_path):
         """Verify WebServer.save_web_settings writes correctly to file."""
-        
+
         mock_engine = MagicMock()
         web_server = WebServer(mock_config, mock_engine)
-        
+
         test_file = tmp_path / "web_settings_test.json"
         web_server.web_settings_file = str(test_file)
 

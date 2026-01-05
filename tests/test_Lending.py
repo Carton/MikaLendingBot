@@ -2,7 +2,10 @@
 Tests for Lending module utility functions
 """
 
-from lendingbot.modules.Lending import parse_xday_threshold
+from lendingbot.modules.Lending import LendingEngine
+
+
+parse_xday_threshold = LendingEngine.parse_xday_threshold
 
 
 class TestParseXdayThreshold:
