@@ -101,8 +101,11 @@ class WebServer:
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json")
                         self.end_headers()
-                        
-                        strategies = {cur: cfg.strategy for cur, cfg in web_instance.lending_engine.coin_cfg.items()}
+
+                        strategies = {
+                            cur: cfg.strategy
+                            for cur, cfg in web_instance.lending_engine.coin_cfg.items()
+                        }
                         status_data = {
                             "lending_paused": web_instance.lending_engine.lending_paused,
                             "lending_strategies": strategies,
@@ -112,7 +115,9 @@ class WebServer:
                         self.send_response(200)
                         self.send_header("Content-Type", "application/json")
                         self.end_headers()
-                        self.wfile.write(json.dumps(web_instance.get_web_settings()).encode("utf-8"))
+                        self.wfile.write(
+                            json.dumps(web_instance.get_web_settings()).encode("utf-8")
+                        )
                     else:
                         super().do_GET()
 
@@ -124,8 +129,12 @@ class WebServer:
 
                         if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
                             try:
-                                web_instance.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
-                                web_instance.lending_engine.frrdelta_max = Decimal(str(config_data["frrdelta_max"]))
+                                web_instance.lending_engine.frrdelta_min = Decimal(
+                                    str(config_data["frrdelta_min"])
+                                )
+                                web_instance.lending_engine.frrdelta_max = Decimal(
+                                    str(config_data["frrdelta_max"])
+                                )
                                 if web_instance.lending_engine.log:
                                     web_instance.lending_engine.log.log(
                                         f"Settings updated by user: FRR Delta Min={web_instance.lending_engine.frrdelta_min}%, Max={web_instance.lending_engine.frrdelta_max}%"
@@ -153,11 +162,18 @@ class WebServer:
                         self.send_error(404, "File not found")
 
             socketserver.TCPServer.allow_reuse_address = True
-            self.server = socketserver.ThreadingTCPServer((self.web_server_ip, self.web_server_port), QuietHandler)
-            
+            self.server = socketserver.ThreadingTCPServer(
+                (self.web_server_ip, self.web_server_port), QuietHandler
+            )
+
             # Host display logic
             if self.web_server_ip == "0.0.0.0":
-                addresses = [str(i[4][0]) for i in socket.getaddrinfo(socket.gethostname().split(".")[0], self.web_server_port)]
+                addresses = [
+                    str(i[4][0])
+                    for i in socket.getaddrinfo(
+                        socket.gethostname().split(".")[0], self.web_server_port
+                    )
+                ]
                 addresses = [i for i in addresses if ":" not in i]
                 addresses.append("127.0.0.1")
                 hosts = list(set(addresses))
@@ -229,15 +245,17 @@ class WebServer:
 # Backward compatibility wrappers
 _web_server: WebServer | None = None
 
+
 def initialize_web_server(config: Configuration.RootConfig) -> None:
     global _web_server
     # During migration, we might not have the lending_engine here yet if called from old init flow
     # But new main.py will use the class directly.
-    from . import Lending
+
     # Use the internal _engine from Lending module if it exists
     engine = Lending._engine
     _web_server = WebServer(config, engine)
     _web_server.start()
+
 
 def get_web_settings() -> dict[str, Any]:
     if _web_server:
@@ -252,6 +270,7 @@ def get_web_settings() -> dict[str, Any]:
         "frrdelta_min": -10,
         "frrdelta_max": 10,
     }
+
 
 def stop_web_server() -> None:
     if _web_server:

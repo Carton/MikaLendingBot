@@ -88,13 +88,21 @@ class LendingEngine:
     The core lending logic engine.
     Refactored from module-level functions to a class for Dependency Injection.
     """
-    def __init__(self, config: Configuration.RootConfig, api: ExchangeApi, log: Logger, data: Any, analysis: Any = None):
+
+    def __init__(
+        self,
+        config: Configuration.RootConfig,
+        api: ExchangeApi,
+        log: Logger,
+        data: Any,
+        analysis: Any = None,
+    ):
         self.config = config
         self.api = api
         self.log = log
         self.data = data
         self.analysis = analysis
-        
+
         # Core state (mirrors of old globals)
         self.sleep_time: float = 0
         self.min_daily_rate: Decimal = Decimal(0)
@@ -106,17 +114,17 @@ class LendingEngine:
         self.xday_threshold: str = ""
         self.min_loan_size: Decimal = Decimal(0)
         self.min_loan_sizes: dict[str, Decimal] = {}
-        
+
         self.coin_cfg: dict[str, Configuration.CoinConfig] = {}
         self.default_coin_cfg: Configuration.CoinConfig = Configuration.CoinConfig()
-        
+
         self.dry_run: bool = False
         self.transferable_currencies: list[str] = []
         self.coin_cfg_alerted: dict[str, bool] = {}
         self.max_active_alerted: dict[str, bool] = {}
         self.notify_conf: dict[str, Any] = {}
         self.loans_provided: list[dict[str, Any]] = []
-        
+
         self.frrdelta_cur_step: int = 0
         self.frrdelta_min: Decimal = Decimal(0)
         self.frrdelta_max: Decimal = Decimal(0)
@@ -128,7 +136,7 @@ class LendingEngine:
         self.default_loan_orders_request_limit: int = 5
         self.compete_rate: float = 0.00064
         self.analysis_method: str = "percentile"
-        
+
         self.scheduler: sched.scheduler | None = None
 
     def initialize(self, dry_run: bool = False) -> None:
@@ -136,16 +144,20 @@ class LendingEngine:
         Initialize the LendingEngine state from the injected configuration.
         """
         self.dry_run = dry_run
-        
+
         # Take defaults from 'default' coin config
         self.default_coin_cfg = self.config.get_coin_config("default")
-        
+
         self.min_daily_rate = self.default_coin_cfg.min_daily_rate
         self.max_daily_rate = self.default_coin_cfg.max_daily_rate
         self.spread_lend = self.default_coin_cfg.spread_lend
         self.gap_mode_default = self.default_coin_cfg.gap_mode
         self.gap_bottom_default = self.default_coin_cfg.gap_bottom
-        self.gap_top_default = self.default_coin_cfg.gap_top if self.default_coin_cfg.gap_top is not None else self.default_coin_cfg.gap_bottom
+        self.gap_top_default = (
+            self.default_coin_cfg.gap_top
+            if self.default_coin_cfg.gap_top is not None
+            else self.default_coin_cfg.gap_bottom
+        )
 
         # xday string reconstruction
         xdays = self.default_coin_cfg.xday_thresholds
@@ -160,21 +172,22 @@ class LendingEngine:
         self.coin_cfg = {}
         self.min_loan_sizes = {}
         for symbol in self.config.coin:
-             cc = self.config.get_coin_config(symbol)
-             self.coin_cfg[symbol] = cc
-             self.min_loan_sizes[symbol] = cc.min_loan_size
+            cc = self.config.get_coin_config(symbol)
+            self.coin_cfg[symbol] = cc
+            self.min_loan_sizes[symbol] = cc.min_loan_size
 
         self.transferable_currencies = []
-        
+
         self.frrdelta_min = self.default_coin_cfg.frr_delta_min
         self.frrdelta_max = self.default_coin_cfg.frr_delta_max
 
         self.analysis_method = "percentile"
         self.sleep_time = self.config.bot.period_active
-        
+
         # Web Settings Precedence (Porting logic)
         try:
             from . import WebServer
+
             web_settings = WebServer.get_web_settings()
             if "frrdelta_min" in web_settings and "frrdelta_max" in web_settings:
                 self.frrdelta_min = Decimal(str(web_settings["frrdelta_min"]))
@@ -183,7 +196,9 @@ class LendingEngine:
             if "lending_paused" in web_settings:
                 self.lending_paused = bool(web_settings["lending_paused"])
                 if self.log:
-                    self.log.log(f"Loaded lending_paused={self.lending_paused} from Web Configuration.")
+                    self.log.log(
+                        f"Loaded lending_paused={self.lending_paused} from Web Configuration."
+                    )
         except Exception as e:
             if self.log:
                 self.log.log(f"Failed to load web settings: {e}")
@@ -212,7 +227,9 @@ class LendingEngine:
                 xdays.append(day)
         return rates, xdays
 
-    def create_lend_offer(self, currency: str, amt: str | Decimal, rate: str | float | Decimal, days: str = "2") -> None:
+    def create_lend_offer(
+        self, currency: str, amt: str | Decimal, rate: str | float | Decimal, days: str = "2"
+    ) -> None:
         """
         Creates a new lending offer on the exchange.
         """
@@ -259,13 +276,17 @@ class LendingEngine:
                 exit(0)
             if int(days) > days_remaining:
                 days = str(days_remaining)
-        
+
         if not self.dry_run:
             msg = self.api.create_loan_offer(currency, float(amt_s), int(days), 0, float(rate_f))
-            if len(xdays) > 0 and int(days) == int(xdays[-1]) and self.config.notifications.notify_xday_threshold:
+            if (
+                len(xdays) > 0
+                and int(days) == int(xdays[-1])
+                and self.config.notifications.notify_xday_threshold
+            ):
                 text = f"{format_amount_currency(amt_s, currency)} loan placed for {days} days at a rate of {format_rate_pct(rate_f)}"
                 if self.log:
-                    self.log.notify(text, self.config.notifications.model_dump()) # Adjusted for DI
+                    self.log.notify(text, self.config.notifications.model_dump())  # Adjusted for DI
             if self.log:
                 # Pass original_rate to show compete adjustment info
                 self.log.offer(amt_s, currency, float(rate_f), days, msg, original_rate)
@@ -356,7 +377,9 @@ class LendingEngine:
         if self.analysis and cur in self.config.plugins.market_analysis.analyse_currencies:
             recommended_min = self.analysis.get_rate_suggestion(cur, method=self.analysis_method)
             if rate_info.final_rate < Decimal(str(recommended_min)) and self.log:
-                self.log.log(f"[{cur}] Tip: {self.analysis_method} suggests {format_rate_pct(recommended_min)}")
+                self.log.log(
+                    f"[{cur}] Tip: {self.analysis_method} suggests {format_rate_pct(recommended_min)}"
+                )
 
         return rate_info.final_rate
 
@@ -419,7 +442,14 @@ class LendingEngine:
 
         return resps
 
-    def get_gap_rate(self, active_cur: str, gap: Decimal, order_book: dict[str, Any], cur_total_balance: Decimal, raw: bool = False) -> Decimal:
+    def get_gap_rate(
+        self,
+        active_cur: str,
+        gap: Decimal,
+        order_book: dict[str, Any],
+        cur_total_balance: Decimal,
+        raw: bool = False,
+    ) -> Decimal:
         """
         Calculates the lending rate at a specific depth (gap) in the order book.
         """
@@ -452,7 +482,9 @@ class LendingEngine:
             cur_spread_lend -= 1
         return max(1, int(cur_spread_lend))
 
-    def construct_orders(self, cur: str, cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any) -> dict[str, Any]:
+    def construct_orders(
+        self, cur: str, cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any
+    ) -> dict[str, Any]:
         """
         Constructs a list of lend orders based on the configured spread and gap settings.
         """
@@ -465,7 +497,9 @@ class LendingEngine:
             rate_step = Decimal(0)
             bottom_rate = Decimal(0)
         else:
-            top_rate, bottom_rate = self.get_gap_mode_rates(cur, cur_active_bal, cur_total_balance, ticker)
+            top_rate, bottom_rate = self.get_gap_mode_rates(
+                cur, cur_active_bal, cur_total_balance, ticker
+            )
             gap_diff = top_rate - bottom_rate
             rate_step = gap_diff / (cur_spread - 1)
 
@@ -492,11 +526,17 @@ class LendingEngine:
         resp = {"amounts": new_order_amounts, "rates": new_order_rates}
         return resp
 
-    def get_gap_mode_rates(self, cur: str, cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any) -> list[Decimal]:
+    def get_gap_mode_rates(
+        self, cur: str, cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any
+    ) -> list[Decimal]:
         """
         Calculates the top and bottom rates based on the configured gap mode.
         """
-        gap_mode, gap_bottom, gap_top = self.gap_mode_default, self.gap_bottom_default, self.gap_top_default
+        gap_mode, gap_bottom, gap_top = (
+            self.gap_mode_default,
+            self.gap_bottom_default,
+            self.gap_top_default,
+        )
         use_gap_cfg = False
 
         books = self.construct_order_books(cur)
@@ -586,7 +626,9 @@ class LendingEngine:
             else:
                 print(f"Not enough {cur} to lend if bot canceled open orders. Not cancelling.")
 
-    def lend_cur(self, active_cur: str, total_lent_info: Any, lending_balances: dict[str, str], ticker: Any) -> int:
+    def lend_cur(
+        self, active_cur: str, total_lent_info: Any, lending_balances: dict[str, str], ticker: Any
+    ) -> int:
         """
         Analyzes the market and places lend orders for a specific currency.
         """
@@ -607,6 +649,7 @@ class LendingEngine:
         demand_book, order_book = books[0], books[1]
 
         from . import MaxToLend
+
         active_bal = MaxToLend.amount_to_lend(
             active_cur_total_balance,
             active_cur,
@@ -639,19 +682,24 @@ class LendingEngine:
                 rate = demand_book["rates"][0]
                 days = str(demand_book["rangeMax"][0])
                 if self.log:
-                    self.log.log(f"Competing offer found for {active_cur} at {format_rate_pct(rate)} for {days} days.")
+                    self.log.log(
+                        f"Competing offer found for {active_cur} at {format_rate_pct(rate)} for {days} days."
+                    )
 
             try:
                 self.create_lend_offer(active_cur, orders["amounts"][i], rate, days)
             except Exception as msg:
                 if "Amount must be at least " in str(msg):
                     import re
+
                     results = re.findall(r"[-+]?([0-9]*\.[0-9]+|[0-9]+)", str(msg))
                     for result in results:
                         if result:
                             self.min_loan_sizes[active_cur] = Decimal(result)
                             if self.log:
-                                self.log.log(f"{active_cur}'s min_loan_size has been increased to the detected min: {result}")
+                                self.log.log(
+                                    f"{active_cur}'s min_loan_size has been increased to the detected min: {result}"
+                                )
                     return self.lend_cur(active_cur, total_lent_info, lending_balances, ticker)
                 else:
                     raise msg
@@ -666,11 +714,12 @@ class LendingEngine:
         total_lent = total_lent_info.total_lent
         lending_balances_data = self.api.return_available_account_balances("lending")
         lending_balances = lending_balances_data.get("lending", {})
-        
+
         if self.dry_run:
             lending_balances = self.data.get_on_order_balances()
 
         from . import MaxToLend
+
         for cur in sorted(total_lent):
             if not lending_balances or cur not in lending_balances:
                 MaxToLend.amount_to_lend(total_lent[cur], cur, Decimal(0), Decimal(0))
@@ -692,12 +741,18 @@ class LendingEngine:
             if lending_balances:
                 for cur in lending_balances:
                     if cur in self.config.api.all_currencies:
-                        usable_currencies += self.lend_cur(cur, total_lent_info, lending_balances, ticker)
+                        usable_currencies += self.lend_cur(
+                            cur, total_lent_info, lending_balances, ticker
+                        )
         except StopIteration:
             self.lend_all()
             return
-        
-        self.sleep_time = self.config.bot.period_inactive if usable_currencies == 0 else self.config.bot.period_active
+
+        self.sleep_time = (
+            self.config.bot.period_inactive
+            if usable_currencies == 0
+            else self.config.bot.period_active
+        )
 
     def transfer_balances(self) -> None:
         """
@@ -707,10 +762,14 @@ class LendingEngine:
             exchange_balances = self.api.return_balances()
             for coin in list(self.transferable_currencies):
                 if coin in exchange_balances and Decimal(str(exchange_balances[coin])) > 0:
-                    msg = self.api.transfer_balance(coin, float(exchange_balances[coin]), "exchange", "lending")
+                    msg = self.api.transfer_balance(
+                        coin, float(exchange_balances[coin]), "exchange", "lending"
+                    )
                     if self.log:
                         self.log.log(self.log.digestApiMsg(msg))
-                        self.log.notify(self.log.digestApiMsg(msg), self.config.notifications.model_dump())
+                        self.log.notify(
+                            self.log.digestApiMsg(msg), self.config.notifications.model_dump()
+                        )
                 if coin not in exchange_balances:
                     print(f"WARN: Incorrect coin entered for transferCurrencies: {coin}")
                     self.transferable_currencies.remove(coin)
@@ -721,7 +780,10 @@ class LendingEngine:
         """
         try:
             if self.log:
-                self.log.notify(self.data.stringify_total_lent(self.data.get_total_lent()), self.config.notifications.model_dump())
+                self.log.notify(
+                    self.data.stringify_total_lent(self.data.get_total_lent()),
+                    self.config.notifications.model_dump(),
+                )
         except Exception as ex:
             print(f"Error during summary notification: {ex}")
         if self.scheduler:
@@ -734,6 +796,7 @@ class LendingEngine:
         try:
             new_provided = self.api.return_active_loans()["provided"]
             if self.loans_provided:
+
                 def get_id_set(loans: list[dict[str, Any]]) -> set[Any]:
                     return {x["id"] for x in loans}
 
@@ -761,7 +824,12 @@ class LendingEngine:
         """
         if self.scheduler:
             if self.config.notifications.notify_summary_minutes:
-                self.scheduler.enter(10, 1, self.notify_summary, (self.config.notifications.notify_summary_minutes * 60,))
+                self.scheduler.enter(
+                    10,
+                    1,
+                    self.notify_summary,
+                    (self.config.notifications.notify_summary_minutes * 60,),
+                )
             if self.config.notifications.notify_new_loans:
                 self.scheduler.enter(20, 1, self.notify_new_loans, (60,))
             if not self.scheduler.empty():

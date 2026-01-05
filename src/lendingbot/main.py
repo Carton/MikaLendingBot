@@ -21,8 +21,14 @@ import urllib.error
 from pathlib import Path
 from typing import Any, NoReturn
 
-from .modules import Configuration
-from .modules import Data, Lending, MaxToLend, PluginsManager, WebServer, MarketAnalysis
+from .modules import (
+    Configuration,
+    Data,
+    Lending,
+    MarketAnalysis,
+    PluginsManager,
+    WebServer,
+)
 from .modules.ExchangeApi import ApiError
 from .modules.ExchangeApiFactory import ExchangeApiFactory
 from .modules.Logger import Logger
@@ -35,10 +41,6 @@ def parse_arguments() -> argparse.Namespace:
 
     Returns:
         argparse.Namespace: Parsed arguments object
-
-    Command line arguments:
-        -cfg, --config: Custom configuration file path
-        -dry, --dryrun: Dry-run mode, does not execute actual trades
     """
     parser = argparse.ArgumentParser(
         description="LendingBot - Cryptocurrency Lending Bot",
@@ -48,7 +50,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "-cfg",
         "--config",
-        help="Custom configuration file path (default: default.cfg)",
+        help="Custom configuration file path (default: default.toml)",
         type=str,
         default=None,
     )
@@ -81,19 +83,13 @@ def main() -> NoReturn:
     # Parse command line arguments
     args = parse_arguments()
     dry_run = bool(args.dryrun)
-    config_location = args.config or "default.cfg"
 
     # Load configuration
     try:
-        # Default to 'default.toml' if it exists
-        config_path = Path("default.toml")
-        if args.config:
-            config_path = Path(args.config)
-            if config_path.suffix == '.cfg':
-                print("Warning: .cfg files are legacy. Please migrate to .toml.")
-                # We could support legacy loading via a bridge, but for now we enforce TOML
-                # or we just fail. User instruction says 'migrate'
-        
+        config_path = Path(args.config) if args.config else Path("default.toml")
+        if config_path.suffix == ".cfg":
+            print("Warning: .cfg files are legacy. Please migrate to .toml.")
+
         config = Configuration.load_config(config_path)
     except FileNotFoundError:
         print(f"Config file '{config_path}' not found. Please create one.")
@@ -102,15 +98,7 @@ def main() -> NoReturn:
         print(f"Error loading configuration: {ex}")
         sys.exit(1)
 
-    try:
-        # Data module doesn't need config init anymore based on our analysis
-        pass 
-    except Exception as ex:
-        print("Error initializing Data module: {0}".format(ex))
-        sys.exit(1)
-
-    # ... Logger init ...
-    # Initialize the logger with the new config structure
+    # Initialize Logger
     try:
         log = Logger(
             json_file=config.bot.json_file,
@@ -119,31 +107,56 @@ def main() -> NoReturn:
             label=config.bot.label,
         )
     except Exception as ex:
-        print("Error initializing Logger: {0}".format(ex))
+        print(f"Error initializing Logger: {ex}")
         sys.exit(1)
 
+    # Initialize API
     try:
         api = ExchangeApiFactory.createApi(config.api.exchange.value, config, log)
     except Exception as ex:
-        print("Error initializing API: {0}".format(ex))
+        print(f"Error initializing API: {ex}")
         sys.exit(1)
 
-    # Initialize sub-modules
+    # Initialize Market Analysis (Class)
+    analysis = None
+    if config.plugins.market_analysis.analyse_currencies:
+        try:
+            analysis = MarketAnalysis.MarketAnalysis(config, api)
+            analysis.run()
+        except Exception as ex:
+            print(f"Error initializing Market Analysis: {ex}")
+            sys.exit(1)
+
+    # Initialize Lending Engine (Class)
     try:
-        notify_conf = config.notifications.model_dump()
-        # Pass the new config object
-        Lending.init(config, api, log, Data, MaxToLend, args.dryrun, MarketAnalysis, notify_conf)
+        engine = Lending.LendingEngine(config, api, log, Data, analysis)
+        engine.initialize(dry_run=dry_run)
+
+        # Initialize the backward-compatible global for safety (for now)
+        Lending._engine = engine
+
+        if engine.coin_cfg:
+            strategies_log = [f"{cur}: {cfg.strategy}" for cur, cfg in engine.coin_cfg.items()]
+            print(f"Active Lending Strategies: {', '.join(strategies_log)}")
     except Exception as ex:
-        print("Error initializing Lending: {0}".format(ex))
+        print(f"Error initializing Lending Engine: {ex}")
         sys.exit(1)
 
-    # Log active lending strategies (must be after Lending.init where coin_cfg is populated)
-    if Lending.coin_cfg:
-        strategies_log = [f"{cur}: {cfg.strategy}" for cur, cfg in Lending.coin_cfg.items()]
-        print(f"Active Lending Strategies: {', '.join(strategies_log)}")
+    # Initialize Plugins (Class)
+    try:
+        plugins_manager = PluginsManager.PluginsManager(config, api, log)
+        # Global for backward compatibility
+        PluginsManager._manager = plugins_manager
+    except Exception as ex:
+        print(f"Error initializing Plugins: {ex}")
+        sys.exit(1)
 
-    # Load plugins
-    PluginsManager.init(config, api, log, notify_conf)
+    # Initialize Web Server (Class)
+    if config.bot.web.enabled:
+        web_server = WebServer.WebServer(config, engine)
+        web_server.start()
+        # Global for backward compatibility
+        WebServer._web_server = web_server
 
     # Start DNS cache management
     prv_getaddrinfo = socket.getaddrinfo
@@ -160,6 +173,7 @@ def main() -> NoReturn:
     socket.getaddrinfo = new_getaddrinfo  # type: ignore[assignment]
 
     log.log(f"Welcome to {config.bot.label} on {config.api.exchange.value}")
+    engine.start_scheduler()
 
     try:
         last_summary_time = 0.0
@@ -168,27 +182,28 @@ def main() -> NoReturn:
                 dns_cache.clear()  # Flush DNS Cache
                 Data.update_conversion_rates(config.bot.output_currency, config.bot.web.enabled)
 
-                if Lending.lending_paused != Lending.last_lending_status:
-                    if not Lending.lending_paused:
+                if engine.lending_paused != engine.last_lending_status:
+                    if not engine.lending_paused:
                         log.log("Lending running")
                     else:
                         log.log("Lending paused")
-                    Lending.last_lending_status = Lending.lending_paused
+                    engine.last_lending_status = engine.lending_paused
 
-                if not Lending.lending_paused:
-                    PluginsManager.before_lending()
-                    Lending.transfer_balances()
-                    Lending.cancel_all()
-                    Lending.lend_all()
-                    PluginsManager.after_lending()
+                if not engine.lending_paused:
+                    plugins_manager.before_lending()
+                    engine.transfer_balances()
+                    engine.cancel_all()
+                    engine.lend_all()
+                    plugins_manager.after_lending()
 
                 lent_status_str = Data.stringify_total_lent(Data.get_total_lent())
-                if time.time() - last_summary_time >= Lending.get_sleep_time_inactive():
+                if time.time() - last_summary_time >= config.bot.period_inactive:
                     log.log(lent_status_str)
                     last_summary_time = time.time()
+
                 log.persistStatus()
                 sys.stdout.flush()
-                time.sleep(Lending.get_sleep_time())
+                time.sleep(engine.sleep_time)
             except KeyboardInterrupt:
                 raise
             except Exception as ex:
@@ -211,7 +226,7 @@ def main() -> NoReturn:
                     print("Are you using IP filter on the key? Maybe your IP changed?")
                     sys.exit(1)
                 elif "timed out" in msg:
-                    print(f"Timed out, will retry in {Lending.get_sleep_time()}sec")
+                    print(f"Timed out, will retry in {engine.sleep_time}sec")
                 elif isinstance(ex, http.client.BadStatusLine):
                     print("Caught BadStatusLine exception from exchange, ignoring.")
                 elif isinstance(ex, urllib.error.URLError):
@@ -223,16 +238,19 @@ def main() -> NoReturn:
                     print(
                         f"v{Data.get_bot_version()} Unhandled error, please open a Github issue so we can fix it!"
                     )
-                    if notify_conf["notify_caught_exception"]:
-                        log.notify(f"{ex}\n-------\n{traceback.format_exc()}", notify_conf)
+                    if config.notifications.notify_caught_exception:
+                        log.notify(
+                            f"{ex}\n-------\n{traceback.format_exc()}",
+                            config.notifications.model_dump(),
+                        )
 
                 sys.stdout.flush()
-                time.sleep(Lending.get_sleep_time())
+                time.sleep(engine.sleep_time)
 
     except KeyboardInterrupt:
         if config.bot.web.enabled:
-            WebServer.stop_web_server()
-        PluginsManager.on_bot_stop()
+            web_server.stop()
+        plugins_manager.on_bot_stop()
         log.log("bye")
         print("bye")
         os._exit(0)
