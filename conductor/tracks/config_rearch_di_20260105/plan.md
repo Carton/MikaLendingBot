@@ -17,14 +17,14 @@
 - [x] Task 2.4: 移除 `Lending.py` 中所有的 `global` 声明和模块级变量复制逻辑。 942af28
 - [x] Task: Conductor - User Manual Verification '阶段 2' (Protocol in workflow.md) [80cbb9d]
 
-## 阶段 3: 外围模块重构 (DI Conversion)
+## 阶段 3: 外围模块重构 (DI Conversion) [checkpoint: 96795ea]
 将其他模块也改为接收注入的 `config` 对象。
 
-- [ ] Task 3.1: **ExchangeApi**: 修改 `Bitfinex.py` 和 `Poloniex.py` 的 `__init__`，接受 `RootConfig`。
-- [ ] Task 3.2: **MarketAnalysis**: 将其封装为类并接受 `RootConfig` 注入，移除对 `Configuration_old` 的调用。
-- [ ] Task 3.3: **PluginsManager**: 重构初始化逻辑，确保注入 `config` 给所有插件。
-- [ ] Task 3.4: **WebServer**: 封装为 `WebServer` 类，接收 `config` 和 `lending_engine` 实例作为参数。
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task 3.1: **ExchangeApi**: 修改 `Bitfinex.py` 和 `Poloniex.py` 的 `__init__`，接受 `RootConfig`。
+- [x] Task 3.2: **MarketAnalysis**: 将其封装为类并接受 `RootConfig` 注入，移除对 `Configuration_old` 的调用。
+- [x] Task 3.3: **PluginsManager**: 重构初始化逻辑，确保注入 `config` 给所有插件。
+- [x] Task 3.4: **WebServer**: 封装为 `WebServer` 类，接收 `config` 和 `lending_engine` 实例作为参数。
+- [x] Task: Conductor - User Manual Verification '阶段 3' (Protocol in workflow.md) [96795ea]
 
 ## 阶段 4: 集成与清理 (Wiring & Cleanup)
 在 `main.py` 中完成所有组件的组装，并彻底废弃旧代码。
