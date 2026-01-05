@@ -31,3 +31,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: Lending Strategy Selection: Explicit configuration for Spread vs FRR strategies.
 *Link: [./conductor/archive/strategy_selection_20260103/](./conductor/archive/strategy_selection_20260103/)*
+
+---
+
+## [~] Track: Config Rearch & DI Refactoring
+*Link: [./conductor/tracks/config_rearch_di_20260105/](./conductor/tracks/config_rearch_di_20260105/)*

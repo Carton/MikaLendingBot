@@ -7,6 +7,7 @@ from typing import Any
 
 from . import Configuration
 from . import Data, MaxToLend
+from .ExchangeApi import ExchangeApi
 from .Logger import Logger
 from .Utils import format_amount_currency, format_rate_pct
 
@@ -1056,3 +1057,19 @@ def transfer_balances() -> None:
             if coin not in exchange_balances:
                 print(f"WARN: Incorrect coin entered for transferCurrencies: {coin}")
                 transferable_currencies.remove(coin)
+
+
+class LendingEngine:
+    """
+    The core lending logic engine.
+    Refactored from module-level functions to a class for Dependency Injection.
+    """
+    def __init__(self, config: Configuration.RootConfig, data: Any, log: Logger, api: ExchangeApi):
+        self.config = config
+        self.data = data
+        self.log = log
+        self.api = api
+        
+        # Initialize basic state containers (mirrors of old globals)
+        self.coin_cfg: dict[str, Configuration.CoinConfig] = {}
+        self.loans_provided: list[dict[str, Any]] = []
