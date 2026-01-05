@@ -1107,3 +1107,65 @@ class LendingEngine:
         
         self.scheduler: sched.scheduler | None = None
 
+    def initialize(self, dry_run: bool = False) -> None:
+        """
+        Initialize the LendingEngine state from the injected configuration.
+        """
+        self.dry_run = dry_run
+        
+        # Take defaults from 'default' coin config
+        self.default_coin_cfg = self.config.get_coin_config("default")
+        
+        self.min_daily_rate = self.default_coin_cfg.min_daily_rate
+        self.max_daily_rate = self.default_coin_cfg.max_daily_rate
+        self.spread_lend = self.default_coin_cfg.spread_lend
+        self.gap_mode_default = self.default_coin_cfg.gap_mode
+        self.gap_bottom_default = self.default_coin_cfg.gap_bottom
+        self.gap_top_default = self.default_coin_cfg.gap_top if self.default_coin_cfg.gap_top is not None else self.default_coin_cfg.gap_bottom
+
+        # xday string reconstruction
+        xdays = self.default_coin_cfg.xday_thresholds
+        if xdays:
+            self.xday_threshold = ",".join([f"{x.rate}:{x.days}" for x in xdays])
+        else:
+            self.xday_threshold = ""
+
+        self.min_loan_size = self.default_coin_cfg.min_loan_size
+
+        # Populate coin_cfg and min_loan_sizes
+        self.coin_cfg = {}
+        self.min_loan_sizes = {}
+        for symbol in self.config.coin:
+             cc = self.config.get_coin_config(symbol)
+             self.coin_cfg[symbol] = cc
+             self.min_loan_sizes[symbol] = cc.min_loan_size
+
+        self.transferable_currencies = []
+        
+        self.frrdelta_min = self.default_coin_cfg.frr_delta_min
+        self.frrdelta_max = self.default_coin_cfg.frr_delta_max
+
+        self.analysis_method = "percentile"
+        self.sleep_time = self.config.bot.period_active
+        
+        # Web Settings Precedence (Porting logic)
+        try:
+            from . import WebServer
+            web_settings = WebServer.get_web_settings()
+            if "frrdelta_min" in web_settings and "frrdelta_max" in web_settings:
+                self.frrdelta_min = Decimal(str(web_settings["frrdelta_min"]))
+                self.frrdelta_max = Decimal(str(web_settings["frrdelta_max"]))
+
+            if "lending_paused" in web_settings:
+                self.lending_paused = bool(web_settings["lending_paused"])
+                if self.log:
+                    self.log.log(f"Loaded lending_paused={self.lending_paused} from Web Configuration.")
+        except Exception as e:
+            if self.log:
+                self.log.log(f"Failed to load web settings: {e}")
+
+        # Initialize scheduler
+        self.scheduler = sched.scheduler(time.time, time.sleep)
+        # Note: scheduler logic (notify_summary, notify_new_loans) will be migrated later as they depend on other methods.
+
+

@@ -35,19 +35,15 @@ def mock_api():
 
 
 @pytest.mark.unit
-def test_lending_engine_init(mock_config, mock_data, mock_logger, mock_api):
-    """Test that LendingEngine initializes correctly with dependencies."""
+def test_lending_engine_initialize(mock_config, mock_data, mock_logger, mock_api):
+    """Test that LendingEngine.initialize sets correct values from config."""
     engine = LendingEngine(mock_config, mock_api, mock_logger, mock_data)
+    engine.initialize(dry_run=True)
     
-    assert engine.config == mock_config
-    assert engine.api == mock_api
-    assert engine.log == mock_logger
-    assert engine.data == mock_data
-    
-    # Check that core state attributes are initialized
-    assert hasattr(engine, 'coin_cfg')
-    assert hasattr(engine, 'loans_provided')
-    assert engine.sleep_time == 0
-    assert engine.min_daily_rate == Decimal(0)
-    assert engine.lending_paused is False
+    assert engine.dry_run is True
+    # 'default' min_daily_rate is 0.005 (Pydantic default)
+    assert engine.min_daily_rate == Decimal("0.005")
+    # BTC min_daily_rate is 0.01 (Explicitly set in mock_config)
+    assert engine.coin_cfg["BTC"].min_daily_rate == Decimal("0.01")
+    assert engine.sleep_time == mock_config.bot.period_active
 
