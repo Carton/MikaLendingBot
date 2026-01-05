@@ -14,8 +14,20 @@ from .ExchangeApi import ApiError, ExchangeApi
 
 
 def post_process(json_ret: Any) -> Any:
-    if isinstance(json_ret, dict) and "error" in json_ret:
-        raise ApiError(json_ret["error"])
+    if isinstance(json_ret, dict):
+        if "error" in json_ret:
+            raise ApiError(json_ret["error"])
+        # Handle 'return' key if present (e.g. lending history)
+        if "return" in json_ret and isinstance(json_ret["return"], list):
+            for item in json_ret["return"]:
+                if isinstance(item, dict) and "datetime" in item:
+                    try:
+                        # Parse datetime string to timestamp
+                        # Assuming format like "2025-12-30 21:43:00" (UTC)
+                        dt = time.strptime(item["datetime"], "%Y-%m-%d %H:%M:%S")
+                        item["timestamp"] = float(time.mktime(dt))
+                    except ValueError:
+                        pass
     return json_ret
 
 

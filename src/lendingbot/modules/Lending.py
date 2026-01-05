@@ -77,6 +77,10 @@ def get_sleep_time_inactive() -> float:
     return 300.0
 
 
+def parse_xday_threshold(xday_threshold_str: str) -> tuple[list[float], list[str]]:
+    return LendingEngine.parse_xday_threshold(xday_threshold_str)
+
+
 def _reset_globals() -> None:
     """For testing support."""
     global _engine
@@ -214,7 +218,8 @@ class LendingEngine:
             return Decimal(self.min_loan_sizes[currency])
         return self.min_loan_size
 
-    def parse_xday_threshold(self, xday_threshold_str: str) -> tuple[list[float], list[str]]:
+    @staticmethod
+    def parse_xday_threshold(xday_threshold_str: str) -> tuple[list[float], list[str]]:
         """
         Parses the xdaythreshold config string into rates and days lists.
         """
@@ -222,9 +227,12 @@ class LendingEngine:
         xdays: list[str] = []
         if xday_threshold_str:
             for pair in xday_threshold_str.split(","):
-                rate, day = pair.split(":")
-                rates.append(float(rate) / 100)
-                xdays.append(day)
+                try:
+                    rate, day = pair.split(":")
+                    rates.append(float(rate) / 100)
+                    xdays.append(day)
+                except (ValueError, TypeError):
+                    continue
         return rates, xdays
 
     def create_lend_offer(
@@ -321,7 +329,11 @@ class LendingEngine:
         current_step = self.frrdelta_cur_step + 1  # 1-indexed for display
         self.frrdelta_cur_step += 1
 
-        exchange = self.config.api.exchange.value
+        exchange = self.config.api.exchange
+        if hasattr(exchange, "value"):
+            exchange = exchange.value
+        exchange = str(exchange).upper()
+
         if exchange == "BITFINEX" and frr_as_min:
             frr_base = Decimal(self.api.get_frr(cur))
             # Apply relative percentage: rate = FRR * (1 + pct/100)
@@ -442,17 +454,13 @@ class LendingEngine:
 
         return resps
 
-    def get_gap_rate(
-        self,
-        active_cur: str,
-        gap: Decimal,
-        order_book: dict[str, Any],
-        cur_total_balance: Decimal,
-        raw: bool = False,
-    ) -> Decimal:
+    def get_gap_rate(self, active_cur: str, gap: Decimal, order_book: dict[str, Any], cur_total_balance: Decimal, raw: bool = False) -> Decimal:
         """
         Calculates the lending rate at a specific depth (gap) in the order book.
         """
+        if active_cur not in self.loan_orders_request_limit:
+            self.loan_orders_request_limit[active_cur] = self.default_loan_orders_request_limit
+
         gap_expected = gap if raw else gap * cur_total_balance / Decimal("100.0")
         gap_sum = Decimal(0)
         i = 0

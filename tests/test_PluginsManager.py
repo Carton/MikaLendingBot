@@ -1,101 +1,105 @@
 """
-Tests for PluginsManager module.
+Tests for PluginsManager module using Dependency Injection.
 """
 
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
-from lendingbot.modules import PluginsManager
+from lendingbot.modules.PluginsManager import PluginsManager
+from lendingbot.modules.Configuration import RootConfig, PluginsConfig
 
 
 @pytest.fixture
-def plugins_manager():
-    # Reset globals
-    PluginsManager.active_plugins = []
-    PluginsManager.log = None
-    return PluginsManager
+def mock_config():
+    # Setup config to enable plugins
+    return RootConfig(
+        plugins=PluginsConfig(
+            account_stats={"enabled": True},
+            charts={"enabled": True}
+        )
+    )
 
+@pytest.fixture
+def mock_log():
+    return MagicMock()
+
+@pytest.fixture
+def mock_api():
+    return Mock()
 
 class TestPluginsManager:
-    def test_init_and_lifecycle(self, plugins_manager):
-        mock_config = Mock()
-        mock_config.get_plugins_config.return_value = ["TestPlugin"]
+    def test_init_and_lifecycle(self, mock_config, mock_api, mock_log):
+        # Create mocks for plugin classes
+        MockAccountStats = MagicMock()
+        MockCharts = MagicMock()
+        
+        # Setup mock instances
+        account_stats_instance = MockAccountStats.return_value
+        charts_instance = MockCharts.return_value
 
-        mock_log = MagicMock()
-        mock_api = Mock()
-        notify_conf = {}
+        with patch("lendingbot.plugins.AccountStats", MockAccountStats):
+            with patch("lendingbot.plugins.Charts", MockCharts):
+                manager = PluginsManager(mock_config, mock_api, mock_log)
 
-        # Mock the plugins package to contain our TestPlugin
-        class MockPlugin:
-            def __init__(self, _cfg, _api, _log, _notify):
-                self.on_bot_init_called = False
-                self.before_lending_called = False
-                self.after_lending_called = False
-                self.on_bot_stop_called = False
+                # Check initialization
+                assert len(manager.active_plugins) == 2
+                assert account_stats_instance.on_bot_init.called
+                assert charts_instance.on_bot_init.called
 
-            def on_bot_init(self):
-                self.on_bot_init_called = True
+                # Check lifecycle methods
+                manager.before_lending()
+                assert account_stats_instance.before_lending.called
+                assert charts_instance.before_lending.called
 
-            def before_lending(self):
-                self.before_lending_called = True
+                manager.after_lending()
+                assert account_stats_instance.after_lending.called
+                assert charts_instance.after_lending.called
 
-            def after_lending(self):
-                self.after_lending_called = True
+                manager.on_bot_stop()
+                assert account_stats_instance.on_bot_stop.called
+                assert charts_instance.on_bot_stop.called
 
-            def on_bot_stop(self):
-                self.on_bot_stop_called = True
+    def test_plugin_init_error(self, mock_config, mock_api, mock_log):
+        # Simulate an error during plugin initialization
+        MockAccountStats = MagicMock()
+        MockAccountStats.side_effect = Exception("Init failed")
 
-        with patch("lendingbot.plugins.TestPlugin", MockPlugin, create=True):
-            plugins_manager.init(mock_config, mock_api, mock_log, notify_conf)
-
-            assert len(plugins_manager.active_plugins) == 1
-            plugin = plugins_manager.active_plugins[0]
-            assert plugin.on_bot_init_called is True
-
-            plugins_manager.before_lending()
-            assert plugin.before_lending_called is True
-
-            plugins_manager.after_lending()
-            assert plugin.after_lending_called is True
-
-            plugins_manager.on_bot_stop()
-            assert plugin.on_bot_stop_called is True
-
-    def test_plugin_not_found(self, plugins_manager):
-        mock_config = Mock()
-        mock_config.get_plugins_config.return_value = ["NonExistentPlugin"]
-        mock_log = MagicMock()
-
-        plugins_manager.init(mock_config, Mock(), mock_log, {})
-
-        assert len(plugins_manager.active_plugins) == 0
-        mock_log.log_error.assert_called_with(
-            "Plugin NonExistentPlugin not found in plugins folder"
-        )
-
-    def test_plugin_error_handling(self, plugins_manager):
-        mock_config = Mock()
-        mock_config.get_plugins_config.return_value = ["ErrorPlugin"]
-        mock_log = MagicMock()
-
-        class ErrorPlugin:
-            def __init__(self, *args, **kwargs):
-                pass
-
-            def on_bot_init(self):
-                raise Exception("Init Error")
-
-            def before_lending(self):
-                raise Exception("Before Error")
-
-        with patch("lendingbot.plugins.ErrorPlugin", ErrorPlugin, create=True):
-            plugins_manager.init(mock_config, Mock(), mock_log, {})
-            assert len(plugins_manager.active_plugins) == 0  # Should not be added if init fails
+        with patch("lendingbot.plugins.AccountStats", MockAccountStats):
+            # Only enable AccountStats
+            mock_config.plugins.charts["enabled"] = False
+            
+            manager = PluginsManager(mock_config, mock_api, mock_log)
+            
+            # Should handle exception and log error, not crash
+            assert len(manager.active_plugins) == 0
             mock_log.log_error.assert_called()
 
-            # Manually add to test lifecycle error handling
-            instance = ErrorPlugin()
-            plugins_manager.active_plugins = [instance]
-            plugins_manager.before_lending()
+    def test_lifecycle_error_handling(self, mock_config, mock_api, mock_log):
+        MockAccountStats = MagicMock()
+        instance = MockAccountStats.return_value
+        # Simulate error in lifecycle method
+        instance.before_lending.side_effect = Exception("Runtime error")
+
+        with patch("lendingbot.plugins.AccountStats", MockAccountStats):
+            mock_config.plugins.charts["enabled"] = False
+            
+            manager = PluginsManager(mock_config, mock_api, mock_log)
+            assert len(manager.active_plugins) == 1
+
+            # Should catch exception and log error
+            manager.before_lending()
             mock_log.log_error.assert_called()
+
+    def test_plugin_not_found(self, mock_config, mock_api, mock_log):
+        # Patch the plugins module where PluginsManager imports it
+        with patch("lendingbot.modules.PluginsManager.plugins") as mock_plugins_mod:
+            # Make accessing AccountStats raise AttributeError
+            del mock_plugins_mod.AccountStats
+            
+            # Disable charts to focus on AccountStats
+            mock_config.plugins.charts["enabled"] = False
+            
+            manager = PluginsManager(mock_config, mock_api, mock_log)
+            
+            assert len(manager.active_plugins) == 0
+            mock_log.log_error.assert_called_with("Plugin AccountStats not found in plugins folder")

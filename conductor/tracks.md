@@ -34,5 +34,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-## [~] Track: Config Rearch & DI Refactoring
-*Link: [./conductor/tracks/config_rearch_di_20260105/](./conductor/tracks/config_rearch_di_20260105/)*
+## [x] Track: Config Rearch & DI Refactoring
+*Link: [./conductor/archive/config_rearch_di_20260105/](./conductor/archive/config_rearch_di_20260105/)*
+
+---
+
+## [~] Track: Modernizing Unit Tests for DI Architecture
+*Link: [./conductor/tracks/fix_tests_di_20260105/](./conductor/tracks/fix_tests_di_20260105/)*

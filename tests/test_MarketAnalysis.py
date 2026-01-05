@@ -11,17 +11,31 @@ import pytest
 from lendingbot.modules.MarketAnalysis import MarketAnalysis, MarketDataException
 
 
+from lendingbot.modules.Configuration import RootConfig, PluginsConfig, MarketAnalysisConfig, ApiConfig, Exchange
+
+
 @pytest.fixture
 def ma_module(tmp_path):
-    mock_config = Mock()
-    mock_config.get_currencies_list.return_value = ["BTC"]
-    # Sensible defaults for ma init
-    mock_config.get.side_effect = (
-        lambda _s, _k, d=None, _min=None, _max=None: d if d is not None else "0"
+    # Use real configuration object
+    mock_config = RootConfig(
+        api=ApiConfig(
+            exchange=Exchange.POLONIEX,
+            all_currencies=["BTC", "ETH"]
+        ),
+        plugins=PluginsConfig(
+            market_analysis=MarketAnalysisConfig(
+                analyse_currencies=["BTC"],
+                update_interval=10,
+                lending_style=75,
+                recorded_levels=3,
+                data_tolerance=15.0,
+                ma_debug_log=False,
+                macd_long_window=60,
+                percentile_window=3600,
+                daily_min_multiplier=1.05
+            )
+        )
     )
-    mock_config.getboolean.return_value = False
-    mock_config.get_exchange.return_value = "POLONIEX"
-    mock_config.get_all_currencies.return_value = ["BTC", "ETH"]
 
     mock_api = Mock()
     mock_api.return_loan_orders.return_value = {"offers": []}
@@ -31,7 +45,7 @@ def ma_module(tmp_path):
 
 class TestMarketAnalysis:
     def test_init_and_db_creation(self, ma_module):
-        assert ma_module.exchange == "POLONIEX"
+        assert ma_module.exchange == "Poloniex"
 
         # Test DB connection and table creation
         db_con = ma_module.create_connection("BTC")

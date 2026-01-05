@@ -1,115 +1,92 @@
+"""
+Tests for Persistence logic using Dependency Injection.
+"""
+
 import json
-from unittest.mock import MagicMock, patch
+from decimal import Decimal
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-
-from lendingbot.modules import Lending, WebServer
+from lendingbot.modules.Lending import LendingEngine
+from lendingbot.modules.WebServer import WebServer
+from lendingbot.modules.Configuration import RootConfig, CoinConfig
 
 
 @pytest.fixture
-def mock_cfg():
-    cfg = MagicMock()
-    cfg.get_exchange.return_value = "BITFINEX"
+def mock_config():
+    return RootConfig()
 
-    def get_side_effect(section, key, *args, **kwargs):
-        if key == "spreadlend":
-            return "1"
-        if key in ["sleeptimeactive", "sleeptimeinactive"]:
-            return "60"
-        return "0.01"
+@pytest.fixture
+def mock_api():
+    return MagicMock()
 
-    cfg.get.side_effect = get_side_effect
-    cfg.get_gap_mode.return_value = False
-    cfg.get_coin_cfg.return_value = {}
-    cfg.get_min_loan_sizes.return_value = {}
-    cfg.get_currencies_list.return_value = []
-    cfg.get_all_currencies.return_value = []
-    cfg.getboolean.return_value = False
-    return cfg
+@pytest.fixture
+def mock_log():
+    return MagicMock()
 
+@pytest.fixture
+def mock_data():
+    return MagicMock()
 
-def test_lending_paused_persistence_load(mock_cfg):
-    """Verify Lending.init correctly loads the paused state from mocked WebServer settings."""
+class TestPersistence:
+    def test_lending_paused_persistence_load(self, mock_config, mock_api, mock_log, mock_data):
+        """Verify LendingEngine initializes correctly loads the paused state from mocked WebServer settings."""
+        
+        # We need to patch the MODULE level WebServer.get_web_settings function
+        # because LendingEngine uses the backward compatible wrapper.
+        with patch("lendingbot.modules.WebServer.get_web_settings") as mock_get_settings:
+            mock_get_settings.return_value = {
+                "lending_paused": True,
+                "frrdelta_min": -10,
+                "frrdelta_max": 10,
+            }
 
-    # Reset globals to ensure clean state
-    Lending._reset_globals()
-    mock_log = MagicMock()
+            engine = LendingEngine(mock_config, mock_api, mock_log, mock_data)
+            engine.initialize()
 
-    # Patch WebServer.get_web_settings to return our desired state
-    with patch("lendingbot.modules.WebServer.get_web_settings") as mock_get_settings:
-        mock_get_settings.return_value = {
-            "lending_paused": True,
-            "frrdelta_min": -10,
-            "frrdelta_max": 10,
-        }
+            # Verify mock was called
+            mock_get_settings.assert_called()
 
-        Lending.init(
-            cfg=mock_cfg,
-            api1=MagicMock(),
-            log1=mock_log,
-            data=MagicMock(),
-            maxtolend=MagicMock(),
-            dry_run1=False,
-            analysis=MagicMock(),
-            notify_conf1={"notify_summary_minutes": 0, "notify_new_loans": False},
-        )
+            # Verify lending_paused is True
+            assert engine.lending_paused is True
+            # Verify we logged it
+            mock_log.log.assert_any_call("Loaded lending_paused=True from Web Configuration.")
 
-        # Verify mock was called
-        mock_get_settings.assert_called()
+    def test_lending_paused_persistence_default(self, mock_config, mock_api, mock_log, mock_data):
+        """Verify defaults are used when settings do not have the key."""
 
-    # Verify lending_paused is True
-    assert Lending.lending_paused is True
-    # Verify we logged it
-    mock_log.log.assert_any_call("Loaded lending_paused=True from Web Configuration.")
+        with patch("lendingbot.modules.WebServer.get_web_settings") as mock_get_settings:
+            # Return empty settings or settings without the key
+            mock_get_settings.return_value = {}
 
+            engine = LendingEngine(mock_config, mock_api, mock_log, mock_data)
+            engine.initialize()
 
-def test_lending_paused_persistence_default(mock_cfg):
-    """Verify defaults are used when settings do not have the key."""
+            assert engine.lending_paused is False
 
-    Lending._reset_globals()
-    mock_log = MagicMock()
+    def test_web_endpoint_saves_state(self, mock_config, tmp_path):
+        """Verify WebServer.save_web_settings writes correctly to file."""
+        
+        mock_engine = MagicMock()
+        web_server = WebServer(mock_config, mock_engine)
+        
+        test_file = tmp_path / "web_settings_test.json"
+        web_server.web_settings_file = str(test_file)
 
-    with patch("lendingbot.modules.WebServer.get_web_settings") as mock_get_settings:
-        # Return empty settings or settings without the key
-        mock_get_settings.return_value = {}
-
-        Lending.init(
-            cfg=mock_cfg,
-            api1=MagicMock(),
-            log1=mock_log,
-            data=MagicMock(),
-            maxtolend=MagicMock(),
-            dry_run1=False,
-            analysis=MagicMock(),
-            notify_conf1={"notify_summary_minutes": 0, "notify_new_loans": False},
-        )
-
-    assert Lending.lending_paused is False
-
-
-def test_web_endpoint_saves_state(tmp_path):
-    """Verify save_web_settings writes correctly to file."""
-    # We test the save_web_settings function directly since do_GET calls it.
-
-    test_file = tmp_path / "web_settings_test.json"
-
-    # Patch the filename in WebServer to use our temp file
-    with patch("lendingbot.modules.WebServer.web_settings_file", str(test_file)):
         # 1. Save True
-        WebServer.save_web_settings({"lending_paused": True})
+        web_server.save_web_settings({"lending_paused": True})
         with test_file.open("r", encoding="utf-8") as f:
             data = json.load(f)
         assert data["lending_paused"] is True
 
         # 2. Save False (partial update check - ensure it updates existing)
-        WebServer.save_web_settings({"lending_paused": False})
+        web_server.save_web_settings({"lending_paused": False})
         with test_file.open("r", encoding="utf-8") as f:
             data = json.load(f)
         assert data["lending_paused"] is False
 
-        # 3. Check that other keys are preserved if we merge (implementation specific)
-        # The implementation uses update(), so let's verify.
-        WebServer.save_web_settings({"other_key": 123})
+        # 3. Check that other keys are preserved if we merge
+        web_server.save_web_settings({"other_key": 123})
         with test_file.open("r", encoding="utf-8") as f:
             data = json.load(f)
         assert data["lending_paused"] is False

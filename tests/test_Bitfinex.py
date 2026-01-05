@@ -9,25 +9,22 @@ import pytest
 
 from lendingbot.modules.Bitfinex import Bitfinex
 from lendingbot.modules.ExchangeApi import ApiError
+from lendingbot.modules.Configuration import RootConfig, ApiConfig, BotConfig
 
 
 @pytest.fixture
 def mock_cfg():
-    cfg = MagicMock()
-
-    def cfg_get_side_effect(cat, opt, default=None, *args, **kwargs):
-        mapping = {
-            ("API", "apikey"): "test_key",
-            ("API", "secret"): "test_secret",
-            ("BOT", "timeout"): "30",
-            ("BOT", "api_debug_log"): "False",
-        }
-        return mapping.get((cat, opt), default)
-
-    cfg.get.side_effect = cfg_get_side_effect
-    cfg.getboolean.return_value = False
-    cfg.get_all_currencies.return_value = ["BTC", "ETH", "USD"]
-    return cfg
+    return RootConfig(
+        api=ApiConfig(
+            apikey="test_key",
+            secret="test_secret",
+            all_currencies=["BTC", "ETH", "USD"]
+        ),
+        bot=BotConfig(
+            request_timeout=30,
+            api_debug_log=False
+        )
+    )
 
 
 @pytest.fixture

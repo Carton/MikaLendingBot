@@ -10,13 +10,20 @@ import requests
 from lendingbot.modules.Poloniex import ApiError, Poloniex
 
 
+from lendingbot.modules.Configuration import RootConfig, ApiConfig, BotConfig
+
+
 @pytest.fixture
 def poloniex_api():
-    mock_config = Mock()
-    mock_config.get.side_effect = (
-        lambda _s, _k, d=None, _min=None, _max=None: d if d is not None else "key"
+    mock_config = RootConfig(
+        api=ApiConfig(
+            apikey="test_key",
+            secret="test_secret"
+        ),
+        bot=BotConfig(
+            request_timeout=30
+        )
     )
-    mock_config.getboolean.return_value = False
     mock_log = MagicMock()
     return Poloniex(mock_config, mock_log)
 
