@@ -29,10 +29,8 @@
 ## 阶段 4: 集成与清理 (Wiring & Cleanup)
 在 `main.py` 中完成所有组件的组装，并彻底废弃旧代码。
 
-- [ ] Task 4.1: 修改 `src/lendingbot/main.py`。
-    - 实例化 `RootConfig` -> `Logger` -> `Data` -> `ExchangeApi` -> `LendingEngine`。
-    - 移除所有旧的 `Configuration.init()` 等调用。
-- [ ] Task 4.2: 运行集成测试或冒烟测试，确保整个流程跑通。
-- [ ] Task 4.3: **清理**: 删除 `Configuration_old.py` 和 `Lending.py` 中遗留的死代码。
-- [ ] Task 4.4: 最终质量检查：运行 `uv run poe fix-full` 修复所有类型检查和风格问题。
-- [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
+- [x] Task 4.1: 修改 `src/lendingbot/main.py`。
+- [x] Task 4.2: 运行集成测试或冒烟测试，确保整个流程跑通。
+- [x] Task 4.3: **清理**: 删除 `Configuration_old.py` 和 `Lending.py` 中遗留的死代码。
+- [x] Task 4.4: 最终质量检查：运行 `uv run poe fix-full` 修复所有类型检查和风格问题。 cb49d2e
+- [x] Task: Conductor - User Manual Verification '阶段 4' (Protocol in workflow.md) [cb49d2e]
