@@ -175,31 +175,34 @@ class LendingEngine:
                     continue
         return rates, xdays
 
-    def create_lend_offer(
-        self, currency: str, amt: str | Decimal, rate: str | float | Decimal, days: str = "2"
-    ) -> None:
+    def _adjust_rate_for_competition(self, rate: float) -> float:
         """
-        Creates a new lending offer on the exchange.
+        Adjusts the rate to be slightly below the competition if above a threshold.
         """
-        original_rate = float(rate)
-        rate_f = original_rate
-        if rate_f > 0.0001:
-            rate_f = rate_f - 0.000001  # lend offer just below the competing one
-        amt_s = f"{Decimal(amt):.8f}"
+        if rate > 0.0001:
+            return rate - 0.000001
+        return rate
+
+    def _calculate_duration(self, rate: float, requested_days: str) -> str:
+        """
+        Calculates the duration (days) based on rate thresholds and end_date.
+        """
+        days = requested_days
         rates, xdays = self.parse_xday_threshold(self.xday_threshold)
+
         if days == "2" and len(rates) > 0:
             # map rate to xdays, use interpolation if rate is not in the list
-            if rate_f < rates[0]:
+            if rate < rates[0]:
                 days = xdays[0]
             else:
                 for i in range(len(rates)):
-                    if rate_f <= rates[i]:
+                    if rate <= rates[i]:
                         # linear interpolation
                         days = str(
                             int(xdays[i - 1])
                             + int(
                                 (int(xdays[i]) - int(xdays[i - 1]))
-                                * (rate_f - rates[i - 1])
+                                * (rate - rates[i - 1])
                                 / (rates[i] - rates[i - 1])
                             )
                         )
@@ -207,9 +210,6 @@ class LendingEngine:
                 else:
                     # If rate is greater than the last rate, use the last xdays
                     days = xdays[-1]
-            print(
-                f"Lending {format_amount_currency(amt_s, currency)} by rate {format_rate_pct(rate_f)} for {days} days"
-            )
 
         if self.config.bot.end_date:
             days_remaining = int(self.data.get_max_duration(self.config.bot.end_date, "order"))
@@ -225,16 +225,36 @@ class LendingEngine:
             if int(days) > days_remaining:
                 days = str(days_remaining)
 
+        return days
+
+    def create_lend_offer(
+        self, currency: str, amt: str | Decimal, rate: str | float | Decimal, days: str = "2"
+    ) -> None:
+        """
+        Creates a new lending offer on the exchange.
+        """
+        original_rate = float(rate)
+        rate_f = self._adjust_rate_for_competition(original_rate)
+        amt_s = f"{Decimal(amt):.8f}"
+
+        days = self._calculate_duration(rate_f, days)
+
+        print(
+            f"Lending {format_amount_currency(amt_s, currency)} by rate {format_rate_pct(rate_f)} for {days} days"
+        )
+
         if not self.dry_run:
             msg = self.api.create_loan_offer(currency, float(amt_s), int(days), 0, float(rate_f))
+            # Get thresholds again for notification check (logic from original)
+            _, xdays_list = self.parse_xday_threshold(self.xday_threshold)
             if (
-                len(xdays) > 0
-                and int(days) == int(xdays[-1])
+                len(xdays_list) > 0
+                and int(days) == int(xdays_list[-1])
                 and self.config.notifications.notify_xday_threshold
             ):
                 text = f"{format_amount_currency(amt_s, currency)} loan placed for {days} days at a rate of {format_rate_pct(rate_f)}"
                 if self.log:
-                    self.log.notify(text, self.config.notifications.model_dump())  # Adjusted for DI
+                    self.log.notify(text, self.config.notifications.model_dump())
             if self.log:
                 # Pass original_rate to show compete adjustment info
                 self.log.offer(amt_s, currency, float(rate_f), days, msg, original_rate)

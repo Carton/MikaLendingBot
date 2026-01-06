@@ -157,6 +157,51 @@ class TestLendingEngineLogic:
         # rate 0.01 > 0.0001 -> adjusted to 0.009999
         assert float(args[4]) == pytest.approx(0.009999)
 
+    def test_adjust_rate_for_competition(self, engine):
+        # Above threshold
+        assert engine._adjust_rate_for_competition(0.01) == pytest.approx(0.009999)
+        # Below threshold
+        assert engine._adjust_rate_for_competition(0.00005) == 0.00005
+        # At threshold
+        assert engine._adjust_rate_for_competition(0.0001) == 0.0001
+
+    def test_calculate_duration_no_thresholds(self, engine):
+        engine.xday_threshold = ""
+        # Default behavior when no thresholds defined
+        assert engine._calculate_duration(0.01, "2") == "2"
+        assert engine._calculate_duration(0.01, "5") == "5"
+
+    def test_calculate_duration_with_thresholds(self, engine):
+        # 0.05% -> 25 days, 0.1% -> 60 days
+        # Internal representation is percentage / 100
+        engine.xday_threshold = "0.05:25,0.1:60"
+        
+        # Rate below first threshold -> use first threshold days
+        assert engine._calculate_duration(0.0004, "2") == "25"
+        
+        # Rate at threshold -> use threshold days
+        assert engine._calculate_duration(0.0005, "2") == "25"
+        assert engine._calculate_duration(0.001, "2") == "60"
+        
+        # Rate between thresholds -> interpolation
+        # (0.0005+0.001)/2 = 0.00075 -> (25+60)/2 = 42.5 -> "42"
+        assert engine._calculate_duration(0.00075, "2") == "42"
+        
+        # Rate above last threshold -> use last threshold days
+        assert engine._calculate_duration(0.002, "2") == "60"
+        
+        # Explicit days override interpolation
+        assert engine._calculate_duration(0.001, "5") == "5"
+
+    def test_calculate_duration_with_end_date(self, engine, mock_data):
+        engine.config.bot.end_date = "2026-01-10"
+        # mock_data.get_max_duration returns days remaining
+        mock_data.get_max_duration.return_value = 3
+        
+        # Duration restricted by end_date
+        assert engine._calculate_duration(0.001, "5") == "3"
+        assert engine._calculate_duration(0.001, "2") == "2" # default 2 is less than 3
+
 
 class TestLendingEngineFlow:
     """Tests for high-level flow (from comprehensive)."""
