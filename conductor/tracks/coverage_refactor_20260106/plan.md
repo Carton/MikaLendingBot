@@ -13,7 +13,7 @@
 针对 Web 服务层增加异常处理和对应的测试用例。
 
 - [x] Task 2.1: 为 `WebServer` 增加对文件系统操作（如 `web_settings.json` 读写失败）的异常捕获。 8f34209
-- [ ] Task 2.2: 在 `tests/test_WebServer.py` 中增加模拟网络端口占用、非法 JSON 负载等异常路径的测试。
+- [x] Task 2.2: 在 `tests/test_WebServer.py` 中增加模拟网络端口占用、非法 JSON 负载等异常路径的测试。 bf49f2e
 - [ ] Task: Conductor - User Manual Verification '阶段 2' (Protocol in workflow.md)
 
 ## 阶段 3: main.py 逻辑剥离与编排层测试
