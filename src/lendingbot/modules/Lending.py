@@ -385,17 +385,19 @@ class LendingEngine:
             # Non-FRR mode
             self.log.log(f"[{cur}] Rate: min_rate {format_rate_pct(info.min_rate)}")
 
-    def construct_order_books(self, active_cur: str) -> bool | list[dict[str, Any]]:
+    def construct_order_books(self, active_cur: str) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Fetches the loan order book from the exchange and structures it.
+        Returns (demand_book, offer_book).
         """
         # make sure we have a request limit for this currency
         if active_cur not in self.loan_orders_request_limit:
             self.loan_orders_request_limit[active_cur] = self.default_loan_orders_request_limit
 
         loans = self.api.return_loan_orders(active_cur, self.loan_orders_request_limit[active_cur])
-        if not loans or len(loans) == 0:
-            return False
+        empty_book = {"rates": [], "volumes": [], "rangeMax": []}
+        if not loans:
+            return empty_book, empty_book
 
         resps = []
         for load_type in ("demands", "offers"):
@@ -409,7 +411,7 @@ class LendingEngine:
             resp = {"rates": rate_book, "volumes": volume_book, "rangeMax": range_max_book}
             resps.append(resp)
 
-        return resps
+        return resps[0], resps[1]
 
     def get_gap_rate(
         self,
@@ -427,22 +429,42 @@ class LendingEngine:
 
         gap_expected = gap if raw else gap * cur_total_balance / Decimal("100.0")
         gap_sum = Decimal(0)
-        i = 0
-        while gap_sum < gap_expected:
+
+        # If order book is empty, return max rate
+        if not order_book["volumes"]:
+            return self.max_daily_rate
+
+        # If gap is 0 or less, return the first available rate (most aggressive)
+        if gap_expected <= 0:
+            return Decimal(str(order_book["rates"][0]))
+
+        for i, volume in enumerate(order_book["volumes"]):
+            gap_sum += Decimal(str(volume))
+            if gap_sum >= gap_expected:
+                # Original logic returned rates[i+1] if gap was filled at index i
+                if i + 1 < len(order_book["rates"]):
+                    return Decimal(str(order_book["rates"][i + 1]))
+                return self.max_daily_rate
+
+            # Check if we hit the request limit and don't have enough volume
             if (
                 i == len(order_book["volumes"]) - 1
-                and len(order_book["volumes"]) == self.loan_orders_request_limit[active_cur]
+                and len(order_book["volumes"])
+                == self.loan_orders_request_limit.get(
+                    active_cur, self.default_loan_orders_request_limit
+                )
             ):
                 if self.log:
                     self.log.log(
-                        f"{active_cur}: Not enough offers in response, adjusting request limit to {self.loan_orders_request_limit[active_cur]}"
+                        f"{active_cur}: Not enough offers in response, adjusting request limit to {self.loan_orders_request_limit.get(active_cur, self.default_loan_orders_request_limit)}"
                     )
                 raise StopIteration
-            elif i == len(order_book["volumes"]) - 1:
-                return self.max_daily_rate
-            gap_sum += Decimal(str(order_book["volumes"][i]))
-            i += 1
-        return Decimal(str(order_book["rates"][i]))
+
+        # If we reached the end of the book without filling the gap, return max rate
+        return self.max_daily_rate
+
+        # If we reached the end of the book without filling the gap, return max rate
+        return self.max_daily_rate
 
     def get_cur_spread(self, spread: int, cur_active_bal: Decimal, active_cur: str) -> int:
         """
@@ -453,6 +475,61 @@ class LendingEngine:
         while cur_active_bal < (cur_spread_lend * cur_min_loan_size):
             cur_spread_lend -= 1
         return max(1, int(cur_spread_lend))
+
+    def _get_effective_gap_config(self, cur: str) -> tuple[str, Decimal, Decimal]:
+        """
+        Returns the gap mode, bottom, and top values for a currency,
+        falling back to defaults if not set.
+        """
+        mode = self.gap_mode_default
+        bottom = self.gap_bottom_default
+        top = self.gap_top_default
+
+        if cfg := self.coin_cfg.get(cur):
+            # If the coin config has gap values defined (non-default/non-zero)
+            # Use them. Otherwise use the global defaults.
+            if cfg.gap_bottom != 0:
+                mode = cfg.gap_mode.value if hasattr(cfg.gap_mode, "value") else str(cfg.gap_mode)
+                bottom = cfg.gap_bottom
+                top = cfg.gap_top if cfg.gap_top is not None else cfg.gap_bottom
+
+        return str(mode), bottom, top
+
+    def _get_btc_value(self, cur: str, ticker: Any) -> Decimal:
+        """
+        Calculates the BTC value of 1 unit of currency from ticker.
+        """
+        if cur == "BTC":
+            return Decimal(1)
+
+        for coin in ticker:
+            if coin == f"BTC_{cur.upper()}":
+                return Decimal(str(ticker[coin]["last"]))
+        return Decimal(1)  # Fallback if not found
+
+    def _calculate_gap_depths(
+        self,
+        mode: str,
+        bottom: Decimal,
+        top: Decimal,
+        cur: str,
+        cur_total_balance: Decimal,
+        ticker: Any,
+    ) -> tuple[Decimal, Decimal, bool]:
+        """
+        Calculates bottom and top depths and returns (bottom_depth, top_depth, raw_mode).
+        """
+        mode_lower = mode.lower()
+        if mode_lower == "rawbtc":
+            btc_value = self._get_btc_value(cur, ticker)
+            return bottom / btc_value, top / btc_value, True
+        if mode_lower == "raw":
+            return bottom, top, True
+        if mode_lower == "relative":
+            return bottom, top, False
+
+        # Invalid mode, return defaults
+        return Decimal(10), Decimal(100), False
 
     def construct_orders(
         self, cur: str, cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any
@@ -504,62 +581,27 @@ class LendingEngine:
         """
         Calculates the top and bottom rates based on the configured gap mode.
         """
-        gap_mode, gap_bottom, gap_top = (
-            self.gap_mode_default,
-            self.gap_bottom_default,
-            self.gap_top_default,
-        )
-        use_gap_cfg = False
+        mode, bottom, top = self._get_effective_gap_config(cur)
 
-        books = self.construct_order_books(cur)
-        if not books or not isinstance(books, list) or len(books) < 2:
+        # Validate mode and handle recursion/defaults if invalid
+        if mode.lower() not in ("rawbtc", "raw", "relative"):
+            print(f"WARN: Invalid setting for gapMode for [{cur}], using defaults...")
+            self.gap_mode_default = "relative"
+            self.gap_bottom_default = Decimal(10)
+            self.gap_top_default = Decimal(200)
+            # Re-fetch config with new defaults
+            mode, bottom, top = self._get_effective_gap_config(cur)
+
+        _, offer_book = self.construct_order_books(cur)
+        if not offer_book or not offer_book["rates"]:
             return [self.max_daily_rate, self.max_daily_rate]
 
-        order_book = books[1]
+        bottom_depth, top_depth, is_raw = self._calculate_gap_depths(
+            mode, bottom, top, cur, cur_total_balance, ticker
+        )
 
-        if (
-            (cfg := self.coin_cfg.get(cur))
-            and cfg.gap_mode
-            and cfg.gap_bottom is not None
-            and cfg.gap_top is not None
-        ):
-            # Only overwrite default if all three are set
-            use_gap_cfg = True
-            gap_mode = cfg.gap_mode.value if hasattr(cfg.gap_mode, "value") else str(cfg.gap_mode)
-            gap_bottom = cfg.gap_bottom
-            gap_top = cfg.gap_top
-
-        gap_mode_lower = str(gap_mode).lower()
-
-        if gap_mode_lower == "rawbtc":
-            btc_value = Decimal(1)
-            if cur != "BTC":
-                for coin in ticker:
-                    if coin == f"BTC_{cur.upper()}":
-                        btc_value = Decimal(str(ticker[coin]["last"]))
-                        break
-            bottom_depth = gap_bottom / btc_value  # Converts from BTC to altcoin's value
-            bottom_rate = self.get_gap_rate(cur, bottom_depth, order_book, cur_total_balance, True)
-            top_depth = gap_top / btc_value
-            top_rate = self.get_gap_rate(cur, top_depth, order_book, cur_total_balance, True)
-        elif gap_mode_lower == "raw":  # Value stays in altcoin
-            bottom_rate = self.get_gap_rate(cur, gap_bottom, order_book, cur_total_balance, True)
-            top_rate = self.get_gap_rate(cur, gap_top, order_book, cur_total_balance, True)
-        elif gap_mode_lower == "relative":
-            bottom_rate = self.get_gap_rate(cur, gap_bottom, order_book, cur_total_balance)
-            top_rate = self.get_gap_rate(cur, gap_top, order_book, cur_total_balance)
-        else:
-            if use_gap_cfg:
-                print(f"WARN: Invalid setting for gapMode for [{cur}], using defaults...")
-                self.coin_cfg[cur].gap_mode = Configuration.GapMode.RAW_BTC
-                self.coin_cfg[cur].gap_bottom = Decimal(10)
-                self.coin_cfg[cur].gap_top = Decimal(100)
-            else:
-                print("WARN: Invalid setting for gapMode, using defaults...")
-                self.gap_mode_default = "relative"
-                self.gap_bottom_default = Decimal(10)
-                self.gap_top_default = Decimal(200)
-            return self.get_gap_mode_rates(cur, cur_active_bal, cur_total_balance, ticker)
+        bottom_rate = self.get_gap_rate(cur, bottom_depth, offer_book, cur_total_balance, is_raw)
+        top_rate = self.get_gap_rate(cur, top_depth, offer_book, cur_total_balance, is_raw)
 
         return [Decimal(str(top_rate)), Decimal(str(bottom_rate))]
 
@@ -614,11 +656,9 @@ class LendingEngine:
         if self.log:
             self.log.updateStatusValue(active_cur, "totalCoins", active_cur_total_balance)
 
-        books = self.construct_order_books(active_cur)
-        if not books or not isinstance(books, list) or len(books) < 2 or not cur_min_daily_rate:
+        demand_book, order_book = self.construct_order_books(active_cur)
+        if not order_book or not order_book["rates"] or not cur_min_daily_rate:
             return 0
-
-        demand_book, order_book = books[0], books[1]
 
         from . import MaxToLend
 
