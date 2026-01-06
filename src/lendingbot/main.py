@@ -86,7 +86,7 @@ def main() -> NoReturn:
 
     # Load configuration
     try:
-        config_path = Path(args.config) if args.config else Path("default.toml")
+        config_path = Path(args.config) if args.config else Path("config.toml")
         if config_path.suffix == ".cfg":
             print("Warning: .cfg files are legacy. Please migrate to .toml.")
 
