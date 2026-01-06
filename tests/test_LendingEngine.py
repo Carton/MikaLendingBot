@@ -282,10 +282,40 @@ class TestLendingEngineFlow:
         # Should NOT call API create_loan_offer because dry_run=True
         mock_api.create_loan_offer.assert_not_called()
 
-    def test_cancel_all(self, engine, mock_api):
+    def test_cancel_all_api_error(self, engine, mock_api):
         engine.initialize()
         mock_api.return_open_loan_offers.return_value = {"BTC": [{"id": 123, "amount": "1.0"}]}
         mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.0"}}
-
+        
+        # Simulate API error during cancel
+        mock_api.cancel_loan_offer.side_effect = Exception("API Down")
+        
+        # Should not crash, just log error
         engine.cancel_all()
-        mock_api.cancel_loan_offer.assert_called_with("BTC", 123)
+        mock_api.cancel_loan_offer.assert_called()
+        engine.log.log.assert_called_with("Error canceling loan offer: API Down")
+
+    def test_lend_cur_empty_books(self, engine, mock_api):
+        engine.initialize()
+        # Mock construct_order_books to return empty books
+        with patch.object(engine, "construct_order_books", return_value=({}, {})):
+            total_lent_info = MagicMock()
+            total_lent_info.total_lent = {"BTC": Decimal("0")}
+            lending_balances = {"BTC": "1.0"}
+            
+            # Should return 0 (no currencies usable) and not crash
+            result = engine.lend_cur("BTC", total_lent_info, lending_balances, {})
+            assert result == 0
+
+    def test_lend_cur_api_exception(self, engine, mock_api):
+        engine.initialize()
+        # Mock construct_order_books to return valid books but create_lend_offer raises non-amount error
+        order_book = {"rates": [0.01], "volumes": [10]}
+        with patch.object(engine, "construct_order_books", return_value=({}, order_book)):
+            with patch.object(engine, "create_lend_offer", side_effect=RuntimeError("Serious Error")):
+                total_lent_info = MagicMock()
+                total_lent_info.total_lent = {"BTC": Decimal("0")}
+                lending_balances = {"BTC": "1.0"}
+                
+                with pytest.raises(RuntimeError, match="Serious Error"):
+                    engine.lend_cur("BTC", total_lent_info, lending_balances, {})
