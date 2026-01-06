@@ -218,7 +218,9 @@ class WebServer:
             with Path(self.web_settings_file).open("r", encoding="utf-8") as f:
                 data = json.load(f)
                 return data if isinstance(data, dict) else self.DEFAULT_WEB_SETTINGS.copy()
-        except (json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError) as e:
+            if self.lending_engine and self.lending_engine.log:
+                self.lending_engine.log.log(f"Error reading web settings: {e}")
             return self.DEFAULT_WEB_SETTINGS.copy()
 
     def save_web_settings(self, settings: dict[str, Any]) -> None:
@@ -239,7 +241,10 @@ class WebServer:
             with Path(self.web_settings_file).open("w", encoding="utf-8") as f:
                 json.dump(current, f, indent=4)
         except OSError as e:
-            print(f"Error saving web settings: {e}")
+            if self.lending_engine and self.lending_engine.log:
+                self.lending_engine.log.log(f"Error saving web settings: {e}")
+            else:
+                print(f"Error saving web settings: {e}")
 
 
 # Backward compatibility wrappers

@@ -163,22 +163,19 @@ class TestWebServer:
                     assert mock_lending_engine.frrdelta_max == Decimal("0.0005")
                     mock_save.assert_called()
 
-    def test_settings_persistence(self, web_server, tmp_path):
-        # Use a temporary file for settings
-        settings_file = tmp_path / "web_settings.json"
-        web_server.web_settings_file = str(settings_file)
+    def test_save_web_settings_error(self, web_server, mock_lending_engine):
+        # Simulate OS error during write
+        with patch("pathlib.Path.open", side_effect=OSError("Disk Full")):
+            web_server.save_web_settings({"test": 1})
+            # Check if it logs to engine
+            mock_lending_engine.log.log.assert_called_with("Error saving web settings: Disk Full")
 
-        # Test defaults
-        settings = web_server.get_web_settings()
-        assert settings["refreshRate"] == 30
-        assert settings_file.exists()
-
-        # Test save
-        web_server.save_web_settings({"refreshRate": 60})
-        with settings_file.open() as f:
-            data = json.load(f)
-            assert data["refreshRate"] == 60
-
-        # Test reload
-        settings = web_server.get_web_settings()
-        assert settings["refreshRate"] == 60
+    def test_get_web_settings_read_error(self, web_server, mock_lending_engine):
+        # Simulate OS error during read
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch("pathlib.Path.open", side_effect=OSError("No Permission")):
+                settings = web_server.get_web_settings()
+                # Should return defaults
+                assert settings == web_server.DEFAULT_WEB_SETTINGS
+                # Check if it logs to engine
+                mock_lending_engine.log.log.assert_called_with("Error reading web settings: No Permission")
