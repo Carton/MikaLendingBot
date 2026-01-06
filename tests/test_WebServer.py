@@ -179,3 +179,37 @@ class TestWebServer:
                 assert settings == web_server.DEFAULT_WEB_SETTINGS
                 # Check if it logs to engine
                 mock_lending_engine.log.log.assert_called_with("Error reading web settings: No Permission")
+
+    def test_start_server_port_conflict(self, web_server):
+        # Simulate port conflict
+        with patch("socketserver.ThreadingTCPServer", side_effect=OSError("Address already in use")):
+            # Should catch and print error
+            web_server._run_server()
+
+    def test_handler_invalid_json(self, web_server, mock_lending_engine):
+        # Extract handler class
+        with patch("socketserver.ThreadingTCPServer") as MockServer:
+            mock_server_instance = MockServer.return_value
+            mock_server_instance.serve_forever.return_value = None
+            with patch("socket.getaddrinfo", return_value=[]):
+                web_server._run_server()
+            HandlerClass = MockServer.call_args[0][1]
+
+            mock_request = MagicMock()
+            with patch("http.server.SimpleHTTPRequestHandler.__init__", return_value=None):
+                handler = HandlerClass(mock_request, ("0.0.0.0", 1234), mock_server_instance)
+                handler.wfile = MagicMock()
+                handler.rfile = MagicMock()
+                handler.headers = {}
+                handler.send_response = MagicMock()
+                handler.send_header = MagicMock()
+                handler.end_headers = MagicMock()
+
+                # === Test invalid JSON ===
+                handler.path = "/set_config"
+                handler.headers["Content-Length"] = "5"
+                handler.rfile.read.return_value = b"NOTJSON"
+                
+                # Currently it raises JSONDecodeError, we'll improve it to catch and return 400
+                with pytest.raises(json.JSONDecodeError):
+                    handler.do_POST()
