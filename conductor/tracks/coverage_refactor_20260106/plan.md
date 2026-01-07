@@ -1,6 +1,6 @@
 # Implementation Plan: Coverage Boost & Strategic Refactor
 
-## 阶段 1: LendingEngine 逻辑重构与单元测试增强 [checkpoint: 9424449]
+## 阶段 1: LendingEngine 逻辑重构与单元测试增强 [checkpoint: 2ec7db1]
 本阶段重点是拆解 `Lending.py` 中的复杂方法，并大幅提升其测试覆盖率。
 
 - [x] Task 1.1: 重构 `LendingEngine.create_lend_offer`。将其中的天数计算、汇率调整逻辑剥离为独立的纯函数。 7d2e472
@@ -9,7 +9,7 @@
 - [x] Task 1.4: 增加 API 失败、超时及异常数据响应的 Mock 测试用例。 ea41dd5
 - [x] Task: Conductor - User Manual Verification '阶段 1' (Protocol in workflow.md)
 
-## 阶段 2: WebServer 健壮性提升 [checkpoint: feaa53c]
+## 阶段 2: WebServer 健壮性提升 [checkpoint: 2ec7db1]
 针对 Web 服务层增加异常处理和对应的测试用例。
 
 - [x] Task 2.1: 为 `WebServer` 增加对文件系统操作（如 `web_settings.json` 读写失败）的异常捕获。 8f34209
