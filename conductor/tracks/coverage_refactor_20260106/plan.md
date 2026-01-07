@@ -7,14 +7,14 @@
 - [x] Task 1.2: 重构 `LendingEngine.refresh_order_books` 及相关订单簿处理逻辑，增强其模块化程度。 4cbf3c3
 - [x] Task 1.3: 在 `tests/test_LendingEngine.py` 中增加针对重构后私有逻辑的精细化单元测试（覆盖极值、精度误差）。 4cbf3c3
 - [x] Task 1.4: 增加 API 失败、超时及异常数据响应的 Mock 测试用例。 ea41dd5
-- [ ] Task: Conductor - User Manual Verification '阶段 1' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification '阶段 1' (Protocol in workflow.md)
 
-## 阶段 2: WebServer 健壮性提升
+## 阶段 2: WebServer 健壮性提升 [checkpoint: feaa53c]
 针对 Web 服务层增加异常处理和对应的测试用例。
 
 - [x] Task 2.1: 为 `WebServer` 增加对文件系统操作（如 `web_settings.json` 读写失败）的异常捕获。 8f34209
 - [x] Task 2.2: 在 `tests/test_WebServer.py` 中增加模拟网络端口占用、非法 JSON 负载等异常路径的测试。 bf49f2e
-- [ ] Task: Conductor - User Manual Verification '阶段 2' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification '阶段 2' (Protocol in workflow.md)
 
 ## 阶段 3: main.py 逻辑剥离与编排层测试
 将入口点逻辑迁移到类中，并实现基本覆盖。
