@@ -16,15 +16,15 @@
 - [x] Task 2.2: 在 `tests/test_WebServer.py` 中增加模拟网络端口占用、非法 JSON 负载等异常路径的测试。 bf49f2e
 - [x] Task: Conductor - User Manual Verification '阶段 2' (Protocol in workflow.md)
 
-## 阶段 3: main.py 逻辑剥离与编排层测试
+## 阶段 3: main.py 逻辑剥离与编排层测试 [checkpoint: 3032cae]
 将入口点逻辑迁移到类中，并实现基本覆盖。
 
-- [ ] Task 3.1: 创建 `src/lendingbot/modules/Orchestrator.py` 并定义 `BotOrchestrator` 类。
-- [ ] Task 3.2: 将 `main.py` 中的初始化、依赖注入组装逻辑和主循环迁移至 `BotOrchestrator`。
-- [ ] Task 3.3: 编写 `tests/test_Orchestrator.py` 验证机器人启动序列、插件加载和退出流程。
-- [ ] Task 3.4: 编写 `tests/test_Orchestrator.py` 验证机器人启动序列、插件加载和退出流程。
-- [ ] Task 3.5: 更新 `main.py` 使其仅作为 `BotOrchestrator` 的实例化和启动入口。
-- [ ] Task: Conductor - User Manual Verification '阶段 3' (Protocol in workflow.md)
+- [x] Task 3.1: 创建 `src/lendingbot/modules/Orchestrator.py` 并定义 `BotOrchestrator` 类。
+- [x] Task 3.2: 将 `main.py` 中的初始化、依赖注入组装逻辑和主循环迁移至 `BotOrchestrator`。
+- [x] Task 3.3: 编写 `tests/test_Orchestrator.py` 验证机器人启动序列、插件加载和退出流程。
+- [x] Task 3.4: 编写 `tests/test_Orchestrator.py` 验证机器人启动序列、插件加载和退出流程。
+- [x] Task 3.5: 更新 `main.py` 使其仅作为 `BotOrchestrator` 的实例化和启动入口。
+- [x] Task: Conductor - User Manual Verification '阶段 3' (Protocol in workflow.md)
 
 ## 阶段 4: 全量验证与集成测试跟进
 最后进行系统级验证并恢复总体覆盖率达标。
