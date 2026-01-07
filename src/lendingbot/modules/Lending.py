@@ -395,7 +395,7 @@ class LendingEngine:
             self.loan_orders_request_limit[active_cur] = self.default_loan_orders_request_limit
 
         loans = self.api.return_loan_orders(active_cur, self.loan_orders_request_limit[active_cur])
-        empty_book = {"rates": [], "volumes": [], "rangeMax": []}
+        empty_book: dict[str, list[Any]] = {"rates": [], "volumes": [], "rangeMax": []}
         if not loans:
             return empty_book, empty_book
 
@@ -447,12 +447,10 @@ class LendingEngine:
                 return self.max_daily_rate
 
             # Check if we hit the request limit and don't have enough volume
-            if (
-                i == len(order_book["volumes"]) - 1
-                and len(order_book["volumes"])
-                == self.loan_orders_request_limit.get(
-                    active_cur, self.default_loan_orders_request_limit
-                )
+            if i == len(order_book["volumes"]) - 1 and len(
+                order_book["volumes"]
+            ) == self.loan_orders_request_limit.get(
+                active_cur, self.default_loan_orders_request_limit
             ):
                 if self.log:
                     self.log.log(
@@ -485,13 +483,12 @@ class LendingEngine:
         bottom = self.gap_bottom_default
         top = self.gap_top_default
 
-        if cfg := self.coin_cfg.get(cur):
+        if (cfg := self.coin_cfg.get(cur)) and cfg.gap_bottom != 0:
             # If the coin config has gap values defined (non-default/non-zero)
             # Use them. Otherwise use the global defaults.
-            if cfg.gap_bottom != 0:
-                mode = cfg.gap_mode.value if hasattr(cfg.gap_mode, "value") else str(cfg.gap_mode)
-                bottom = cfg.gap_bottom
-                top = cfg.gap_top if cfg.gap_top is not None else cfg.gap_bottom
+            mode = cfg.gap_mode.value if hasattr(cfg.gap_mode, "value") else str(cfg.gap_mode)
+            bottom = cfg.gap_bottom
+            top = cfg.gap_top if cfg.gap_top is not None else cfg.gap_bottom
 
         return str(mode), bottom, top
 
@@ -513,7 +510,7 @@ class LendingEngine:
         bottom: Decimal,
         top: Decimal,
         cur: str,
-        cur_total_balance: Decimal,
+        _cur_total_balance: Decimal,
         ticker: Any,
     ) -> tuple[Decimal, Decimal, bool]:
         """
@@ -576,7 +573,7 @@ class LendingEngine:
         return resp
 
     def get_gap_mode_rates(
-        self, cur: str, cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any
+        self, cur: str, _cur_active_bal: Decimal, cur_total_balance: Decimal, ticker: Any
     ) -> list[Decimal]:
         """
         Calculates the top and bottom rates based on the configured gap mode.

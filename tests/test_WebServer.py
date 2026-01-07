@@ -172,21 +172,27 @@ class TestWebServer:
 
     def test_get_web_settings_read_error(self, web_server, mock_lending_engine):
         # Simulate OS error during read
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.open", side_effect=OSError("No Permission")):
-                settings = web_server.get_web_settings()
-                # Should return defaults
-                assert settings == web_server.DEFAULT_WEB_SETTINGS
-                # Check if it logs to engine
-                mock_lending_engine.log.log.assert_called_with("Error reading web settings: No Permission")
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.open", side_effect=OSError("No Permission")),
+        ):
+            settings = web_server.get_web_settings()
+            # Should return defaults
+            assert settings == web_server.DEFAULT_WEB_SETTINGS
+            # Check if it logs to engine
+            mock_lending_engine.log.log.assert_called_with(
+                "Error reading web settings: No Permission"
+            )
 
     def test_start_server_port_conflict(self, web_server):
         # Simulate port conflict
-        with patch("socketserver.ThreadingTCPServer", side_effect=OSError("Address already in use")):
+        with patch(
+            "socketserver.ThreadingTCPServer", side_effect=OSError("Address already in use")
+        ):
             # Should catch and print error
             web_server._run_server()
 
-    def test_handler_invalid_json(self, web_server, mock_lending_engine):
+    def test_handler_invalid_json(self, web_server, mock_lending_engine):  # noqa: ARG002
         # Extract handler class
         with patch("socketserver.ThreadingTCPServer") as MockServer:
             mock_server_instance = MockServer.return_value
@@ -209,7 +215,7 @@ class TestWebServer:
                 handler.path = "/set_config"
                 handler.headers["Content-Length"] = "5"
                 handler.rfile.read.return_value = b"NOTJSON"
-                
+
                 # Currently it raises JSONDecodeError, we'll improve it to catch and return 400
                 with pytest.raises(json.JSONDecodeError):
                     handler.do_POST()

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from lendingbot.modules import Configuration, Data
+from lendingbot.modules import Configuration
 from lendingbot.modules.Bitfinex import Bitfinex
 from lendingbot.modules.Logger import Logger
 from lendingbot.modules.Poloniex import Poloniex
@@ -25,13 +25,8 @@ def config():
     """Load configuration for integration tests."""
     config_path = Path(__file__).parent.parent.parent / "default.cfg"
 
-    # Initialize Data module first (required by Configuration)
-    Data.init(None, None)
-
     # Load configuration
-    cfg = Configuration
-    cfg.init(str(config_path), Data)
-    return cfg
+    return Configuration.load_config(config_path)
 
 
 @pytest.fixture(scope="module")

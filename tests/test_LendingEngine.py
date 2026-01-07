@@ -119,13 +119,17 @@ class TestLendingEngineLogic:
         # 1. Exact match at first element
         # gap_expected = 10 * 100 / 100 = 10
         # i=0, sum=10 >= 10. Returns rates[1] = 0.02
-        assert engine.get_gap_rate("BTC", Decimal("10"), order_book, Decimal("100")) == Decimal("0.02")
+        assert engine.get_gap_rate("BTC", Decimal("10"), order_book, Decimal("100")) == Decimal(
+            "0.02"
+        )
 
         # 2. Match at second element
         # gap_expected = 15 * 100 / 100 = 15
         # i=0, sum=10 < 15
         # i=1, sum=20 >= 15. Returns rates[2] = 0.03
-        assert engine.get_gap_rate("BTC", Decimal("15"), order_book, Decimal("100")) == Decimal("0.03")
+        assert engine.get_gap_rate("BTC", Decimal("15"), order_book, Decimal("100")) == Decimal(
+            "0.03"
+        )
 
         # 3. No match (beyond book total volume 50)
         # Hits request limit (5) and volume 50 < 60. Raises StopIteration
@@ -134,7 +138,9 @@ class TestLendingEngineLogic:
 
         # 4. Match at last element
         # i=4, sum=50 >= 50. i+1 = 5 (beyond book). Returns max_daily_rate
-        assert engine.get_gap_rate("BTC", Decimal("50"), order_book, Decimal("100")) == Decimal("0.1")
+        assert engine.get_gap_rate("BTC", Decimal("50"), order_book, Decimal("100")) == Decimal(
+            "0.1"
+        )
 
     def test_get_gap_mode_rates_relative(self, engine):
         engine.initialize()
@@ -145,15 +151,15 @@ class TestLendingEngineLogic:
             engine.gap_mode_default = "relative"
             engine.gap_bottom_default = Decimal("10")
             engine.gap_top_default = Decimal("100")
-            
+
             # Ensure BTC specific config doesn't interfere
             if "BTC" in engine.coin_cfg:
                 engine.coin_cfg["BTC"].gap_bottom = Decimal("0")
-            
+
             # total balance 100 -> depth 10 and 100
             rates = engine.get_gap_mode_rates("BTC", Decimal("100"), Decimal("100"), {})
             # rates[0] is top_rate, rates[1] is bottom_rate
-            
+
             # depth 10 -> bottom_rate = rates[1] = 0.02 (returns rates[i+1] when i=0)
             assert rates[1] == Decimal("0.02")
             # depth 100 -> top_rate = rates[0] = max_daily_rate = 5.0
@@ -171,7 +177,7 @@ class TestLendingEngineLogic:
             engine.gap_mode_default = "rawbtc"
             engine.gap_bottom_default = Decimal("0.5")  # 0.5 BTC
             engine.gap_top_default = Decimal("1.0")  # 1.0 BTC
-            
+
             # Ensure ETH specific config doesn't interfere
             if "ETH" in engine.coin_cfg:
                 engine.coin_cfg["ETH"].gap_bottom = Decimal("0")
@@ -235,21 +241,21 @@ class TestLendingEngineLogic:
         # 0.05% -> 25 days, 0.1% -> 60 days
         # Internal representation is percentage / 100
         engine.xday_threshold = "0.05:25,0.1:60"
-        
+
         # Rate below first threshold -> use first threshold days
         assert engine._calculate_duration(0.0004, "2") == "25"
-        
+
         # Rate at threshold -> use threshold days
         assert engine._calculate_duration(0.0005, "2") == "25"
         assert engine._calculate_duration(0.001, "2") == "60"
-        
+
         # Rate between thresholds -> interpolation
         # (0.0005+0.001)/2 = 0.00075 -> (25+60)/2 = 42.5 -> "42"
         assert engine._calculate_duration(0.00075, "2") == "42"
-        
+
         # Rate above last threshold -> use last threshold days
         assert engine._calculate_duration(0.002, "2") == "60"
-        
+
         # Explicit days override interpolation
         assert engine._calculate_duration(0.001, "5") == "5"
 
@@ -257,10 +263,10 @@ class TestLendingEngineLogic:
         engine.config.bot.end_date = "2026-01-10"
         # mock_data.get_max_duration returns days remaining
         mock_data.get_max_duration.return_value = 3
-        
+
         # Duration restricted by end_date
         assert engine._calculate_duration(0.001, "5") == "3"
-        assert engine._calculate_duration(0.001, "2") == "2" # default 2 is less than 3
+        assert engine._calculate_duration(0.001, "2") == "2"  # default 2 is less than 3
 
 
 class TestLendingEngineFlow:
@@ -286,36 +292,38 @@ class TestLendingEngineFlow:
         engine.initialize()
         mock_api.return_open_loan_offers.return_value = {"BTC": [{"id": 123, "amount": "1.0"}]}
         mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.0"}}
-        
+
         # Simulate API error during cancel
         mock_api.cancel_loan_offer.side_effect = Exception("API Down")
-        
+
         # Should not crash, just log error
         engine.cancel_all()
         mock_api.cancel_loan_offer.assert_called()
         engine.log.log.assert_called_with("Error canceling loan offer: API Down")
 
-    def test_lend_cur_empty_books(self, engine, mock_api):
+    def test_lend_cur_empty_books(self, engine, mock_api):  # noqa: ARG002
         engine.initialize()
         # Mock construct_order_books to return empty books
         with patch.object(engine, "construct_order_books", return_value=({}, {})):
             total_lent_info = MagicMock()
             total_lent_info.total_lent = {"BTC": Decimal("0")}
             lending_balances = {"BTC": "1.0"}
-            
+
             # Should return 0 (no currencies usable) and not crash
             result = engine.lend_cur("BTC", total_lent_info, lending_balances, {})
             assert result == 0
 
-    def test_lend_cur_api_exception(self, engine, mock_api):
+    def test_lend_cur_api_exception(self, engine, mock_api):  # noqa: ARG002
         engine.initialize()
         # Mock construct_order_books to return valid books but create_lend_offer raises non-amount error
         order_book = {"rates": [0.01], "volumes": [10]}
-        with patch.object(engine, "construct_order_books", return_value=({}, order_book)):
-            with patch.object(engine, "create_lend_offer", side_effect=RuntimeError("Serious Error")):
-                total_lent_info = MagicMock()
-                total_lent_info.total_lent = {"BTC": Decimal("0")}
-                lending_balances = {"BTC": "1.0"}
-                
-                with pytest.raises(RuntimeError, match="Serious Error"):
-                    engine.lend_cur("BTC", total_lent_info, lending_balances, {})
+        with (
+            patch.object(engine, "construct_order_books", return_value=({}, order_book)),
+            patch.object(engine, "create_lend_offer", side_effect=RuntimeError("Serious Error")),
+        ):
+            total_lent_info = MagicMock()
+            total_lent_info.total_lent = {"BTC": Decimal("0")}
+            lending_balances = {"BTC": "1.0"}
+
+            with pytest.raises(RuntimeError, match="Serious Error"):
+                engine.lend_cur("BTC", total_lent_info, lending_balances, {})

@@ -1,4 +1,3 @@
-
 import http.client
 import os
 import socket
@@ -7,7 +6,7 @@ import time
 import traceback
 import urllib.error
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, NoReturn
 
 from lendingbot.modules import (
     Configuration,
@@ -17,24 +16,25 @@ from lendingbot.modules import (
     PluginsManager,
     WebServer,
 )
-from lendingbot.modules.ExchangeApi import ApiError
+from lendingbot.modules.ExchangeApi import ApiError, ExchangeApi
 from lendingbot.modules.ExchangeApiFactory import ExchangeApiFactory
 from lendingbot.modules.Logger import Logger
+
 
 class BotOrchestrator:
     def __init__(self, config_path: str | Path, dry_run: bool = False):
         self.config_path = Path(config_path) if isinstance(config_path, str) else config_path
         self.dry_run = dry_run
-        
+
         # Components
-        self.config = None
-        self.log = None
-        self.api = None
-        self.analysis = None
-        self.engine = None
-        self.plugins_manager = None
-        self.web_server = None
-        
+        self.config: Configuration.RootConfig | None = None
+        self.log: Logger | None = None
+        self.api: ExchangeApi | None = None
+        self.analysis: MarketAnalysis.MarketAnalysis | None = None
+        self.engine: Lending.LendingEngine | None = None
+        self.plugins_manager: PluginsManager.PluginsManager | None = None
+        self.web_server: WebServer.WebServer | None = None
+
         # Runtime state
         self.dns_cache: dict[Any, Any] = {}
         self.last_summary_time = 0.0
@@ -47,7 +47,7 @@ class BotOrchestrator:
         try:
             if self.config_path.suffix == ".cfg":
                 print("Warning: .cfg files are legacy. Please migrate to .toml.")
-                
+
             self.config = Configuration.load_config(self.config_path)
         except FileNotFoundError:
             print(f"Config file '{self.config_path}' not found. Please create one.")
@@ -55,7 +55,7 @@ class BotOrchestrator:
         except Exception as ex:
             print(f"Error loading configuration: {ex}")
             sys.exit(1)
-        
+
         # Initialize Logger
         try:
             self.log = Logger(
@@ -71,13 +71,14 @@ class BotOrchestrator:
         # Initialize API
         try:
             self.api = ExchangeApiFactory.createApi(
-                self.config.api.exchange.value, 
-                self.config, 
-                self.log
+                self.config.api.exchange.value, self.config, self.log
             )
         except Exception as ex:
             print(f"Error initializing API: {ex}")
             sys.exit(1)
+
+        # Initialize Data module (singleton)
+        Data.init(self.api, self.log)
 
         # Initialize Market Analysis
         if self.config.plugins.market_analysis.analyse_currencies:
@@ -91,24 +92,16 @@ class BotOrchestrator:
         # Initialize Lending Engine
         try:
             self.engine = Lending.LendingEngine(
-                self.config, 
-                self.api, 
-                self.log, 
-                Data, 
-                self.analysis
+                self.config, self.api, self.log, Data, self.analysis
             )
             self.engine.initialize(dry_run=self.dry_run)
         except Exception as ex:
             print(f"Error initializing Lending Engine: {ex}")
             sys.exit(1)
-        
+
         # Initialize Plugins
         try:
-            self.plugins_manager = PluginsManager.PluginsManager(
-                self.config, 
-                self.api, 
-                self.log
-            )
+            self.plugins_manager = PluginsManager.PluginsManager(self.config, self.api, self.log)
             # Backward compatibility globals (to be phased out ideally)
             PluginsManager._manager = self.plugins_manager
         except Exception as ex:
@@ -121,7 +114,7 @@ class BotOrchestrator:
             # Global for backward compatibility
             WebServer._web_server = self.web_server
 
-    def _setup_dns_cache(self):
+    def _setup_dns_cache(self) -> None:
         """Monkeys patches socket.getaddrinfo to cache DNS results."""
         prv_getaddrinfo = socket.getaddrinfo
         self.dns_cache = {}
@@ -140,6 +133,11 @@ class BotOrchestrator:
         """
         Executes a single iteration of the bot loop.
         """
+        assert self.config is not None
+        assert self.log is not None
+        assert self.engine is not None
+        assert self.plugins_manager is not None
+
         self.dns_cache.clear()  # Flush DNS Cache
         Data.update_conversion_rates(self.config.bot.output_currency, self.config.bot.web.enabled)
 
@@ -165,18 +163,22 @@ class BotOrchestrator:
         self.log.persistStatus()
         sys.stdout.flush()
 
-    def run(self) -> None:
+    def run(self) -> NoReturn:
         """
         Starts the main loop of the bot.
         """
+        assert self.config is not None
+        assert self.log is not None
+        assert self.engine is not None
+
         if self.web_server:
             self.web_server.start()
-        
+
         self._setup_dns_cache()
-        
+
         self.log.log(f"Welcome to {self.config.bot.label} on {self.config.api.exchange.value}")
         self.engine.start_scheduler()
-        
+
         if self.engine.coin_cfg:
             strategies_log = [f"{cur}: {cfg.strategy}" for cur, cfg in self.engine.coin_cfg.items()]
             print(f"Active Lending Strategies: {', '.join(strategies_log)}")
@@ -198,6 +200,10 @@ class BotOrchestrator:
             self.stop()
 
     def _handle_exception(self, ex: Exception) -> None:
+        assert self.log is not None
+        assert self.config is not None
+        assert self.engine is not None
+
         msg = str(ex)
         self.log.log_error(msg)
         self.log.persistStatus()
@@ -235,7 +241,7 @@ class BotOrchestrator:
                     self.config.notifications.model_dump(),
                 )
 
-    def stop(self):
+    def stop(self) -> NoReturn:
         if self.web_server:
             self.web_server.stop()
         if self.plugins_manager:
@@ -244,4 +250,3 @@ class BotOrchestrator:
             self.log.log("bye")
         print("bye")
         os._exit(0)
-

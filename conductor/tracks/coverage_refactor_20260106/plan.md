@@ -29,7 +29,7 @@
 ## 阶段 4: 全量验证与集成测试跟进
 最后进行系统级验证并恢复总体覆盖率达标。
 
-- [ ] Task 4.1: 创建新的集成测试文件 `tests/integration/test_full_cycle.py`，模拟完整的借贷心跳循环。
-- [ ] Task 4.2: 运行全量覆盖率报告 `uv run poe test-coverage`，确保核心模块覆盖率 > 70%。
-- [ ] Task 4.3: 最终质量检查 `uv run poe fix-full`。
+- [x] Task 4.1: 创建新的集成测试文件 `tests/integration/test_full_cycle.py`，模拟完整的借贷心跳循环。
+- [x] Task 4.2: 运行全量覆盖率报告 `uv run poe test-coverage`，确保核心模块覆盖率 > 70%。
+- [x] Task 4.3: 最终质量检查 `uv run poe fix-full`。
 - [ ] Task: Conductor - User Manual Verification '阶段 4' (Protocol in workflow.md)
