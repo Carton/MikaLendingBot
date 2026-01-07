@@ -189,7 +189,7 @@ fix-full = ["ruff-format", "ruff-check-fix", "mypy"]
 
 # ── Application Runner ──────────────────────────────────────────────────────
 run = "python -m lendingbot.main"
-run-dev = "python -m lendingbot.main --config=default.cfg"
+run-dev = "python -m lendingbot.main --config=config.toml"
 
 # ── Dependency Management ───────────────────────────────────────────────────
 deps-update = "uv sync --upgrade"
