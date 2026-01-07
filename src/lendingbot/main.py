@@ -64,10 +64,10 @@ def main() -> NoReturn:
 
     # Parse command line arguments
     args = parse_arguments()
-    
+
     # Determine config path
     config_path = Path(args.config) if args.config else Path("config.toml")
-    
+
     # Create and run orchestrator
     bot = BotOrchestrator(config_path, dry_run=bool(args.dryrun))
     bot.initialize()

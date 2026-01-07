@@ -22,17 +22,27 @@ from lendingbot.modules.Poloniex import Poloniex
 
 @pytest.fixture(scope="module")
 def config():
-    """Load configuration for integration tests."""
-    config_path = Path(__file__).parent.parent.parent / "default.cfg"
+    """Load configuration for integration tests.
+    Tries config.toml first, then config_sample.toml.
+    """
+    root_dir = Path(__file__).parent.parent.parent
+    config_path = root_dir / "config.toml"
+    if not config_path.exists():
+        config_path = root_dir / "config_sample.toml"
 
-    # Load configuration
+    # Load configuration using the new TOML loader
     return Configuration.load_config(config_path)
 
 
 @pytest.fixture(scope="module")
-def logger():
+def logger(config):
     """Create logger instance for integration tests."""
-    return Logger()
+    return Logger(
+        json_file=config.bot.json_file,
+        json_log_size=config.bot.json_log_size,
+        exchange=config.api.exchange.value,
+        label=config.bot.label
+    )
 
 
 @pytest.fixture(scope="module")

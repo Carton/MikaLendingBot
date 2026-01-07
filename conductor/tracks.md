@@ -43,6 +43,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ## [x] Track: Modernizing Unit Tests for DI Architecture
 
-*Link: [./conductor/archive/fix_tests_di_20260105/](./conductor/archive/fix_tests_di_20260105/)*
+---
+
+## [x] Track: Coverage Boost & Strategic Refactor (Lending, WebServer, main)
+*Link: [./conductor/archive/coverage_refactor_20260106/](./conductor/archive/coverage_refactor_20260106/)*
 
 
