@@ -257,7 +257,7 @@ function loadData() {
         setTimeout('loadData()', refreshRate * 1000)
     } else {
         // expect the botlog.json to be in the same folder on the webserver
-        var file = 'logs/botlog.json?_t=' + new Date().getTime();
+        var file = 'botlog.json?_t=' + new Date().getTime();
         $.getJSON(file, function (data) {
             updateJson(data);
             fetchStatus(); // Update status/strategy info along with data
@@ -513,14 +513,14 @@ function fetchStatus() {
     if (window.location.protocol !== "file:") {
         $.get('/get_status', function (data) {
             updateButtonStatus(data.lending_paused);
-            
+
             // Handle strategies
             if (data.lending_strategies) {
                 var strategyNames = Object.values(data.lending_strategies);
                 var uniqueStrategies = [...new Set(strategyNames)];
                 var strategyText = uniqueStrategies.join(", ");
                 $('#current-strategy-name').text(strategyText);
-                
+
                 // Show/Hide FRR panel
                 if (uniqueStrategies.indexOf('FRR') !== -1) {
                     $('#frr-strategy-panel').show();
