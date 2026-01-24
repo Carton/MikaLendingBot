@@ -82,7 +82,7 @@ class CoinConfig(BaseModel):
     min_daily_rate: Decimal = Field(Decimal("0.005"), ge=0, le=5)
     max_daily_rate: Decimal = Field(Decimal("5.0"), ge=0, le=5)
 
-    @field_validator("min_daily_rate", "max_daily_rate", mode="after")
+    @field_validator("min_daily_rate", "max_daily_rate", "max_to_lend_rate", mode="after")
     @classmethod
     def convert_percent_to_decimal(cls, v: Decimal) -> Decimal:
         return v / 100

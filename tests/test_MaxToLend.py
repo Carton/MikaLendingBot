@@ -36,7 +36,8 @@ class TestMaxToLend:
                 "BTC": CoinConfig(
                     max_to_lend=Decimal("1.0"),
                     max_percent_to_lend=Decimal("0.5"),
-                    max_to_lend_rate=Decimal("0.01"),
+                    # 1% -> 0.01
+                    max_to_lend_rate=Decimal("1.0"),
                 ),
             }
         )
@@ -47,6 +48,7 @@ class TestMaxToLend:
         assert maxtolend_module.min_loan_size == Decimal("0.01")
         # test coin_cfg override
         assert maxtolend_module.coin_cfg["BTC"].max_to_lend == Decimal("1.0")
+        assert maxtolend_module.coin_cfg["BTC"].max_to_lend_rate == Decimal("0.01")
 
     def test_amount_to_lend_no_restriction(self, maxtolend_module):
         maxtolend_module.log = MagicMock()
@@ -93,7 +95,8 @@ class TestMaxToLend:
         maxtolend_module.coin_cfg = {
             "ETH": CoinConfig(
                 max_to_lend=Decimal("2"),
-                max_to_lend_rate=Decimal("0.05"),
+                # 5% -> 0.05 internal
+                max_to_lend_rate=Decimal("5.0"),
             )
         }
         # Market rate 0.01 <= 0.05 (restricted for ETH)
