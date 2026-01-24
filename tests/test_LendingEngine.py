@@ -24,8 +24,8 @@ def mock_config():
 
     # Default coin config
     config.coin["default"] = CoinConfig(
-        min_daily_rate=Decimal("0.005"),
-        max_daily_rate=Decimal("5.0"),
+        min_daily_rate=Decimal("0.5"),  # 0.5% -> 0.005
+        max_daily_rate=Decimal("5.0"),  # 5% -> 0.05
         spread_lend=3,
         gap_mode=GapMode.RELATIVE,
         gap_bottom=Decimal("10"),
@@ -34,11 +34,15 @@ def mock_config():
 
     # Specific coin config
     config.coin["BTC"] = CoinConfig(
-        min_daily_rate=Decimal("0.01"), strategy=LendingStrategy.SPREAD, spread_lend=5
+        # 1% -> 0.01
+        min_daily_rate=Decimal("1.0"),
+        strategy=LendingStrategy.SPREAD,
+        spread_lend=5,
     )
 
     config.coin["ETH"] = CoinConfig(
-        min_daily_rate=Decimal("0.001"),
+        # 0.1% -> 0.001
+        min_daily_rate=Decimal("0.1"),
         strategy=LendingStrategy.FRR,
         frr_delta_min=Decimal("-5"),
         frr_delta_max=Decimal("5"),
@@ -166,8 +170,8 @@ class TestLendingEngineLogic:
 
             # depth 10 -> bottom_rate = rates[1] = 0.02 (returns rates[i+1] when i=0)
             assert rates[1] == Decimal("0.02")
-            # depth 100 -> top_rate = rates[0] = max_daily_rate = 5.0
-            assert rates[0] == Decimal("5.0")
+            # depth 100 -> top_rate = rates[0] = max_daily_rate = 5.0 -> 0.05
+            assert rates[0] == Decimal("0.05")
 
     def test_get_gap_mode_rates_rawbtc(self, engine):
         engine.initialize()

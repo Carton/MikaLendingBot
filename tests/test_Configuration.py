@@ -113,3 +113,21 @@ class TestConfiguration(unittest.TestCase):
             f.write(content)
         config = Conf.load_config(self.toml_path)
         self.assertEqual(config.bot.transferable_currencies, ["USD", "BTC"])
+
+    def test_rate_percent_conversion(self) -> None:
+        """Test that min/max_daily_rate are converted from percent to decimal."""
+        content = """
+        [coin.default]
+        min_daily_rate = 0.005  # 0.005%
+        max_daily_rate = 5.0    # 5%
+        """
+        with self.toml_path.open("w", encoding="utf-8") as f:
+            f.write(content)
+
+        config = Conf.load_config(self.toml_path)
+        default_cfg = config.get_coin_config("BTC")
+
+        # 0.005 / 100 = 0.00005
+        self.assertEqual(default_cfg.min_daily_rate, Decimal("0.00005"))
+        # 5.0 / 100 = 0.05
+        self.assertEqual(default_cfg.max_daily_rate, Decimal("0.05"))

@@ -81,6 +81,12 @@ class CoinConfig(BaseModel):
     # Core Lending Settings
     min_daily_rate: Decimal = Field(Decimal("0.005"), ge=0, le=5)
     max_daily_rate: Decimal = Field(Decimal("5.0"), ge=0, le=5)
+
+    @field_validator("min_daily_rate", "max_daily_rate", mode="after")
+    @classmethod
+    def convert_percent_to_decimal(cls, v: Decimal) -> Decimal:
+        return v / 100
+
     min_loan_size: Decimal = Field(Decimal("0.01"), ge=Decimal("0.005"))
     # max_active_amount: Limits total lending for this currency.
     #   -1 = unlimited (no limit on total lending)
@@ -181,7 +187,7 @@ class RootConfig(BaseModel):
         merged_dict = default_dict.copy()
         merged_dict.update(specific_dict)
 
-        return CoinConfig(**merged_dict)
+        return CoinConfig.model_construct(**merged_dict)
 
 
 # --- Global Instance & accessors ---
