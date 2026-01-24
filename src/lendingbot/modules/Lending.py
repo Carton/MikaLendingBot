@@ -113,9 +113,10 @@ class LendingEngine:
         self.min_loan_size = self.default_coin_cfg.min_loan_size
 
         # Populate coin_cfg and min_loan_sizes
+        # Iterate over ALL active currencies, not just those with specific overrides
         self.coin_cfg = {}
         self.min_loan_sizes = {}
-        for symbol in self.config.coin:
+        for symbol in self.config.api.all_currencies:
             cc = self.config.get_coin_config(symbol)
             self.coin_cfg[symbol] = cc
             self.min_loan_sizes[symbol] = cc.min_loan_size

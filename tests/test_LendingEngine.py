@@ -86,6 +86,10 @@ class TestLendingEngineInit:
         assert engine.dry_run is True
         # BTC specific value
         assert engine.coin_cfg["BTC"].min_daily_rate == Decimal("0.01")
+        # USD should be initialized from all_currencies, using default config
+        assert "USD" in engine.coin_cfg
+        assert engine.coin_cfg["USD"].min_daily_rate == Decimal("0.005")  # default
+        assert engine.coin_cfg["USD"].strategy == LendingStrategy.SPREAD  # default
         # Default value
         assert engine.min_daily_rate == Decimal("0.005")
         assert engine.sleep_time == 60
