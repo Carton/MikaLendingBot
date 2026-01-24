@@ -109,3 +109,67 @@ class TestMaxToLend:
         # Market rate 0.02 > 0.01. No restriction.
         res = maxtolend_module.amount_to_lend(Decimal("10"), "BTC", Decimal("10"), Decimal("0.02"))
         assert res == Decimal("10")
+
+    # --- New tests for max_active_amount limit feature ---
+
+    def test_max_active_amount_unlimited(self, maxtolend_module):
+        """max_active_amount = -1 means no limit on total lending."""
+        maxtolend_module.log = MagicMock()
+        maxtolend_module.coin_cfg = {
+            "USD": CoinConfig(
+                max_active_amount=Decimal("-1"),  # Unlimited
+            )
+        }
+        # total_lent = 5000, lending_balance = 3000. Should lend all 3000.
+        res = maxtolend_module.amount_to_lend(
+            Decimal("8000"), "USD", Decimal("3000"), Decimal("0.01"), total_lent=Decimal("5000")
+        )
+        assert res == Decimal("3000")
+
+    def test_max_active_amount_limit_reached(self, maxtolend_module):
+        """When total_lent >= max_active_amount, should return 0."""
+        maxtolend_module.log = MagicMock()
+        maxtolend_module.coin_cfg = {
+            "USD": CoinConfig(
+                max_active_amount=Decimal("5000"),  # Cap at 5000 USD
+            )
+        }
+        # total_lent = 5000, which already equals the limit. Should lend 0.
+        res = maxtolend_module.amount_to_lend(
+            Decimal("8000"), "USD", Decimal("3000"), Decimal("0.01"), total_lent=Decimal("5000")
+        )
+        assert res == Decimal("0")
+        # Verify log was called
+        maxtolend_module.log.log.assert_called()
+
+    def test_max_active_amount_partial_reduction(self, maxtolend_module):
+        """When total_lent + lending_balance > max_active_amount, reduce lending amount."""
+        maxtolend_module.log = MagicMock()
+        maxtolend_module.coin_cfg = {
+            "USD": CoinConfig(
+                max_active_amount=Decimal("8000"),  # Cap at 8000 USD
+            )
+        }
+        # total_lent = 5000, limit = 8000, so available_capacity = 3000.
+        # lending_balance = 5000 > 3000, so should reduce to 3000.
+        res = maxtolend_module.amount_to_lend(
+            Decimal("10000"), "USD", Decimal("5000"), Decimal("0.01"), total_lent=Decimal("5000")
+        )
+        assert res == Decimal("3000")
+        # Verify log was called
+        maxtolend_module.log.log.assert_called()
+
+    def test_max_active_amount_within_limit(self, maxtolend_module):
+        """When total_lent + lending_balance <= max_active_amount, lend full amount."""
+        maxtolend_module.log = MagicMock()
+        maxtolend_module.coin_cfg = {
+            "USD": CoinConfig(
+                max_active_amount=Decimal("10000"),  # Cap at 10000 USD
+            )
+        }
+        # total_lent = 3000, limit = 10000, available_capacity = 7000.
+        # lending_balance = 2000 < 7000, so should lend all 2000.
+        res = maxtolend_module.amount_to_lend(
+            Decimal("5000"), "USD", Decimal("2000"), Decimal("0.01"), total_lent=Decimal("3000")
+        )
+        assert res == Decimal("2000")

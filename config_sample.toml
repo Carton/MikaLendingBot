@@ -77,7 +77,10 @@ max_daily_rate = 5.0
 # Minimum loan size, the minimum size of offers to make, bigger values prevent the bot from loaning small available amounts but reduce loan fragmentation.
 min_loan_size = 0.01
 
-# Maximum active amount to lend. -1 means unlimited (0 means disabled/skip this coin)
+# Maximum total amount to lend for this currency (in coin units).
+# -1 = unlimited (no limit on total lending)
+#  0 = disabled (skip this coin entirely)
+# >0 = limit (cap total lending to this amount, e.g., 1000 for USD means max 1000 USD total lent)
 max_active_amount = -1
 
 # How much to lend out

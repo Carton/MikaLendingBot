@@ -293,21 +293,41 @@ To use this configuration, make sure to comment out the line where coincfg is de
 
 .. warning:: These sections should come at the end of the file, after the other options for the bot.
 
-Configuration should look like this::
+Configuration should look like this (using TOML format)::
 
-    [BTC]
-    minloansize = 0.01
-    mindailyrate = 0.1
-    maxactiveamount = 1
-    maxtolend = 0
-    maxpercenttolend = 0
-    maxtolendrate = 0
-    gapmode = raw
-    gapbottom = 10
-    gaptop = 20
-    lending_strategy = FRR
-    frrdelta_min = -10
-    frrdelta_max = 10
+    [coin.BTC]
+    min_loan_size = 0.01
+    min_daily_rate = 0.1
+    max_active_amount = 1
+    max_to_lend = 0
+    max_percent_to_lend = 0
+    max_to_lend_rate = 0
+    gap_mode = "Raw"
+    gap_bottom = 10
+    gap_top = 20
+    strategy = "FRR"
+    frr_delta_min = -10
+    frr_delta_max = 10
+
+Max Active Amount (Limit Total Lending)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ``max_active_amount`` limits the total amount that can be lent out for a currency.
+
+    - Default value: -1 (unlimited)
+    - Allowed values:
+        - ``-1`` = Unlimited (no restriction on total lending)
+        - ``0`` = Disabled (skip this coin entirely, equivalent to not listing it in ``all_currencies``)
+        - ``> 0`` = Limit (cap total lending to this amount in coin units)
+    - This is useful when you want to maintain a reserve or limit exposure for a specific currency.
+    - The limit applies to the total amount currently lent out (active loans). If you have 10000 USD and set ``max_active_amount = 5000``, the bot will only lend up to 5000 USD total.
+    - Example: If you have ``max_active_amount = 1000`` for USD and currently have 800 USD lent out, the bot will only offer up to 200 USD more in new loans.
+
+    Example configuration::
+
+        [coin.USD]
+        min_loan_size = 150
+        max_active_amount = 5000  # Only lend up to 5000 USD total
 
 
 Advanced logging and Web Display

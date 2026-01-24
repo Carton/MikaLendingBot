@@ -82,6 +82,10 @@ class CoinConfig(BaseModel):
     min_daily_rate: Decimal = Field(Decimal("0.005"), ge=0, le=5)
     max_daily_rate: Decimal = Field(Decimal("5.0"), ge=0, le=5)
     min_loan_size: Decimal = Field(Decimal("0.01"), ge=Decimal("0.005"))
+    # max_active_amount: Limits total lending for this currency.
+    #   -1 = unlimited (no limit on total lending)
+    #    0 = disabled (skip this coin entirely, equivalent to not including in all_currencies)
+    #   >0 = limit (cap total lending to this amount in coin units, e.g., 1000 USD)
     max_active_amount: Decimal = Decimal("-1")
     max_to_lend: Decimal = Decimal("0")
     max_percent_to_lend: Decimal = Field(Decimal("0"), ge=0, le=100)

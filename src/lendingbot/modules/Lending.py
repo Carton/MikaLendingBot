@@ -660,11 +660,14 @@ class LendingEngine:
 
         from . import MaxToLend
 
+        # Pass the total_lent for this currency to enable max_active_amount limit
+        cur_total_lent = total_lent.get(active_cur, Decimal(0))
         active_bal = MaxToLend.amount_to_lend(
             active_cur_total_balance,
             active_cur,
             Decimal(str(lending_balances[active_cur])),
             Decimal(str(order_book["rates"][0])),
+            total_lent=cur_total_lent,
         )
 
         if float(active_bal) >= float(self.get_min_loan_size(active_cur)):
@@ -732,7 +735,9 @@ class LendingEngine:
 
         for cur in sorted(total_lent):
             if not lending_balances or cur not in lending_balances:
-                MaxToLend.amount_to_lend(total_lent[cur], cur, Decimal(0), Decimal(0))
+                MaxToLend.amount_to_lend(
+                    total_lent[cur], cur, Decimal(0), Decimal(0), total_lent=total_lent[cur]
+                )
 
         usable_currencies = 0
         ticker: dict[str, dict[str, str]] | None = None
