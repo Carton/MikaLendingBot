@@ -32,7 +32,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         "-cfg",
         "--config",
-        help="Custom configuration file path (default: default.toml)",
+        help="Custom configuration file path (default: config.toml)",
         type=str,
         default=None,
     )
