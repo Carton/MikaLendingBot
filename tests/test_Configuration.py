@@ -131,3 +131,25 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(default_cfg.min_daily_rate, Decimal("0.00005"))
         # 5.0 / 100 = 0.05
         self.assertEqual(default_cfg.max_daily_rate, Decimal("0.05"))
+
+    def test_xday_merge_regression(self) -> None:
+        """Test that merging specific config doesn't break nested models (xday_thresholds)."""
+        content = """
+        [coin.default]
+        xday_thresholds = [
+            { rate = 0.05, days = 30 }
+        ]
+
+        [coin.BTC]
+        strategy = "FRR"
+        """
+        with self.toml_path.open("w", encoding="utf-8") as f:
+            f.write(content)
+
+        config = Conf.load_config(self.toml_path)
+        # This forces the merge path in get_coin_config
+        cfg = config.get_coin_config("BTC")
+
+        # Accessing nested model field should work if correctly parsed
+        self.assertIsInstance(cfg.xday_thresholds[0], Conf.XDayThreshold)
+        self.assertEqual(cfg.xday_thresholds[0].days, 30)

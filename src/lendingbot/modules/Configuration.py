@@ -175,19 +175,21 @@ class RootConfig(BaseModel):
         3. Pydantic Model defaults
         """
         defaults = self.coin.get("default", CoinConfig())
-        default_dict = defaults.model_dump(exclude_unset=True)
 
         specific = self.coin.get(symbol)
 
         if not specific:
             return defaults
 
-        specific_dict = specific.model_dump(exclude_unset=True)
+        # Merge specific into defaults
+        # We use model_copy() to avoid re-running validators (which would divide percentages again)
+        # and to preserve nested objects (avoiding 'dict' vs 'model' issues).
+        merged = defaults.model_copy()
 
-        merged_dict = default_dict.copy()
-        merged_dict.update(specific_dict)
+        for field_name in specific.model_fields_set:
+            setattr(merged, field_name, getattr(specific, field_name))
 
-        return CoinConfig.model_construct(**merged_dict)
+        return merged
 
 
 # --- Global Instance & accessors ---
