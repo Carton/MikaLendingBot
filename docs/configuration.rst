@@ -5,9 +5,9 @@ Configuration
 
 Configuring the bot can be as simple as select the exchange to use and copy-pasting your API key and Secret.
 
-New features are required to be backwards compatible with previous versions of the .cfg but it is still recommended that you update your config immediately after updating to take advantage of new features.
+New features are generally backwards compatible with previous versions of the configuration but it is still recommended that you update your config immediately after updating to take advantage of new features.
 
-To begin, copy ``default.cfg.example`` to ``default.cfg``. Now you can edit your settings.
+The bot now uses TOML format for configuration. To begin, copy ``config_sample.toml`` to ``config.toml``. Now you can edit your settings.
 
 Exchange selection, API key and Secret
 --------------------------------------
@@ -317,7 +317,7 @@ Advanced logging and Web Display
 
     - Default value: Commented out, uncomment to enable.
     - The server page can be accessed locally, at ``http://localhost:8000/lendingbot.html`` by default.
-    - When enabled, JSON logging is automatically enabled with output to ``logs/botlog.json``.
+    - When enabled, JSON logging is automatically enabled with output to ``www/botlog.json``.
     - You must close bot with a keyboard interrupt (CTRL-C on Windows) to properly shutdown the server and release the socket, otherwise you may have to wait several minutes for it to release itself.
 
 - ``jsonlogsize`` is the amount of lines the botlog will keep before deleting the oldest event.
@@ -508,7 +508,7 @@ Quickstart
 Detailed
   Messages are sent to the telegram bot API using HTTPS requests. You can read more about it `here <https://core.telegram.org/bots/api>`_.
 
-  Telegram Bots are special accounts that do not require an additional phone number to set up, they do however need a unique authentication token. This is the token we need to get and add to the lendingbot's default.cfg. They are normally in the format ``123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11``.
+  Telegram Bots are special accounts that do not require an additional phone number to set up, they do however need a unique authentication token. This is the token we need to get and add to the lendingbot's config.toml. They are normally in the format ``123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11``.
 
   When we say we are creating a new telegram bot, all it means is that we are creating an account for the lendingbot to send message through. To create a bot and get a token, we must request it from the BotFather. This is telegram's tool for creating new bots.
 
@@ -519,12 +519,12 @@ Detailed
     4. You can check everything is working OK by going to https://api.telegram.org/bot*YOURTOKEN*/getme, for example my test one is https://api.telegram.org/bot288427377:AAGB1TqL7XqhxhT7VOxu8Ams8DV_J6kimHw/getme. If that's all working then move on to the next step.
     5. Now we need somewhere to send the messages, if you want to send a message to yourself, you first need your Chat ID. The easiest way I've found to get this is to send the bot a message from your desktop client and then use the getupdates method. So search for the bot in the desktop client's search bar and start a conversation. Then in your browser go to https://api.telegram.org/bot*YOURTOKEN*/getupdates. You should see a few lines of text, the one we're interested in looks like ``"chat":{"id":123456789,"first_name":"Michael","last_name":"Robinson","type":"private"}``. The number after ID is your chat ID.
     6. Again, just to check everything is working, lets send ourselves a message. You can do this by putting this in your browser https://api.telegram.org/bot*YOURTOKEN*/sendmessage?text=TEST%20BOT&chat_id=*YOUR_CHAT_ID* You should see a message in your desktop client. If so you have the right ID and we can move on.
-    7. The last step to get it working is just adding the two values to your default.cfg file and turning on ``telegram = True``. You should set ``telegram_bot_id`` to the token you got from the BotFather, and set the ``telegram_chat_ids`` to a comma separated list of people you want to send messages to.
+    7. The last step to get it working is just adding the two values to your config.toml file and turning on ``telegram = True``. You should set ``telegram_bot_id`` to the token you got from the BotFather, and set the ``telegram_chat_ids`` to a comma separated list of people you want to send messages to.
     8. (optional) If you'd like a specific channel for the bot to send messages you can follow these steps.
         a. Open the desktop client and create a new channel
         b. Start a conversation with the BotFather and type /setjoingroups, then follow the questsions he asks.
         c. Click on the message we sent earlier from the bot, then click on the bot's name in the conversation. You should see 'Add To Group'. Click this and add it to the new group you created.
-        d. Now you should be able to add the ``@nameOfChannel`` to your ``default.cfg`` file and post all the updates there too. Make sure the list is comma separated and you have the '@' infront of the channel name. This is only done for names, not Chat IDs.
+        d. Now you should be able to add the ``@nameOfChannel`` to your ``config.toml`` file and post all the updates there too. Make sure the list is comma separated and you have the '@' infront of the channel name. This is only done for names, not Chat IDs.
 
 Pushbullet notifications
 ~~~~~~~~~~~~~~~~~~~~~~~~

@@ -18,7 +18,7 @@ Recommended for easier use:
     - git
     - uv (modern Python package manager, project default)
 
-It is recommended to use ``uv`` to manage the environment and dependencies:
+It is highly recommended to use ``uv`` to manage the environment and dependencies:
 
 ``uv sync``
 
@@ -90,20 +90,17 @@ You have to configure the bot, especially choosing the exchange  and api key/sec
 
 To configure the bot with your settings:
 
-    #. Copy ``default.cfg.example`` to ``default.cfg`` (Running the bot also does this for you if default.cfg doesn't already exist.)
-    #. Open ``default.cfg`` and enter your desired settings `(information on settings here) <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_.
-    #. Save ``default.cfg``
+    #. Copy ``config_sample.toml`` to ``config.toml`` (Running the bot also does this for you if config.toml doesn't already exist.)
+    #. Open ``config.toml`` and enter your desired settings `(information on settings here) <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_.
+    #. Save ``config.toml``
 
 You are now ready to run the bot.
 
-Running
--------
-
 To run, use ``uv``:
 
-    - Run ``uv run lendingbot`` (or ``uv run python -m lendingbot.main``) in command prompt or terminal.
+    - Run ``uv run lendingbot`` in command prompt or terminal.
 
-.. note:: You can use arguments to specify a specific config file ``-cfg`` or to do dry runs ``-dry``. To see these args do: ``uv run lendingbot -h``
+.. note:: You can use arguments to specify a specific config file ``--config`` or to do dry runs ``--dry``. To see these args do: ``uv run lendingbot --help``
 
 Installing on Pythonanywhere.com
 ================================
@@ -127,13 +124,13 @@ Downloading the bot's files to Pythonanywhere
 #. You should see some output with counters increasing.
 #. Change directory to the source code ``cd poloniexlendingbot``
 #. You should now see ``~/poloniexlendingbot (master)$`` this means you are looking at the master branch and things are ok to continue.
-#. Run the command ``python3 lendingbot.py`` once to generate the default.cfg
-#. Modify the default.cfg with your settings (See  `Configuration <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_.) You can do this with a tool called nano.
-#. Run ``nano default.cfg``, then use the arrow keys and backspace key to change ``YourAPIKey`` and ``YourSecret``. Make sure the layout of the file stays the same as it was. They should both be on separate lines.
-#. Press ``Ctr+x`` to exit, then press ``y`` to save the file, then press enter to accept the file name as ``default.cfg``.
-#. Now you can start up the bot. Run ``python3 lendingbot.py``
+#. Run the command ``uv run lendingbot`` once to generate the config.toml
+#. Modify the config.toml with your settings (See  `Configuration <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_.) You can do this with a tool called nano.
+#. Run ``nano config.toml``, then use the arrow keys and backspace key to change ``YourAPIKey`` and ``YourSecret``. Make sure the layout of the file stays the same as it was. They should both be on separate lines.
+#. Press ``Ctr+x`` to exit, then press ``y`` to save the file, then press enter to accept the file name as ``config.toml``.
+#. Now you can start up the bot. Run ``uv run lendingbot``
 #. If it's working you will see ``Welcome to Poloniex Lending Bot`` displayed in the console.
-#. To update the bot just enter its directory, ``cd poloniexlendingbot`` and type, ``git pull``. This will not change the ``default.cfg`` file.
+#. To update the bot just enter its directory, ``cd poloniexlendingbot`` and type, ``git pull``. This will not change the ``config.toml`` file.
 
 .. note:: If you are running out of CPU time every day: It is recommended to use a high sleeptimeinactive time for this website, as they meter your CPU usage.
 
@@ -146,7 +143,7 @@ Creating the Web App (Optional)
 #. Set the static files to URL: ``/static/`` Directory: ``/home/<username>/poloniexlendingbot/www``
 #. Reload your website with the button at the top of the page.
 #. You will be able to access the webapp at ``http://<username>.pythonanywhere.com/static/lendingbot.html`` once it finishes setting up.
-#. To have the webserver communicate with your bot, you need to edit your settings (``default.cfg``) and uncomment (remove the ``#`` in front of) the following settings: ``jsonfile`` and ``jsonlogsize``. Make sure that ``startWebServer`` REMAINS commented.
+#. To have the webserver communicate with your bot, you need to edit your settings (``config.toml``) and uncomment (remove the ``#`` in front of) the following settings: ``jsonfile`` and ``jsonlogsize``. Make sure that ``startWebServer`` REMAINS commented.
 
 
 .. warning:: Do not use the built-in Simple Web Server on any host you do not control.
@@ -157,13 +154,13 @@ Running the Bot
 To run the bot continuously (Recommended for free accounts):
 
     #. Navigate to the "Consoles" tab.
-    #. Add a new "Custom console," name it "Poloniexlendingbot" and set the path to ``python3 /home/<username>/poloniexlendingbot/lendingbot.py``
+    #. Add a new "Custom console," name it "Poloniexlendingbot" and set the path to ``uv run lendingbot``
     #. Click this link whenever you want to start the bot, it will run continuously until the website goes down for maintenance or the bot experiences an unexpected error.
 
 To have the bot restart itself every 24 hours, you need to have a `premium pythonanywhere account <https://www.pythonanywhere.com/pricing/>`_. This will make the bot more or less invincible to crashes and resets, but is not necessary.
 
     #. Navigate to the "Schedule" tab.
-    #. Create a new task to run daily (time does not matter) set the path to: ``python3 /home/<username>/poloniexlendingbot/lendingbot.py``
+    #. Create a new task to run daily (time does not matter) set the path to: ``uv run lendingbot``
     #. The bot will start once the time comes (UTC) and run indefinitely.
 
 .. note:: If you are a free user, it will allow you to make the scheduled restart, but then it will only run for one hour and stop for 23.
@@ -193,7 +190,7 @@ To use this file:-
 
   #. Install and setup `docker <https://www.docker.com/>`_ for your platform, available on linux, mac and windows.
   #. If you are using linux or windows server, you'll need to install docker-compose separately, see `here <https://docs.docker.com/compose/install/>`_.
-  #. If you don't already have a ``default.cfg`` created, then copy the example one and change the values as required using the instructions in this document.
+  #. If you don't already have a ``config.toml`` created, then copy the example one and change the values as required using the instructions in this document.
   #. Edit the ``docker-compose.yaml`` file and add your ``API_apikey`` and ``API_apisecret`` for each exchange. If you wish to use only one exchange, you can comment out all the lines for the one you don't need.
   #. If you are running locally, you can leave the ``VIRTUAL_HOST`` variable as it is. If you are running on a web server with your won domain, you can set it to something like ``poloniex.mydomain.com``.
   #. If you don't have a domain name, you can use a service such as `duckdns <http://duckdns.org>`_ to get one for free.
@@ -212,9 +209,9 @@ To use this file:-
 
 Extending the file:-
 
-    - Most config values from default.cfg can be overridden in the docker-compose file. You should add them in the enviroment section in the same format as the ones listed. i.e. ``Category_Option``
+    - Most config values from config.toml can be overridden in the docker-compose file. You should add them in the enviroment section in the same format as the ones listed. i.e. ``Category_Option``
     - You can add as many extra bots as you want. Each one will need to have a new ``VIRTUAL_HOST`` entry.
-    - If you prefer to have everything in config files rather than enviroment variables, you can create a new cfg file for each bot and modify the ``command`` line to use that cfg file instead.
+    - If you prefer to have everything in config files rather than enviroment variables, you can create a new toml file for each bot and modify the ``command`` line to use that toml file instead.
 
 Other info:-
 
