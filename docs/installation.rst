@@ -143,7 +143,7 @@ Creating the Web App (Optional)
 #. Set the static files to URL: ``/static/`` Directory: ``/home/<username>/poloniexlendingbot/www``
 #. Reload your website with the button at the top of the page.
 #. You will be able to access the webapp at ``http://<username>.pythonanywhere.com/static/lendingbot.html`` once it finishes setting up.
-#. To have the webserver communicate with your bot, you need to edit your settings (``config.toml``) and uncomment (remove the ``#`` in front of) the following settings: ``jsonfile`` and ``jsonlogsize``. Make sure that ``startWebServer`` REMAINS commented.
+#. To have the webserver communicate with your bot, you need to edit your settings (``config.toml``) and uncomment (remove the ``#`` in front of) the following settings: ``json_file`` and ``json_log_size``. Make sure that ``enabled`` (under ``[bot.web]``) REMAINS commented.
 
 
 .. warning:: Do not use the built-in Simple Web Server on any host you do not control.
