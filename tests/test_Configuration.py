@@ -93,3 +93,23 @@ class TestConfiguration(unittest.TestCase):
 
         with self.assertRaises(ValidationError):
             Conf.load_config(self.toml_path)
+
+    def test_all_currencies_loading(self) -> None:
+        content = """
+        [api]
+        all_currencies = ["USD", "BTC", "ETH"]
+        """
+        with self.toml_path.open("w", encoding="utf-8") as f:
+            f.write(content)
+        config = Conf.load_config(self.toml_path)
+        self.assertEqual(config.api.all_currencies, ["USD", "BTC", "ETH"])
+
+    def test_transferable_currencies_loading(self) -> None:
+        content = """
+        [bot]
+        transferable_currencies = ["USD", "BTC"]
+        """
+        with self.toml_path.open("w", encoding="utf-8") as f:
+            f.write(content)
+        config = Conf.load_config(self.toml_path)
+        self.assertEqual(config.bot.transferable_currencies, ["USD", "BTC"])

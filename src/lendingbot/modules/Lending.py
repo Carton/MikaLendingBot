@@ -120,7 +120,7 @@ class LendingEngine:
             self.coin_cfg[symbol] = cc
             self.min_loan_sizes[symbol] = cc.min_loan_size
 
-        self.transferable_currencies = []
+        self.transferable_currencies = list(self.config.bot.transferable_currencies)
 
         self.frrdelta_min = self.default_coin_cfg.frr_delta_min
         self.frrdelta_max = self.default_coin_cfg.frr_delta_max

@@ -6,6 +6,12 @@ exchange = "Bitfinex"
 # apikey = "YourAPIKey"
 # secret = "YourSecret"
 
+# Supported currencies whitelist. Choose based on your exchange.
+# Bitfinex:
+all_currencies = ["USD", "USDt"]
+# Poloniex:
+# all_currencies = ["STR", "BTC", "BTS", "CLAM", "DOGE", "DASH", "LTC", "MAID", "XMR", "XRP", "ETH", "FCT"]
+
 [bot]
 # Custom name of the bot, that will be displayed in html page
 label = "Lending Bot"
@@ -40,6 +46,10 @@ hide_coins = true
 
 # Plugins allow extending Bot functionality with extra features.
 plugins = ["AccountStats", "Charts"]
+
+# Auto-transfer of funds from exchange to lending balance.
+# Uncomment and specify currencies to enable automatic transfer.
+# transferable_currencies = ["USD", "BTC", "ETH"]
 
 [bot.web]
 # Enables a webserver for the www folder, in order to easily use the lendingbot.html with the .json log.
@@ -112,11 +122,11 @@ frr_delta_max = 10.0
 # Bitfinex max lending period: 120 days
 # Format: Array of inline tables { rate = <rate>, days = <days> }
 xday_thresholds = [
-    { rate = 0.050, days = 20 },
-    { rate = 0.058, days = 30 },
-    { rate = 0.060, days = 45 },
-    { rate = 0.063, days = 60 },
-    { rate = 0.070, days = 120 },
+    { rate = 0.028, days = 20 },
+    { rate = 0.035, days = 30 },
+    { rate = 0.040, days = 60 },
+    { rate = 0.045, days = 90 },
+    { rate = 0.050, days = 120 },
 ]
 
 # --- Specific Coin Overrides ---
@@ -130,6 +140,8 @@ xday_thresholds = [
 # gap_top = 400
 # strategy = "Spread"
 
+[coin.USD]
+min_loan_size = 150
 
 [notifications]
 enabled = false

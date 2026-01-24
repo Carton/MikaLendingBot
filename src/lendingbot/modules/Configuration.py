@@ -61,6 +61,7 @@ class BotConfig(BaseModel):
     hide_coins: bool = True
     end_date: str | None = None
     plugins: list[str] = Field(default_factory=list)
+    transferable_currencies: list[str] = Field(default_factory=list)
     web: WebServerConfig = Field(default_factory=lambda: WebServerConfig())
 
     @field_validator("exchange", mode="before", check_fields=False)

@@ -41,7 +41,7 @@ def logger(config):
         json_file=config.bot.json_file,
         json_log_size=config.bot.json_log_size,
         exchange=config.api.exchange.value,
-        label=config.bot.label
+        label=config.bot.label,
     )
 
 
