@@ -144,6 +144,15 @@ The bot supports different lending strategies. You can select the active strateg
     - These values are relative percentages of the FRR. For example, a setting of ``-20`` means the target rate will be ``FRR * 0.80``.
     - The bot cycles through 5 steps between min and max to improve chances of being filled.
     - This option only works on Bitfinex when ``strategy = "FRR"``.
+- ``xday_thresholds`` is a list of rate and days pairs that defines the lending period for different interest rates.
+
+    - Default value: Empty (disabled)
+    - Format: Array of inline tables ``{ rate = <rate>, days = <days> }``
+    - Rate values are in percent (0 to 5), days are integers (2 to 120).
+    - The bot uses linear interpolation between defined thresholds.
+    - Poloniex max lending period: 60 days
+    - Bitfinex max lending period: 120 days
+    - This feature allows you to lock in a better rate for a longer period of time.
 
 .. code-block:: toml
 
@@ -151,7 +160,13 @@ The bot supports different lending strategies. You can select the active strateg
     strategy = "Spread"
     frr_delta_min = -10.0
     frr_delta_max = 10.0
-
+    xday_thresholds = [
+        { rate = 0.050, days = 20 },
+        { rate = 0.058, days = 30 },
+        { rate = 0.060, days = 45 },
+        { rate = 0.063, days = 60 },
+        { rate = 0.070, days = 120 },
+    ]
 
 Spreading your Lends
 --------------------
@@ -204,42 +219,6 @@ If ``spread_lend = 1`` and ``gap_bottom = 0``, it will behave as simple lending 
     gap_mode = "RawBTC"
     gap_bottom = 40
     gap_top = 200
-
-Variable loan Length
---------------------
-
-This setting allows you to lock in a better rate for a longer period of time. Found in the ``[coin.default]`` or specific ``[coin.SYMBOL]`` section.
-
-- ``xday_thresholds`` is a list of rate and days pairs that defines the lending period for different interest rates.
-
-    - Default value: Empty (disabled)
-    - Format: Array of inline tables ``{ rate = <rate>, days = <days> }``
-    - Rate values are in percent (0 to 5), days are integers (2 to 120).
-    - The bot uses linear interpolation between defined thresholds.
-    - Poloniex max lending period: 60 days
-    - Bitfinex max lending period: 120 days
-
-    - Example:
-
-    .. code-block:: toml
-
-        [coin.default]
-        xday_thresholds = [
-            { rate = 0.050, days = 20 },
-            { rate = 0.058, days = 30 },
-            { rate = 0.060, days = 45 },
-            { rate = 0.063, days = 60 },
-            { rate = 0.070, days = 120 },
-        ]
-
-      With this configuration:
-
-      - rates < 0.050% → 2 days (minimum)
-      - rates = 0.050% → 20 days
-      - rates = 0.058% → 30 days
-      - rates between thresholds → interpolated (e.g., 0.054% → ~25 days)
-      - rates = 0.070% → 120 days
-      - rates > 0.070% → 120 days (maximum configured)
 
 Auto-transfer from Exchange Balance
 -----------------------------------
