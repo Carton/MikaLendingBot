@@ -8,9 +8,10 @@
 This project has been extensively refactored and improved from the original codebase:
 
 -   **Python 3 Migration**: Fully ported to Python 3, establishing a more modern and secure runtime environment.
+-   **Configuration Overhaul**: Migrated from old `.cfg` format to a modern **TOML** structure with strict Pydantic validation. This offers better error reporting and a more organized way to manage per-coin settings.
 -   **Enhanced Bitfinex Strategies**:
-    -   **Dynamic FRR Delta**: Instead of a fixed offset, you can now specify a range (`frrdelta_min` to `frrdelta_max`). The bot will dynamically utilize values within this range to optimize lending rates.
-    -   **Advanced XDay Thresholds**: Granular control over lending duration based on rates. You can now define mappings like `0.050:20,0.058:30`, meaning "lend for 20 days if rate is 0.05%, 30 days if 0.058%".
+    -   **Dynamic FRR Delta**: Instead of a fixed offset, you can now specify a range (`frr_delta_min` to `frr_delta_max`). The bot will dynamically utilize values within this range to optimize lending rates.
+    -   **Advanced XDay Thresholds**: Granular control over lending duration based on rates. Using the TOML array format, you can define sophisticated mappings (e.g., `[{ rate = 0.05, days = 20 }, { rate = 0.058, days = 30 }]`).
     -   **Smart Competitor Analysis**: The bot checks the demand book to intelligently place offers just below competing rates.
 -   **Web UI Upgrades**:
     -   **Pause/Resume Control**: A new button allows you to safely pause lending operations without shutting down the bot.
@@ -57,4 +58,6 @@ uv run python lendingbot.py
 ## Documentation
 
 For the original documentation, visit [readthedocs.io](http://poloniexlendingbot.readthedocs.io/en/latest/index.html).
-*Please note that some configuration options regarding the new Bitfinex features are documented in `default.cfg.example`.*
+
+> [!IMPORTANT]
+> This version introduces a major configuration overhaul. The bot now uses **TOML** format. Please refer to `docs/configuration.rst` for detailed setup instructions and see `config_sample.toml` for the latest available options.
