@@ -34,7 +34,11 @@ dev = [
 
 test = ["pytest>=8.0.0", "pytest-cov>=4.1.0", "hypothesis>=6.100.0"]
 
-docs = ["sphinx>=8.0.0", "sphinx-rtd-theme>=2.0.0"]
+docs = [
+    "sphinx>=8.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-autobuild>=2024.10.3",
+]
 
 [project.scripts]
 lendingbot = "lendingbot.main:main"
@@ -197,10 +201,13 @@ deps-add = "uv add"
 deps-add-dev = "uv add --dev"
 
 # ── Documentation Tasks ─────────────────────────────────────────────────────
-docs = { cmd = "make html", cwd = "docs" }
-docs-pdf = { cmd = "make latexpdf", cwd = "docs" }
-docs-clean = { cmd = "make clean", cwd = "docs" }
-docs-linkcheck = { cmd = "make linkcheck", cwd = "docs" }
+# These tasks use sphinx-build -M which is cross-platform and handles clean/html/pdf correctly.
+docs = { help = "Generate HTML documentation", sequence = ["docs-html"] }
+docs-html = { cmd = "sphinx-build -M html docs docs/_build", help = "Generate HTML documentation" }
+docs-pdf = { cmd = "sphinx-build -M latexpdf docs docs/_build", help = "Generate PDF documentation (requires LaTeX)" }
+docs-watch = { cmd = "sphinx-autobuild docs docs/_build/html", help = "Serve and auto-reload documentation" }
+docs-clean = { cmd = "sphinx-build -M clean docs docs/_build", help = "Clean documentation build directory" }
+docs-linkcheck = { cmd = "sphinx-build -M linkcheck docs docs/_build", help = "Check for broken links" }
 
 # ── Build and Publish ───────────────────────────────────────────────────────
 build = "uv build"
