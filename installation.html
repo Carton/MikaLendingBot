@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>1. Installation &mdash; Poloniexlendingbot 1 documentation</title>
+  <title>1. Installation &mdash; MikaLendingBot(Py3 version) 1 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
@@ -32,7 +32,7 @@
           
           
           <a href="index.html" class="icon icon-home">
-            Poloniexlendingbot
+            MikaLendingBot(Py3 version)
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -52,7 +52,7 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#installing-on-pythonanywhere-com">1.2. Installing on Pythonanywhere.com</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#id25">1.2.1. Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1">1.2.1. Prerequisites</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#downloading-the-bot-s-files-to-pythonanywhere">1.2.2. Downloading the bot’s files to Pythonanywhere</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#creating-the-web-app-optional">1.2.3. Creating the Web App (Optional)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#running-the-bot">1.2.4. Running the Bot</a></li>
@@ -72,7 +72,7 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="index.html">Poloniexlendingbot</a>
+          <a href="index.html">MikaLendingBot(Py3 version)</a>
       </nav>
 
       <div class="wy-nav-content">
@@ -111,7 +111,9 @@
 </ul>
 </div></blockquote>
 <p>It is highly recommended to use <code class="docutils literal notranslate"><span class="pre">uv</span></code> to manage the environment and dependencies:</p>
-<p><code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">sync</span></code></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uv</span> <span class="n">sync</span>
+</pre></div>
+</div>
 </section>
 <section id="downloading">
 <h3><span class="section-number">1.1.2. </span>Downloading<a class="headerlink" href="#downloading" title="Link to this heading"></a></h3>
@@ -149,25 +151,19 @@ WantedBy=multi-user.target
 </pre></div>
 </div>
 <p>Credit to GitHub user utdrmac.</p>
-<p>The permission on the unit file may need to be set to 644 (depending on your OS) :</p>
-<dl class="simple">
-<dt><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a></dt><dd><p>sudo chmod 644 /lib/systemd/system/lendingbot.service</p>
-</dd>
-</dl>
-<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+<p>The permission on the unit file may need to be set to 644 (depending on your OS):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>chmod<span class="w"> </span><span class="m">644</span><span class="w"> </span>/lib/systemd/system/lendingbot.service
+</pre></div>
+</div>
 <p>Modify the ExecStart and WorkingDirectory to match your setup.</p>
-<p>First you need to configure systemd (depending on your OS):
-<a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a></p>
-<blockquote>
-<div><p>sudo systemctl daemon-reload</p>
-</div></blockquote>
-<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a></p>
-<p>Enable the service using the command below:
-<a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a></p>
-<blockquote>
-<div><p>sudo systemctl enable lendingbot.service</p>
-</div></blockquote>
-<p><a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a></p>
+<p>First you need to configure systemd (depending on your OS):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>systemctl<span class="w"> </span>daemon-reload
+</pre></div>
+</div>
+<p>Enable the service using the command below:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>systemctl<span class="w"> </span><span class="nb">enable</span><span class="w"> </span>lendingbot.service
+</pre></div>
+</div>
 </div></blockquote>
 </li>
 <li><p>OSx:</p>
@@ -205,8 +201,8 @@ WantedBy=multi-user.target
 <h2><span class="section-number">1.2. </span>Installing on Pythonanywhere.com<a class="headerlink" href="#installing-on-pythonanywhere-com" title="Link to this heading"></a></h2>
 <p><a class="reference external" href="https://www.pythonanywhere.com">Pythonanywhere.com</a> is a useful website that will host and run Python code for you.</p>
 <p>WARNING: While you should be able to setup the bot on pythonanywhere, there are limitations on running the bot.</p>
-<section id="id25">
-<h3><span class="section-number">1.2.1. </span>Prerequisites<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<section id="id1">
+<h3><span class="section-number">1.2.1. </span>Prerequisites<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
 <p>You will need:</p>
 <blockquote>
 <div><ul class="simple">
@@ -353,7 +349,7 @@ You can also use it to run the bots locally using subdomains.</p>
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2016, Mikadily and Contributors.</p>
+    <p>&#169; Copyright 2026, Mikadily and Contributors.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
