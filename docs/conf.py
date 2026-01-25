@@ -50,8 +50,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = 'Poloniexlendingbot'
-copyright = '2016, Mikadily and Contributors'
+project = 'MikaLendingBot(Py3 version)'
+copyright = '2026, Mikadily and Contributors'
 author = 'Mikadily and Contributors'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -235,7 +235,7 @@ html_static_path = ['_static']
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'Poloniexlendingbotdoc'
+htmlhelp_basename = 'MikaLendingBotdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -261,7 +261,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'Poloniexlendingbot.tex', 'Poloniexlendingbot Documentation',
+(master_doc, 'MikaLendingBot.tex', 'MikaLendingBot Documentation',
      'Mikadily, Rnevet, Evanito and Contributors', 'manual'),
 ]
 
@@ -303,7 +303,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'poloniexlendingbot', 'Poloniexlendingbot Documentation',
+    (master_doc, 'mikalendingbot', 'MikaLendingBot Documentation',
      [author], 1)
 ]
 
@@ -318,8 +318,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'Poloniexlendingbot', 'Poloniexlendingbot Documentation',
-     author, 'Poloniexlendingbot', 'One line description of project.',
+    (master_doc, 'MikaLendingBot', 'MikaLendingBot Documentation',
+     author, 'MikaLendingBot', 'One line description of project.',
      'Miscellaneous'),
 ]
 
