@@ -48,4 +48,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 ## [x] Track: Coverage Boost & Strategic Refactor (Lending, WebServer, main)
 *Link: [./conductor/archive/coverage_refactor_20260106/](./conductor/archive/coverage_refactor_20260106/)*
 
+---
+
+- [x] **Track: Configuration Documentation Update**
+*Link: [./tracks/docs_config_update_20260125/](./tracks/docs_config_update_20260125/)*
+
 

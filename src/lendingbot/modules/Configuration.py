@@ -31,6 +31,11 @@ class GapMode(str, Enum):
     RELATIVE = "Relative"
 
 
+class AnalysisMethod(str, Enum):
+    PERCENTILE = "Percentile"
+    MACD = "MACD"
+
+
 # --- Sub-Models ---
 
 
@@ -136,6 +141,14 @@ class MarketAnalysisConfig(BaseModel):
     macd_long_window: int = Field(1800, ge=60, le=604800)
     percentile_window: int = Field(86400, ge=3600, le=1209600)
     daily_min_multiplier: float = Field(1.05, ge=1.0)
+    analysis_method: AnalysisMethod = AnalysisMethod.PERCENTILE
+
+    @field_validator("analysis_method", mode="before")
+    @classmethod
+    def case_insensitive_method(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.capitalize()
+        return v
 
 
 class PluginsConfig(BaseModel):
@@ -157,6 +170,7 @@ class NotificationConfig(BaseModel):
     notify_xday_threshold: bool = False
     notify_summary_minutes: int = 0
     notify_caught_exception: bool = False
+    notify_prefix: str | None = None
 
 
 class RootConfig(BaseModel):

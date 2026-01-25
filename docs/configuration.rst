@@ -12,18 +12,23 @@ The bot now uses TOML format for configuration. To begin, copy ``config_sample.t
 Exchange selection, API key and Secret
 --------------------------------------
 
-Select the exchange to use in attribute ``exchange``. Supported are ``Poloniex`` and ``Bitfinex``. Default is Poloniex.
+Select the exchange to use in attribute ``exchange`` within the ``[api]`` section. Supported are ``Poloniex`` and ``Bitfinex``. Default is ``Bitfinex``.
 
-    ``exchange = Poloniex``
-    or
-    ``exchange = Bitfinex``
+.. code-block:: toml
+
+    [api]
+    exchange = "Bitfinex"
+    # or
+    exchange = "Poloniex"
 
 Create a **NEW** API key and Secret from `Poloniex <https://poloniex.com/apiKeys>`_
 or `Bitfinex <https://www.bitfinex.com/api>`_ and paste them into the respective slots in the config.
 
-    ``apikey = XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX``
+.. code-block:: toml
 
-    ``secret = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...``
+    [api]
+    apikey = "XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX"
+    secret = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx..."
 
 .. warning:: Do not share your API key nor secret with anyone whom you do not trust with all your Poloniex funds.
 
@@ -51,138 +56,181 @@ HIGHLY Recommended:
 
 Exchange Sections
 -----------------
-There is a section for each exchange to configure exchange specific attributes.
+The ``[api]`` section contains exchange-related configurations.
 
-- ``all_currencies`` List of all supported currencies for funding. The list have to change only
-  when the exchange adds a new supported currency or removes one. You can blacklist specific currencies by prefacing it with a '#', this is the same as not including it on the list.
+- ``all_currencies`` is a list of all supported currencies for funding. The list only needs to change when the exchange adds or removes a supported currency.
 
-    - Format: ``BTC,BTS,CLAM,DOGE,DASH,LTC,MAID,XMR,XRP,ETH,FCT,#BTG``
+.. code-block:: toml
+
+    [api]
+    all_currencies = ["BTC", "LTC", "ETH", "XRP"]
+
+.. note:: In the new TOML format, this is a list of strings. To disable a currency, simply remove it from the list.
 
 
 
 Timing
 ---------
 
-- ``sleeptimeactive`` is how long the bot will "rest" (in seconds) between running while the bot has loan offers waiting to be filled.
+- ``period_active`` is how long the bot will "rest" (in seconds) between running while the bot has loan offers waiting to be filled. Found in the ``[bot]`` section.
 
     - Default value: 60 seconds
     - Allowed range: 1 to 3600 seconds
     - If the bot finishes a cycle and has no open lend orders left to manage, it will change to inactive mode.
 
-.. note:: Just because 1 second is a permitted sleeptime does not mean it is a good idea.
+.. note:: Just because 1 second is a permitted period is not necessarily a good idea for API rate limits.
 
-- ``sleeptimeinactive`` is how long the bot will "rest" (in seconds) between running while the bot has nothing to do.
+- ``period_inactive`` is how long the bot will "rest" (in seconds) between running while the bot has nothing to do. Found in the ``[bot]`` section.
 
     - Default value: 300 seconds (5 minutes)
     - Allowed range: 1 to 3600 seconds
     - If the bot finishes a cycle and has lend orders to manage, it will change to active mode.
 
-- ``timeout`` is how long the bot waits for a response of a request
+- ``request_timeout`` is how long the bot waits for a response of a request. Found in the ``[bot]`` section.
 
     - Default value: 30 seconds
     - Allowed range: 1 to 180 seconds
 
+.. code-block:: toml
+
+    [bot]
+    period_active = 60
+    period_inactive = 300
+    request_timeout = 30
+
 Min and Max Rates
 -----------------
 
-- ``mindailyrate`` is the minimum rate (in percent) that the bot will allow offer loans at.
+These settings are located in the ``[coin.default]`` section to apply globally, or can be overridden in specific ``[coin.SYMBOL]`` sections.
+
+- ``min_daily_rate`` is the minimum rate (in percent) that the bot will allow offer loans at.
 
     - Default value: 0.005 percent
     - Allowed range: 0.0031 to 5 percent
     - 0.0031% every day for a year, works out around 1%. This is less than most bank accounts and is considered not worth while.
     - The current default value is a optimistic but very viable for the more high volume currencies. Not viable for lending DOGE, for example.
 
-- ``maxdailyrate`` is the maximum rate (in percent) that the bot will allow lends to open.
+- ``max_daily_rate`` is the maximum rate (in percent) that the bot will allow lends to open.
 
     - Default value: 5 percent
     - Allowed range: 0.0031 to 5 percent
     - 2% is the default value offered by the exchange, but there is little reason not to set it higher if you feel optimistic.
 
+.. code-block:: toml
+
+    [coin.default]
+    min_daily_rate = 0.005
+    max_daily_rate = 5.0
+
 Lending Strategies
 ------------------
 
-The bot supports different lending strategies. You can select the active strategy using the ``lending_strategy`` parameter.
+The bot supports different lending strategies. You can select the active strategy using the ``strategy`` parameter within ``[coin.default]`` or a specific ``[coin.SYMBOL]`` section.
 
-- ``lending_strategy`` determines the logic used for placing lend offers.
+- ``strategy`` determines the logic used for placing lend offers.
 
     - Allowed values: ``Spread``, ``FRR``
     - Default value: ``Spread``
-    - **Spread Strategy**: Standard gap/spread based lending. Uses ``spreadlend``, ``gapMode``, ``gapbottom``, and ``gaptop`` to distribute offers across the order book.
-    - **FRR Strategy**: Flash Return Rate based lending (Bitfinex only). It uses the exchange's FRR as a dynamic base for your ``mindailyrate``.
-        - When active, it forces ``spreadlend = 1`` internally.
-        - It enables the use of ``frrdelta_min`` and ``frrdelta_max`` for rate adjustments.
+    - **Spread Strategy**: Standard gap/spread based lending. Uses ``spread_lend``, ``gap_mode``, ``gap_bottom``, and ``gap_top`` to distribute offers across the order book.
+    - **FRR Strategy**: Flash Return Rate based lending (Bitfinex only). It uses the exchange's FRR as a dynamic base for your ``min_daily_rate``.
+        - When active, it forces ``spread_lend = 1`` internally.
+        - It enables the use of ``frr_delta_min`` and ``frr_delta_max`` for rate adjustments.
         - If selected on a non-Bitfinex exchange, the bot will fail to start.
 
-- ``frrdelta_min`` and ``frrdelta_max`` are the adjustment range (in percent) relative to the `flash return rate <https://support.bitfinex.com/hc/en-us/articles/115003284729-What-is-the-FRR-Delta->`_.
+- ``frr_delta_min`` and ``frr_delta_max`` are the adjustment range (in percent) relative to the `flash return rate <https://support.bitfinex.com/hc/en-us/articles/115003284729-What-is-the-FRR-Delta->`_.
 
     - Default value: ``-10`` / ``10``
     - Range: -50 to +50
     - These values are relative percentages of the FRR. For example, a setting of ``-20`` means the target rate will be ``FRR * 0.80``.
     - The bot cycles through 5 steps between min and max to improve chances of being filled.
-    - This option only works on Bitfinex when ``lending_strategy = FRR``.
+    - This option only works on Bitfinex when ``strategy = "FRR"``.
+
+.. code-block:: toml
+
+    [coin.default]
+    strategy = "Spread"
+    frr_delta_min = -10.0
+    frr_delta_max = 10.0
 
 
 Spreading your Lends
 --------------------
 
-If ``spreadlend = 1`` and ``gapbottom = 0``, it will behave as simple lending bot lending at lowest possible offer.
+If ``spread_lend = 1`` and ``gap_bottom = 0``, it will behave as simple lending bot lending at lowest possible offer.
 
-- ``spreadlend`` is the amount (as an integer) of separate loans the bot will split your balance into across the order book.
+- ``spread_lend`` is the amount (as an integer) of separate loans the bot will split your balance into across the order book.
 
     - Default value: 3
     - Allowed range: 1 to 20 (1 is the same as disabling)
-    - The loans are distributed evenly between gapbottom and gaptop.
+    - The loans are distributed evenly between ``gap_bottom`` and ``gap_top``.
     - This allows the bot to benefit from spikes in lending rate but can result in loan fragmentation (not really a bad thing since the bot has to deal with it.)
 
-- ``gapMode`` is the "mode" you would like your gaps to be calculated in.
+- ``gap_mode`` is the "mode" you would like your gaps to be calculated in.
 
-    - Default value: Relative
-    - Allowed values: Relative, RawBTC, Raw
+    - Default value: ``Relative``
+    - Allowed values: ``Relative``, ``RawBTC``, ``Raw``
     - The values are case insensitive.
     - The purpose of spreading your lends is to skip dust offers in the lendbook, and also to take advantage of any spikes that occur.
     - Mode descriptions:
-        - ``Relative`` - ``Gapbottom`` and ``Gaptop`` will be relative to your balance for each coin individually.
+        - ``Relative`` - ``gap_bottom`` and ``gap_top`` will be relative to your balance for each coin individually.
             - This is relative to your total lending balance, both loaned and unloaned.
-            - ``gapbottom`` and ``gaptop`` will be in percents of your balance. (A setting of 100 will equal 100%)
-            - Example: You have 1BTC. If ``gapbottom = 100`` then you will skip 100% of your balance of dust offers, thus skipping 1BTC into the lendbook. If ``gaptop = 200`` then you will continue into the lendbook until you reach 200% of your balance, thus 2BTC. Then, if ``spreadlend = 5``, you will make 5 equal volume loans over that gap.
-        - ``RawBTC`` - ``Gapbottom`` and ``Gaptop`` will be in a raw BTC value, converted to each coin.
+            - ``gap_bottom`` and ``gap_top`` will be in percents of your balance. (A setting of 100 will equal 100%)
+            - Example: You have 1BTC. If ``gap_bottom = 100`` then you will skip 100% of your balance of dust offers, thus skipping 1BTC into the lendbook. If ``gap_top = 200`` then you will continue into the lendbook until you reach 200% of your balance, thus 2BTC. Then, if ``spread_lend = 5``, you will make 5 equal volume loans over that gap.
+        - ``RawBTC`` - ``gap_bottom`` and ``gap_top`` will be in a raw BTC value, converted to each coin.
             - Recommended when using one-size-fits-all settings.
-            - ``gapbottom`` and ``gaptop`` will be in BTC. (A setting of 3 will equal 3 BTC)
-            - Example: If ``gapbottom = 1`` and you are currently lending ETH, the bot will check the current exchange rate, say 1BTC = 10ETH. Then the bot will skip 10ETH of dust offers at the bottom of the lendbook before lending. If ``gaptop = 10``, then using the same exchange rate 10BTC will be 100ETH. The bot will then continue 100ETH into the loanbook before stopping. Then, if ``spreadlend = 5``, you will make 5 equal volume loans over that gap.
-        - ``Raw`` - ``Gapbottom`` and ``Gaptop`` will be in a raw value of the coin being lent.
+            - ``gap_bottom`` and ``gap_top`` will be in BTC. (A setting of 3 will equal 3 BTC)
+            - Example: If ``gap_bottom = 1`` and you are currently lending ETH, the bot will check the current exchange rate, say 1BTC = 10ETH. Then the bot will skip 10ETH of dust offers at the bottom of the lendbook before lending. If ``gap_top = 10``, then using the same exchange rate 10BTC will be 100ETH. The bot will then continue 100ETH into the loanbook before stopping. Then, if ``spread_lend = 5``, you will make 5 equal volume loans over that gap.
+        - ``Raw`` - ``gap_bottom`` and ``gap_top`` will be in a raw value of the coin being lent.
             - Recommended when used with coin-specific settings.
-            - ``gapbottom`` and ``gaptop`` will be in value of the coin. (A setting of 3 will equal 3 BTC, 3 ETH, 3 DOGE, or whatever coin is being lent.)
-            - Example: If ``gapbottom = 1`` and you are currently lending ETH, the bot will skip 1ETH of dust offers at the bottom of the lendbook before lending. If ``gaptop = 10``, the bot will then continue 10ETH into the loanbook before stopping. Then, if ``spreadlend = 5``, you will make 5 equal volume loans over that gap.
+            - ``gap_bottom`` and ``gap_top`` will be in value of the coin. (A setting of 3 will equal 3 BTC, 3 ETH, 3 DOGE, or whatever coin is being lent.)
+            - Example: If ``gap_bottom = 1`` and you are currently lending ETH, the bot will skip 1ETH of dust offers at the bottom of the lendbook before lending. If ``gap_top = 10``, the bot will then continue 10ETH into the loanbook before stopping. Then, if ``spread_lend = 5``, you will make 5 equal volume loans over that gap.
 
-
-
-- ``gapbottom`` is the lower setting for your ``gapMode`` values, and will be where you start to lend.
+- ``gap_bottom`` is the lower setting for your ``gap_mode`` values, and will be where you start to lend.
 
     - Default value: 10 percent
     - Allowed range: 0 to <arbitrary large number>
-    - 10% gapbottom is recommended to skip past dust at the bottom of the lending book, but if you have a VERY high volume this will cause issues as you stray to far away from the most competitive bid.
+    - 10% ``gap_bottom`` is recommended to skip past dust at the bottom of the lending book, but if you have a VERY high volume this will cause issues as you stray to far away from the most competitive bid.
 
-- ``gaptop`` is the upper setting for your ``gapMode`` values, and will be where you finish spreading your lends.
+- ``gap_top`` is the upper setting for your ``gap_mode`` values, and will be where you finish spreading your lends.
 
     - Default value: 200 percent
     - Allowed range: 0 to <arbitrary large number>
     - This value should be adjusted based on your coin volume to avoid going astronomically far away from a realistic rate.
 
+.. code-block:: toml
+
+    [coin.default]
+    spread_lend = 3
+    gap_mode = "RawBTC"
+    gap_bottom = 40
+    gap_top = 200
+
 Variable loan Length
 --------------------
 
-This setting allows you to lock in a better rate for a longer period of time.
+This setting allows you to lock in a better rate for a longer period of time. Found in the ``[coin.default]`` or specific ``[coin.SYMBOL]`` section.
 
-- ``xdaythreshold`` is a comma-separated list of rate:days pairs that defines the lending period for different interest rates.
+- ``xday_thresholds`` is a list of rate and days pairs that defines the lending period for different interest rates.
 
     - Default value: Empty (disabled)
-    - Format: ``rate1:days1,rate2:days2,rate3:days3,...``
+    - Format: Array of inline tables ``{ rate = <rate>, days = <days> }``
     - Rate values are in percent (0 to 5), days are integers (2 to 120).
     - The bot uses linear interpolation between defined thresholds.
     - Poloniex max lending period: 60 days
     - Bitfinex max lending period: 120 days
 
-    - Example: ``xdaythreshold = 0.050:20,0.058:30,0.060:45,0.063:60,0.070:120``
+    - Example:
+
+    .. code-block:: toml
+
+        [coin.default]
+        xday_thresholds = [
+            { rate = 0.050, days = 20 },
+            { rate = 0.058, days = 30 },
+            { rate = 0.060, days = 45 },
+            { rate = 0.063, days = 60 },
+            { rate = 0.070, days = 120 },
+        ]
 
       With this configuration:
 
@@ -196,123 +244,122 @@ This setting allows you to lock in a better rate for a longer period of time.
 Auto-transfer from Exchange Balance
 -----------------------------------
 
-If you regularly transfer funds into your Poloniex account but don't enjoy having to log in yourself and transfer them to the lending balance, this feature is for you.
+If you regularly transfer funds into your account but don't enjoy having to log in yourself and transfer them to the lending balance, this feature is for you.
 
-- ``transferableCurrencies`` is a list of currencies you would like to be transferred.
+- ``transferable_currencies`` is a list of currencies you would like to be transferred from your exchange balance to your lending balance. Found in the ``[bot]`` section.
 
-    - Default value: Commented out
-    - Format: ``CURRENCY_TICKER,STR,BTC,BTS,CLAM,DOGE,DASH,LTC,MAID,XMR,XRP,ETH,FCT,ALL,ACTIVE``
-    - Commenting it out will disable the feature.
-    - Entering ``ACTIVE`` within the list will transfer any currencies that are found in your lending account, as well as any other currencies alongside it. Example: ``ACTIVE, BTC, CLAM`` will do BTC, CLAM, and any coins you are already lending.
-    - Entering ``ALL`` will simply transfer all coins available to lending.
-    - Do not worry about duplicates when using ``ACTIVE``, they are handled.
-    - Coins will be transferred every time the bot runs (60 seconds by default) so if you intend to trade or withdrawal it is recommended to turn off the bot or disable this feature.
+    - Default value: Empty list (disabled)
+    - Format: A list of currency tickers, e.g., ``["BTC", "ETH", "USD"]``
+    - Commenting it out or leaving it as an empty list will disable the feature.
+    - Coins will be transferred every time the bot runs, so if you intend to trade or withdraw it is recommended to turn off the bot or disable this feature.
+
+.. code-block:: toml
+
+    [bot]
+    transferable_currencies = ["BTC", "ETH", "USD"]
 
 Unimportant settings
 --------------------
 
 Very few situations require you to change these settings.
 
-- ``minloansize`` is the minimum size that a bot will make a loan at.
+- ``min_loan_size`` is the minimum size that a bot will make a loan at. Found in the ``[coin.default]`` or specific ``[coin.SYMBOL]`` section.
 
     - Default value: 0.01 of a coin
     - Allowed range: 0.01 and up.
     - If you dislike loan fragmentation, then this will make the minimum for each loan larger.
     - Automatically adjusts to at least meet the minimum of each coin.
 
-- ``KeepStuckOrders`` If True, keeps orders that are "stuck" in the market instead of canceling them.
+- ``keep_stuck_orders`` If True, keeps orders that are "stuck" in the market instead of canceling them. Found in the ``[bot]`` section.
 
     - Default value: True
     - Allowed values: True or False
-    - A "Stuck" order occurs when it partially fills and leaves the coins balance total (total = open orders + let in balance) below your ``minloansize`` and so the bot would not be able to lend it again if it was canceled.
+    - A "Stuck" order occurs when it partially fills and leaves the coins balance total (total = open orders + let in balance) below your ``min_loan_size`` and so the bot would not be able to lend it again if it was canceled.
     - When disabled, stuck orders will be canceled and held in balance until enough orders expire to allow it to lend again.
 
-- ``hideCoins`` If True, will not lend any of a coin if its market low is below the set ``mindailyrate``.
+- ``hide_coins`` If True, will not lend any of a coin if its market low is below the set ``min_daily_rate``. Found in the ``[bot]`` section.
 
     - Default value: True
     - Allowed values: True or False. Commented defaults to True
     - This hides your coins from appearing in walls.
-    - Allows you to catch a higher rate if it spikes past your ``mindailyrate``.
-    - Not necessarily recommended if used with ``analyseCurrencies`` with an aggressive ``lendingStyle``, as the bot may miss short-lived rate spikes. This is not the case if using ``MACD`` with ``daily_min_method``. In that case it is recommended to set ``hideCoins`` to True.
-    - If you are using the ``analyseCurrencies`` option, you will likely see a lot of ``Not lending BTC due to rate below 0.9631%`` type messages in the logs. This is normal.
+    - Allows you to catch a higher rate if it spikes past your ``min_daily_rate``.
+    - Not necessarily recommended if used with ``MarketAnalysis`` with an aggressive ``lending_style``, as the bot may miss short-lived rate spikes. This is not the case if using ``MACD`` with ``analysis_method``. In that case it is recommended to set ``hide_coins`` to True.
+    - If you are using the ``MarketAnalysis`` plugin, you will likely see a lot of ``Not lending BTC due to rate below 0.9631%`` type messages in the logs. This is normal.
 
-- ``endDate`` Bot will try to make sure all your loans are done by this date so you can withdraw or do whatever you need.
+- ``end_date`` Bot will try to make sure all your loans are done by this date so you can withdraw or do whatever you need. Found in the ``[bot]`` section.
 
     - Default value: Disabled
     - Uncomment to enable.
-    - Format: ``YEAR,MONTH,DAY``
+    - Format: ``YEAR-MONTH-DAY``
 
 Max to be lent
 --------------
 
-This feature group allows you to only lend a certain percentage of your total holding in a coin, until the lending rate suprasses a certain threshhold. Then it will lend at max capacity.
+This feature group allows you to only lend a certain percentage of your total holding in a coin, until the lending rate surpasses a certain threshold. Then it will lend at max capacity. These settings are found in the ``[coin.default]`` section or specific ``[coin.SYMBOL]`` sections.
 
-- ``maxtolend`` is a raw number of how much you will lend of each coin whose lending rate is below ``maxtolendrate``.
+- ``max_to_lend`` is a raw number of how much you will lend of each coin whose lending rate is below ``max_to_lend_rate``.
 
-    - Default value: Disabled
-    - Allowed range: 0 (disabled) or ``minloansize`` and up
-    - If set to 0, same as if commented.
-    - If disabled, will check if ``maxpercenttolend`` is enabled and use that if it is enabled.
-    - Setting this overwrites ``maxpercenttolend``
-    - This is a global setting for the raw value of coin that will be lent if the coins lending value is under ``maxtolendrate``
-    - Has no effect if current rate is higher than ``maxtolendrate``
-    - If the remainder (after subtracting ``maxtolend``) in a coin's balance is less than ``minloansize``, then the remainder will be lent anyway. Otherwise, the coins would go to waste since you can't lend under ``minloansize``
+    - Default value: 0 (disabled)
+    - Allowed range: 0 (disabled) or ``min_loan_size`` and up
+    - If set to 0, it is disabled.
+    - If disabled, the bot will check if ``max_percent_to_lend`` is enabled and use that instead.
+    - Setting this overrides ``max_percent_to_lend``.
+    - This is a setting for the raw value of coin that will be lent if the coin's lending rate is under ``max_to_lend_rate``.
+    - Has no effect if current rate is higher than ``max_to_lend_rate``.
+    - If the remainder (after subtracting ``max_to_lend``) in a coin's balance is less than ``min_loan_size``, then the remainder will be lent anyway. Otherwise, the coins would go to waste since you can't lend under ``min_loan_size``.
 
-- ``maxpercenttolend`` is a percentage of how much you will lend of each coin whose lending rate is below ``maxtolendrate``
+- ``max_percent_to_lend`` is a percentage of how much you will lend of each coin whose lending rate is below ``max_to_lend_rate``.
 
-    - Default value: Disabled
+    - Default value: 0 (disabled)
     - Allowed range: 0 (disabled) to 100 percent
-    - If set to 0, same as if commented.
-    - If disabled in addition to ``maxtolend``, entire feature will be disabled.
-    - This percentage is calculated per-coin, and is the percentage of the balance that will be lent if the coin's current rate is less than ``maxtolendrate``
-    - Has no effect if current rate is higher than ``maxtolendrate``
-    - If the remainder (after subtracting ``maxpercenttolend``'s value) in a coin's balance is less than ``minloansize``, then the remainder will be lent anyway. Otherwise, the coins would go to waste since you can't lend under ``minloansize``
+    - If set to 0, it is disabled.
+    - If disabled in addition to ``max_to_lend``, the entire feature will be disabled (100% of balance will be lent).
+    - This percentage is calculated per-coin, and is the percentage of the balance that will be lent if the coin's current rate is less than ``max_to_lend_rate``.
+    - Has no effect if current rate is higher than ``max_to_lend_rate``.
+    - If the remainder in a coin's balance is less than ``min_loan_size``, then the remainder will be lent anyway.
 
 
-- ``maxtolendrate`` is the rate threshold when all coins are lent.
+- ``max_to_lend_rate`` is the rate threshold (in percent) when all coins are lent.
 
-    - Default value: Disabled
-    - Allowed range: 0 (disabled) or ``mindailyrate`` to 5 percent
+    - Default value: 0 (disabled)
+    - Allowed range: 0 (disabled) or ``min_daily_rate`` to 5 percent
     - Setting this to 0 with a limit in place causes the limit to always be active.
-    - When an indiviaual coin's lending rate passes this threshold, all of the coin will be lent instead of the limits ``maxtolend`` or ``maxpercenttolend``
+    - When an individual coin's lending rate passes this threshold, all of the coin will be lent instead of applying the limits from ``max_to_lend`` or ``max_percent_to_lend``.
+
+.. code-block:: toml
+
+    [coin.default]
+    max_to_lend = 0
+    max_percent_to_lend = 0
+    max_to_lend_rate = 0
 
 
 Config per Coin
 ---------------
 
-This can be configured in one of two ways.
+You can define specific configurations for each currency by creating a section named ``[coin.SYMBOL]`` (e.g., ``[coin.BTC]``, ``[coin.USD]``). Any settings defined in a coin-specific section will override the defaults set in ``[coin.default]``.
 
-**Coincfg dictionary**
+Configuration should look like this (using TOML format):
 
-- ``coinconfig`` is now REMOVED, please switch to using separate coin sections as described below.
-
-**Separate coin sections**
-
-This is an alternative layout for the coin config mentioned above. It provides the ability to change the minloansize per coin, but is otherwise identical in functionality.
-To use this configuration, make sure to comment out the line where coincfg is defined, then add a section for each coin you wish to configure.
-
-.. warning:: These sections should come at the end of the file, after the other options for the bot.
-
-Configuration should look like this (using TOML format)::
+.. code-block:: toml
 
     [coin.BTC]
     min_loan_size = 0.01
     min_daily_rate = 0.1
-    max_active_amount = 1
-    max_to_lend = 0
-    max_percent_to_lend = 0
-    max_to_lend_rate = 0
+    max_active_amount = 1.0
     gap_mode = "Raw"
     gap_bottom = 10
     gap_top = 20
-    strategy = "FRR"
-    frr_delta_min = -10
-    frr_delta_max = 10
+    strategy = "Spread"
+    spread_lend = 5
+    xday_thresholds = [
+        { rate = 0.05, days = 30 }
+    ]
 
 Max Active Amount (Limit Total Lending)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- ``max_active_amount`` limits the total amount that can be lent out for a currency.
+- ``max_active_amount`` limits the total amount that can be lent out for a currency. Found in the ``[coin.default]`` or specific ``[coin.SYMBOL]`` section.
 
     - Default value: -1 (unlimited)
     - Allowed values:
@@ -323,73 +370,85 @@ Max Active Amount (Limit Total Lending)
     - The limit applies to the total amount currently lent out (active loans). If you have 10000 USD and set ``max_active_amount = 5000``, the bot will only lend up to 5000 USD total.
     - Example: If you have ``max_active_amount = 1000`` for USD and currently have 800 USD lent out, the bot will only offer up to 200 USD more in new loans.
 
-    Example configuration::
+    Example configuration:
+
+    .. code-block:: toml
 
         [coin.USD]
         min_loan_size = 150
-        max_active_amount = 5000  # Only lend up to 5000 USD total
+        max_active_amount = 5000.0  # Only lend up to 5000 USD total
 
 
 Advanced logging and Web Display
 --------------------------------
 
-- ``startWebServer`` if true, this enables a webserver on the www/ folder.
+- ``enabled`` (within the ``[bot.web]`` section) if true, this enables a webserver on the ``www/`` folder.
 
-    - Default value: Commented out, uncomment to enable.
+    - Default value: ``true``
     - The server page can be accessed locally, at ``http://localhost:8000/lendingbot.html`` by default.
     - When enabled, JSON logging is automatically enabled with output to ``www/botlog.json``.
     - You must close bot with a keyboard interrupt (CTRL-C on Windows) to properly shutdown the server and release the socket, otherwise you may have to wait several minutes for it to release itself.
 
-- ``jsonlogsize`` is the amount of lines the botlog will keep before deleting the oldest event.
+- ``json_log_size`` (within the ``[bot]`` section) is the amount of lines the botlog will keep before deleting the oldest event.
 
     - Default value: 200
     - Reasons to lower this include: you are conscious of bandwidth when hosting your webserver, you prefer (slightly) faster loading times and less RAM usage of bot.
 
-- ``customWebServerAddress`` is the IP address that the webserver can be found at.
+- ``host`` (within the ``[bot.web]`` section) is the IP address that the webserver can be found at.
 
     - Advanced users only.
-    - Default value: 0.0.0.0 Uncomment to change
+    - Default value: ``127.0.0.1``
     - Format: ``IP``
     - Setting the ip to ``127.0.0.1`` will ONLY allow the webpage to be accessed at localhost (``127.0.0.1``)
-    - Setting the ip to ``0.0.0.0`` will allow the webpage to be accessed at localhost (``127.0.0.1``) as well as at the computer's LAN IP address within the local network. This option is the most versatile, and is default.
-    - Setting the ip to ``192.168.0.<LAN IP>`` will ONLY allow the webpage to be access at the computer's LAN IP address within the local network (And not through localhost.) It is recommended to be sure the device has a static local IP.
-    - You must know what you are doing when changing the IP address to anything other than the three suggested configurations above.
+    - Setting the ip to ``0.0.0.0`` will allow the webpage to be accessed at localhost (``127.0.0.1``) as well as at the computer's LAN IP address within the local network.
+    - You must know what you are doing when changing the IP address to anything other than the suggested configurations above.
 
-- ``customWebServerPort`` is the IP port that the webserver can be found at
+- ``port`` (within the ``[bot.web]`` section) is the IP port that the webserver can be found at.
 
     - Advanced users only.
-    - Default value: 8000 Uncomment to change
+    - Default value: 8000
     - Format: ``PORT``
-    - Do not set the port to a `reserved port <http://www.ingate.com/files/422/fwmanual-en/xa10285.html>`_ or you will receive an error when running the bot or attempting to connect (depending on HOW reserved a port is.)
-    - When you like to run more than one bot on same host (e.g. the first to lend on Poloniex and another one to lend on Bitfinex)
-      different port numbers have to defined. (e.g 8000 in Poloniex's config and 8001 in Bitfinex's config file)
 
-- ``customWebServerTemplate`` is the location the bot will use for WebServer HTML GUI template.
+- ``template`` (within the ``[bot.web]`` section) is the location the bot will use for WebServer HTML GUI template.
 
-    - Default value: www, uncomment to enable.
+    - Default value: ``www``
     - Format: ``PATH``
-    - This is the location relative to the running HTML GUI instance used by the bot.
 
-
-- ``outputCurrency`` this is the ticker of the coin which you would like the website to report your summary earnings in.
+- ``output_currency`` (within the ``[bot]`` section) this is the ticker of the coin which you would like the website to report your summary earnings in.
 
     - Default value: BTC
-    - Acceptable values: BTC, USDT, Any coin with a direct Poloniex BTC trading pair (ex. DOGE, MAID, ETH), Currencies that have a BTC exchange rate on blockchain.info (i.e. EUR, USD)
+    - Acceptable values: BTC, USDT, Any coin with a direct BTC trading pair (ex. DOGE, MAID, ETH), Currencies that have a BTC exchange rate on blockchain.info (i.e. EUR, USD)
     - Will be a close estimate, due to unexpected market fluctuations, trade fees, and other unforseeable factors.
 
-- ``label`` is a custom name of the bot, that will be displayed in html page.
+- ``label`` (within the ``[bot]`` section) is a custom name of the bot, that will be displayed in html page.
 
     - Default value: Lending Bot
     - Allowed values: Any literal string
+
+.. code-block:: toml
+
+    [bot]
+    label = "Lending Bot"
+    output_currency = "BTC"
+    json_log_size = 200
+
+    [bot.web]
+    enabled = true
+    host = "127.0.0.1"
+    port = 8000
+    template = "www"
 
 
 Plugins
 -------
 
 Plugins allow extending Bot functionality with extra features.
-To enable/disable a plugin add/remove it to the ``plugins`` list config option under the [BOT] section, example::
+To enable/disable a plugin add/remove it to the ``plugins`` list config option under the ``[bot]`` section, example:
 
-    plugins = Plugin1, Plugin2, etc...
+.. code-block:: toml
+
+    [bot]
+    plugins = ["AccountStats", "Charts"]
 
 Plugins can add their own HTML pages by calling ``self.log.addSectionlog('plugins', '<pluginName>', 'navbar', True);`` within their init code.
 This will add a navbar element on the main lendingbot.html page linking to <pluginName>.html
@@ -400,14 +459,19 @@ AccountStats Plugin
 The AccountStats plugin fetches all your loan history and provides statistics based on it.
 Current implementation sends a earnings summary Notification (see Notifications sections) every 24hr.
 
-To enable the plugin add ``AccountStats`` to the ``plugins`` config options, example::
+To enable the plugin add ``AccountStats`` to the ``plugins`` list, example:
 
-    plugins = AccountStats
+.. code-block:: toml
 
-There is an optional setting to change how frequently this plugin reports. By default, once per day. Example::
+    [bot]
+    plugins = ["AccountStats"]
 
-    [ACCOUNTSTATS]
-    ReportInterval = 1800
+There is an optional setting to change how frequently this plugin reports. By default, once per day. Example:
+
+.. code-block:: toml
+
+    [plugins.account_stats]
+    report_interval = 86400
 
 Be aware that first initialization might take longer as the bot will fetch all the history.
 
@@ -419,14 +483,19 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 
 The AccountStats plugin must be enabled for the Charts plugin to function correctly.
 
-To enable the plugin add ``Charts`` to the ``plugins`` config options, example::
+To enable the plugin add ``Charts`` to the ``plugins`` list, example:
 
-    plugins = AccountStats,Charts
+.. code-block:: toml
 
-There is an optional setting to change how frequently this plugin dumps data. By default, four times per day. Example::
+    [bot]
+    plugins = ["AccountStats", "Charts"]
 
-    [CHARTS]
-    DumpInterval = 21600
+There is an optional setting to change how frequently this plugin dumps data. By default, four times per day. Example:
+
+.. code-block:: toml
+
+    [plugins.charts]
+    dump_interval = 21600
 
 The history data is automatically saved to ``logs/history.json``.
 
@@ -438,7 +507,7 @@ lendingbot.html options
 
 You can pass options to statistics page by adding them to URL. Eg, ``http://localhost:8000/lendingbot.html?option1=value&option2=0``
 
-- ``effrate`` controls how effective loan rate is calculated. Yearly rates are calculated based on effective rate, so this option affects them as well. Last used mode remembered by browser, so you do not have to specify this option every time. By default, effective loan rate is calculated considering lent precentage (from total available coins) and poloniex 15% fee.
+- ``effrate`` controls how effective loan rate is calculated. Yearly rates are calculated based on effective rate, so this option affects them as well. Last used mode remembered by browser, so you do not have to specify this option every time. By default, effective loan rate is calculated considering lent precentage (from total available coins) and exchange fee.
 
     - Allowed values: ``lentperc``, ``onlyfee``.
     - Default value: ``lentperc``.
@@ -458,7 +527,7 @@ You can pass options to statistics page by adding them to URL. Eg, ``http://loca
 
 Notifications
 -------------
-The bot supports sending notifications for serveral different events on several different platforms. To enable notifications, you must first have a section in your config called ``[notifications]``, inside which you should enable at least one of the following events and also at least one notification platfom. The list of events you can notify about are:
+The bot supports sending notifications for several different events on several different platforms. To enable notifications, you must set ``enabled = true`` in the ``[notifications]`` section, enable at least one of the following events and also at least one notification platform. The list of events you can notify about are:
 
 Global Notification Settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -469,113 +538,109 @@ Global Notification Settings
 
 - ``notify_tx_coins``
 
-    - This will send a notification if any coins are transferred from your exchange account, to your lending account. You must have ``transferableCurrencies`` enabled for this to work.  Then you should set ``notify_tx_coins = True``.
+    - This will send a notification if any coins are transferred from your exchange account, to your lending account. You must have ``transferable_currencies`` enabled for this to work.  Then you should set ``notify_tx_coins = true``.
 
 - ``notify_xday_threshold``
 
-    - This will send a notification every time a loan is created that is above your ``xdaythreshold`` config value. To enable you should set ``notify_xday_threshold = True``.
+    - This will send a notification every time a loan is created that is above your ``xday_thresholds`` config value. To enable you should set ``notify_xday_threshold = true``.
 
 - ``notify_summary_minutes``
 
-    - This will send a summary of the current loans you have every X minutes. This is similar to the information you get in the log line when running the bot, or the line a the top of the web page. To enable this add ``notify_summary_minutes = 120``. This will send you a notification every 2 hours (120 minutes).
+    - This will send a summary of the current loans you have every X minutes. To enable this add ``notify_summary_minutes = 120``. This will send you a notification every 2 hours (120 minutes).
 
 - ``notify_caught_exception``
 
-    - This is more useful for developers and people wanting to help out by raising issues on github. This will send a notification every time there is an exception thrown in the bot that we don't handle. To enable add ``notify_caught_exception = True``.
+    - This is more useful for developers. This will send a notification every time there is an exception thrown in the bot that we don't handle. To enable add ``notify_caught_exception = true``.
 
 - ``notify_prefix``
 
     - This string, if set, will be prepended to any notifications. Useful if you are running multiple bots and need to differentiate the source.
 
-Once you have decided which notifications you want to recive, you can then go about configuring platforms to send them on. Currently the bot supports:
+Once you have decided which notifications you want to receive, you can then go about configuring platforms to send them on. Currently the bot supports:
 
 Email notifications
 ~~~~~~~~~~~~~~~~~~~
 
-This is probably the easiest to configure, though there can still be issues with gmail where you need to enable a few things. You can find out more about that `here <https://support.google.com/mail/answer/7126229?visit_id=1-636225201534132377-750209621&rd=2#cantsignin>`_ if you're having problems. If you don't wish to use gmail search google for the smtp settings of your email provider.
-To enable email you should configure the following::
+To enable email you should configure the following in the ``[notifications.email]`` section:
 
-    email = True
-    email_login_address = me@gmail.com
-    email_login_password = secretPassword
-    email_smtp_server = smtp.gmail.com
-    email_smtp_port = 465
-    email_smtp_starttls = False
-    email_to_addresses = me@gmail.com,you@gmail.com
+.. code-block:: toml
+
+    [notifications.email]
+    enabled = true
+    login_address = "me@gmail.com"
+    login_password = "secretPassword"
+    smtp_server = "smtp.gmail.com"
+    smtp_port = 465
+    smtp_starttls = false
+    to_addresses = ["me@gmail.com", "you@gmail.com"]
 
 Slack notifications
 ~~~~~~~~~~~~~~~~~~~
 
-Before you can post to slack you need to create an API token, to do this visit `this page <https://api.slack.com/docs/oauth-test-tokens>`_. Once you have a token you can then configure the bot as so::
+Before you can post to slack you need to create an API token. Once you have a token you can then configure the bot as so:
 
-    slack = True
-    slack_token = xoxp-46351793751-46348393136-47931965411-a8757952e4
-    slack_channels = #cryptocurrency,@someUser
+.. code-block:: toml
 
-To post in a channel prefix with # and to post a dm to a user prefix with @. You can send to as many channels or users as you want.
+    [notifications.slack]
+    enabled = true
+    token = "xoxp-..."
+    channels = ["#cryptocurrency", "@someUser"]
 
 Telegram notifications
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Quickstart
-  To have telegram notifications you need to get a bot id from the BotFather. You can do that `here <https://core.telegram.org/bots>`_.
-  Once you have a bot id you need to get your Chat ID or create a channel and invite the bot so it can chat there. Once you have all this in place you configure it like so::
+To have telegram notifications you need to get a bot id from the BotFather. Once you have a bot id you need to get your Chat ID or create a channel and invite the bot. Once you have all this in place you configure it like so:
 
-    telegram = True
-    telegram_bot_id = 281421543:AGGB1TqP7XqhxhT7VOty0Aml8DV_R6kimHw
-    telegram_chat_ids = 123456789,@cryptocurrency
+.. code-block:: toml
 
-Detailed
-  Messages are sent to the telegram bot API using HTTPS requests. You can read more about it `here <https://core.telegram.org/bots/api>`_.
-
-  Telegram Bots are special accounts that do not require an additional phone number to set up, they do however need a unique authentication token. This is the token we need to get and add to the lendingbot's config.toml. They are normally in the format ``123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11``.
-
-  When we say we are creating a new telegram bot, all it means is that we are creating an account for the lendingbot to send message through. To create a bot and get a token, we must request it from the BotFather. This is telegram's tool for creating new bots.
-
-  These are the steps to carry out:
-    1. Install the telegram desktop client from `their site <https://telegram.org/apps>`_. Then set it up with your phone number and login.
-    2. Start a conversation with `The BotFather <https://telegram.me/botfather>`_. When you click the link it should open up in the telegram desktop client.
-    3. Once you have a conversation started type ``/newbot``, you'll then be asked what to call the bot and it's username. The name of your bot is displayed in contact details and elsewhere. The Username is a short name, to be used in mentions and telegram.me links. When complete you'll receive a token.
-    4. You can check everything is working OK by going to https://api.telegram.org/bot*YOURTOKEN*/getme, for example my test one is https://api.telegram.org/bot288427377:AAGB1TqL7XqhxhT7VOxu8Ams8DV_J6kimHw/getme. If that's all working then move on to the next step.
-    5. Now we need somewhere to send the messages, if you want to send a message to yourself, you first need your Chat ID. The easiest way I've found to get this is to send the bot a message from your desktop client and then use the getupdates method. So search for the bot in the desktop client's search bar and start a conversation. Then in your browser go to https://api.telegram.org/bot*YOURTOKEN*/getupdates. You should see a few lines of text, the one we're interested in looks like ``"chat":{"id":123456789,"first_name":"Michael","last_name":"Robinson","type":"private"}``. The number after ID is your chat ID.
-    6. Again, just to check everything is working, lets send ourselves a message. You can do this by putting this in your browser https://api.telegram.org/bot*YOURTOKEN*/sendmessage?text=TEST%20BOT&chat_id=*YOUR_CHAT_ID* You should see a message in your desktop client. If so you have the right ID and we can move on.
-    7. The last step to get it working is just adding the two values to your config.toml file and turning on ``telegram = True``. You should set ``telegram_bot_id`` to the token you got from the BotFather, and set the ``telegram_chat_ids`` to a comma separated list of people you want to send messages to.
-    8. (optional) If you'd like a specific channel for the bot to send messages you can follow these steps.
-        a. Open the desktop client and create a new channel
-        b. Start a conversation with the BotFather and type /setjoingroups, then follow the questsions he asks.
-        c. Click on the message we sent earlier from the bot, then click on the bot's name in the conversation. You should see 'Add To Group'. Click this and add it to the new group you created.
-        d. Now you should be able to add the ``@nameOfChannel`` to your ``config.toml`` file and post all the updates there too. Make sure the list is comma separated and you have the '@' infront of the channel name. This is only done for names, not Chat IDs.
+    [notifications.telegram]
+    enabled = true
+    bot_id = "281421543:..."
+    chat_ids = ["123456789", "@cryptocurrency"]
 
 Pushbullet notifications
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-To enable `Pushbullet <https://www.pushbullet.com/>`_ notifications, you first need to create an API key and then discover your device ID.
+To enable Pushbullet notifications, you first need to create an API key and then discover your device ID.
 
-Visit your `Account Settings <https://www.pushbullet.com/#settings/account>`_ and click 'Create Access Token'. Add this to the config file as shown below.
+.. code-block:: toml
 
-You then need to visit this `documentation page <https://docs.pushbullet.com/#list-devices>`_ and run the example curl command for listing your devices (be sure to substitute your API token as created in the previous step). Copy the value listed for 'iden' into the config file as shown below.::
-
-    pushbullet = True
-    pushbullet_token = l.2mDDvy4RRdzcQN9LEWSy22amS7u3LJZ1
-    pushbullet_deviceid = ujpah72o0sjAoRtnM0jb
+    [notifications.pushbullet]
+    enabled = true
+    token = "l.2mDDvy..."
+    deviceid = "ujpah7..."
 
 IRC notifications
 ~~~~~~~~~~~~~~~~~
 
 IRC is very easy to configure, if you are already interested in using it you'll understand what each of the options are.
 
-The main thing to note is that you need to have the python module 'irc' installed. You can add it via uv:
+.. code-block:: toml
 
-    uv add irc
+    [notifications.irc]
+    enabled = true
+    host = "irc.freenode.net"
+    port = 6667
+    nick = "LendingBot"
+    ident = "lendingbot"
+    realname = "Poloniex lending bot"
+    target = "#bitbotfactory"
 
-Once you have that installed you have access to the following options for configuration::
 
-    irc = True
-    irc_host = irc.freenode.net
-    irc_port = 6667
-    irc_nick = LendingBot
-    irc_ident = ledningbot
-    irc_realname = Poloniex lending bot
-    irc_target = #bitbotfactory
+Market Analysis Plugin
+~~~~~~~~~~~~~~~~~~~~~~
 
-If you want to send a message directly to a user rather than a channel, you can specify it in the irc_target without the preceeding '#'. There is currently only support for one channel or user, but we can add more if there's any interest for it.
+The Market Analysis plugin records currency market data and allows the bot to see trends. This data can be used to compute a recommended minimum lending rate.
+
+To enable the plugin, add ``MarketAnalysis`` to the ``plugins`` list and configure the ``[plugins.market_analysis]`` section.
+
+For more detailed information on all available parameters, please refer to the :ref:`market_analysis-section` documentation.
+
+Example configuration:
+
+.. code-block:: toml
+
+    [plugins.market_analysis]
+    analyse_currencies = ["BTC", "ETH"]
+    lending_style = 75
+    analysis_method = "Percentile"
