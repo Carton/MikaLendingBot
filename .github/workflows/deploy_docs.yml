@@ -1,0 +1,43 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'docs/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+  workflow_dispatch: # 允许手动触发
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install dependencies
+        run: uv sync --group docs
+
+      - name: Build documentation
+        run: uv run poe docs-html
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/_build/html
+          nojekyll: true # 必须为 true，否则 Sphinx 的 _static 等目录会被 GitHub 屏蔽
