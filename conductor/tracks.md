@@ -39,9 +39,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-
-
 ## [x] Track: Modernizing Unit Tests for DI Architecture
+*Link: [./conductor/archive/unit_test_modernization_20260106/](./conductor/archive/unit_test_modernization_20260106/)*
 
 ---
 
@@ -50,7 +49,10 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Market Analysis Documentation Restoration**
-*Link: [./tracks/market_analysis_docs_restoration_20260125/](./tracks/market_analysis_docs_restoration_20260125/)*
+## [x] Track: Configuration Documentation Update
+*Link: [./conductor/archive/docs_config_update_20260125/](./conductor/archive/docs_config_update_20260125/)*
 
+---
 
+## [x] Track: Market Analysis Documentation Restoration
+*Link: [./conductor/archive/market_analysis_docs_restoration_20260125/](./conductor/archive/market_analysis_docs_restoration_20260125/)*
