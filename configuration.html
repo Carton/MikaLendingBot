@@ -1,0 +1,870 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2. Configuration &mdash; Poloniexlendingbot 1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=29a6c3e3"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="3. Market Analysis" href="market_analysis.html" />
+    <link rel="prev" title="1. Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Poloniexlendingbot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">1. Installation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">2. Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#exchange-selection-api-key-and-secret">2.1. Exchange selection, API key and Secret</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#exchange-sections">2.2. Exchange Sections</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#timing">2.3. Timing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#min-and-max-rates">2.4. Min and Max Rates</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lending-strategies">2.5. Lending Strategies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#spreading-your-lends">2.6. Spreading your Lends</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#auto-transfer-from-exchange-balance">2.7. Auto-transfer from Exchange Balance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#unimportant-settings">2.8. Unimportant settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#max-to-be-lent">2.9. Max to be lent</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#config-per-coin">2.10. Config per Coin</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#max-active-amount-limit-total-lending">2.10.1. Max Active Amount (Limit Total Lending)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-logging-and-web-display">2.11. Advanced logging and Web Display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plugins">2.12. Plugins</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#accountstats-plugin">2.12.1. AccountStats Plugin</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#profit-charts-plugin">2.12.2. Profit Charts Plugin</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#lendingbot-html-options">2.13. lendingbot.html options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notifications">2.14. Notifications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#global-notification-settings">2.14.1. Global Notification Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#email-notifications">2.14.2. Email notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slack-notifications">2.14.3. Slack notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#telegram-notifications">2.14.4. Telegram notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pushbullet-notifications">2.14.5. Pushbullet notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irc-notifications">2.14.6. IRC notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market-analysis-plugin">2.14.7. Market Analysis Plugin</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="market_analysis.html">3. Market Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">4. Contributing</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Poloniexlendingbot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">2. </span>Configuration</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/configuration.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="configuration">
+<span id="configuration-section"></span><h1><span class="section-number">2. </span>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h1>
+<p>Configuring the bot can be as simple as select the exchange to use and copy-pasting your API key and Secret.</p>
+<p>New features are generally backwards compatible with previous versions of the configuration but it is still recommended that you update your config immediately after updating to take advantage of new features.</p>
+<p>The bot now uses TOML format for configuration. To begin, copy <code class="docutils literal notranslate"><span class="pre">config_sample.toml</span></code> to <code class="docutils literal notranslate"><span class="pre">config.toml</span></code>. Now you can edit your settings.</p>
+<section id="exchange-selection-api-key-and-secret">
+<h2><span class="section-number">2.1. </span>Exchange selection, API key and Secret<a class="headerlink" href="#exchange-selection-api-key-and-secret" title="Link to this heading"></a></h2>
+<p>Select the exchange to use in attribute <code class="docutils literal notranslate"><span class="pre">exchange</span></code> within the <code class="docutils literal notranslate"><span class="pre">[api]</span></code> section. Supported are <code class="docutils literal notranslate"><span class="pre">Poloniex</span></code> and <code class="docutils literal notranslate"><span class="pre">Bitfinex</span></code>. Default is <code class="docutils literal notranslate"><span class="pre">Bitfinex</span></code>.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[api]</span>
+<span class="n">exchange</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Bitfinex&quot;</span>
+<span class="c1"># or</span>
+<span class="n">exchange</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Poloniex&quot;</span>
+</pre></div>
+</div>
+<p>Create a <strong>NEW</strong> API key and Secret from <a class="reference external" href="https://poloniex.com/apiKeys">Poloniex</a>
+or <a class="reference external" href="https://www.bitfinex.com/api">Bitfinex</a> and paste them into the respective slots in the config.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[api]</span>
+<span class="n">apikey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX&quot;</span>
+<span class="n">secret</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx...&quot;</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Do not share your API key nor secret with anyone whom you do not trust with all your Poloniex funds.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If you use an API key that has been used by any other application, it will likely fail for one application or the other. This is because the API requires a <a class="reference external" href="https://en.wikipedia.org/wiki/Cryptographic_nonce">nonce</a>.</p>
+</div>
+<p><strong>Poloniex</strong></p>
+<p>Your Poloniex API key is all capital letters and numbers in groups of 8, separated by hyphens.
+Your secret is 128 lowercase letters and numbers.</p>
+<p>HIGHLY Recommended:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Disable the “Enable Trading” checkbox. The bot does not need it to operate normally.</p></li>
+<li><p>Enable IP filter to only the IP address the bot will be running from.</p></li>
+</ul>
+</div></blockquote>
+<p><strong>Bitfinex</strong></p>
+<p>Your Bitfinex API key and secret are both 43 letters and numbers.</p>
+<p>HIGHLY Recommended:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>The lending bot needs only READ permission to “Account History”, “Marging Funding”, “Wallets”
+and WRITE permission to “Margin Funding” and “Wallets”. Deselect all other on key generation,
+especially to “Withdraw”.</p></li>
+</ul>
+</div></blockquote>
+</section>
+<section id="exchange-sections">
+<h2><span class="section-number">2.2. </span>Exchange Sections<a class="headerlink" href="#exchange-sections" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">[api]</span></code> section contains exchange-related configurations.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">all_currencies</span></code> is a list of all supported currencies for funding. The list only needs to change when the exchange adds or removes a supported currency.</p></li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[api]</span>
+<span class="n">all_currencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;BTC&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;LTC&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ETH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;XRP&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In the new TOML format, this is a list of strings. To disable a currency, simply remove it from the list.</p>
+</div>
+</section>
+<section id="timing">
+<h2><span class="section-number">2.3. </span>Timing<a class="headerlink" href="#timing" title="Link to this heading"></a></h2>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">period_active</span></code> is how long the bot will “rest” (in seconds) between running while the bot has loan offers waiting to be filled. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 60 seconds</p></li>
+<li><p>Allowed range: 1 to 3600 seconds</p></li>
+<li><p>If the bot finishes a cycle and has no open lend orders left to manage, it will change to inactive mode.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Just because 1 second is a permitted period is not necessarily a good idea for API rate limits.</p>
+</div>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">period_inactive</span></code> is how long the bot will “rest” (in seconds) between running while the bot has nothing to do. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 300 seconds (5 minutes)</p></li>
+<li><p>Allowed range: 1 to 3600 seconds</p></li>
+<li><p>If the bot finishes a cycle and has lend orders to manage, it will change to active mode.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">request_timeout</span></code> is how long the bot waits for a response of a request. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 30 seconds</p></li>
+<li><p>Allowed range: 1 to 180 seconds</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
+<span class="n">period_active</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">60</span>
+<span class="n">period_inactive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">300</span>
+<span class="n">request_timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">30</span>
+</pre></div>
+</div>
+</section>
+<section id="min-and-max-rates">
+<h2><span class="section-number">2.4. </span>Min and Max Rates<a class="headerlink" href="#min-and-max-rates" title="Link to this heading"></a></h2>
+<p>These settings are located in the <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> section to apply globally, or can be overridden in specific <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> sections.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code> is the minimum rate (in percent) that the bot will allow offer loans at.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 0.005 percent</p></li>
+<li><p>Allowed range: 0.0031 to 5 percent</p></li>
+<li><p>0.0031% every day for a year, works out around 1%. This is less than most bank accounts and is considered not worth while.</p></li>
+<li><p>The current default value is a optimistic but very viable for the more high volume currencies. Not viable for lending DOGE, for example.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_daily_rate</span></code> is the maximum rate (in percent) that the bot will allow lends to open.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 5 percent</p></li>
+<li><p>Allowed range: 0.0031 to 5 percent</p></li>
+<li><p>2% is the default value offered by the exchange, but there is little reason not to set it higher if you feel optimistic.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.default]</span>
+<span class="n">min_daily_rate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.005</span>
+<span class="n">max_daily_rate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span>
+</pre></div>
+</div>
+</section>
+<section id="lending-strategies">
+<h2><span class="section-number">2.5. </span>Lending Strategies<a class="headerlink" href="#lending-strategies" title="Link to this heading"></a></h2>
+<p>The bot supports different lending strategies. You can select the active strategy using the <code class="docutils literal notranslate"><span class="pre">strategy</span></code> parameter within <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> or a specific <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> section.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">strategy</span></code> determines the logic used for placing lend offers.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">Spread</span></code>, <code class="docutils literal notranslate"><span class="pre">FRR</span></code></p></li>
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">Spread</span></code></p></li>
+<li><p><strong>Spread Strategy</strong>: Standard gap/spread based lending. Uses <code class="docutils literal notranslate"><span class="pre">spread_lend</span></code>, <code class="docutils literal notranslate"><span class="pre">gap_mode</span></code>, <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code>, and <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> to distribute offers across the order book.</p></li>
+<li><dl class="simple">
+<dt><strong>FRR Strategy</strong>: Flash Return Rate based lending (Bitfinex only). It uses the exchange’s FRR as a dynamic base for your <code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code>.</dt><dd><ul>
+<li><p>When active, it forces <code class="docutils literal notranslate"><span class="pre">spread_lend</span> <span class="pre">=</span> <span class="pre">1</span></code> internally.</p></li>
+<li><p>It enables the use of <code class="docutils literal notranslate"><span class="pre">frr_delta_min</span></code> and <code class="docutils literal notranslate"><span class="pre">frr_delta_max</span></code> for rate adjustments.</p></li>
+<li><p>If selected on a non-Bitfinex exchange, the bot will fail to start.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">frr_delta_min</span></code> and <code class="docutils literal notranslate"><span class="pre">frr_delta_max</span></code> are the adjustment range (in percent) relative to the <a class="reference external" href="https://support.bitfinex.com/hc/en-us/articles/115003284729-What-is-the-FRR-Delta-">flash return rate</a>.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">-10</span></code> / <code class="docutils literal notranslate"><span class="pre">10</span></code></p></li>
+<li><p>Range: -50 to +50</p></li>
+<li><p>These values are relative percentages of the FRR. For example, a setting of <code class="docutils literal notranslate"><span class="pre">-20</span></code> means the target rate will be <code class="docutils literal notranslate"><span class="pre">FRR</span> <span class="pre">*</span> <span class="pre">0.80</span></code>.</p></li>
+<li><p>The bot cycles through 5 steps between min and max to improve chances of being filled.</p></li>
+<li><p>This option only works on Bitfinex when <code class="docutils literal notranslate"><span class="pre">strategy</span> <span class="pre">=</span> <span class="pre">&quot;FRR&quot;</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">xday_thresholds</span></code> is a list of rate and days pairs that defines the lending period for different interest rates.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: Empty (disabled)</p></li>
+<li><p>Format: Array of inline tables <code class="docutils literal notranslate"><span class="pre">{</span> <span class="pre">rate</span> <span class="pre">=</span> <span class="pre">&lt;rate&gt;,</span> <span class="pre">days</span> <span class="pre">=</span> <span class="pre">&lt;days&gt;</span> <span class="pre">}</span></code></p></li>
+<li><p>Rate values are in percent (0 to 5), days are integers (2 to 120).</p></li>
+<li><p>The bot uses linear interpolation between defined thresholds.</p></li>
+<li><p>Poloniex max lending period: 60 days</p></li>
+<li><p>Bitfinex max lending period: 120 days</p></li>
+<li><p>This feature allows you to lock in a better rate for a longer period of time.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.default]</span>
+<span class="n">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Spread&quot;</span>
+<span class="n">frr_delta_min</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">-10.0</span>
+<span class="n">frr_delta_max</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">10.0</span>
+<span class="n">xday_thresholds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">0.050</span><span class="p">,</span><span class="w"> </span><span class="n">days</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">20</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">0.058</span><span class="p">,</span><span class="w"> </span><span class="n">days</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">30</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">0.060</span><span class="p">,</span><span class="w"> </span><span class="n">days</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">45</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">0.063</span><span class="p">,</span><span class="w"> </span><span class="n">days</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">60</span><span class="w"> </span><span class="p">},</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">0.070</span><span class="p">,</span><span class="w"> </span><span class="n">days</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">120</span><span class="w"> </span><span class="p">},</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="spreading-your-lends">
+<h2><span class="section-number">2.6. </span>Spreading your Lends<a class="headerlink" href="#spreading-your-lends" title="Link to this heading"></a></h2>
+<p>If <code class="docutils literal notranslate"><span class="pre">spread_lend</span> <span class="pre">=</span> <span class="pre">1</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_bottom</span> <span class="pre">=</span> <span class="pre">0</span></code>, it will behave as simple lending bot lending at lowest possible offer.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">spread_lend</span></code> is the amount (as an integer) of separate loans the bot will split your balance into across the order book.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 3</p></li>
+<li><p>Allowed range: 1 to 20 (1 is the same as disabling)</p></li>
+<li><p>The loans are distributed evenly between <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_top</span></code>.</p></li>
+<li><p>This allows the bot to benefit from spikes in lending rate but can result in loan fragmentation (not really a bad thing since the bot has to deal with it.)</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gap_mode</span></code> is the “mode” you would like your gaps to be calculated in.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">Relative</span></code></p></li>
+<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">Relative</span></code>, <code class="docutils literal notranslate"><span class="pre">RawBTC</span></code>, <code class="docutils literal notranslate"><span class="pre">Raw</span></code></p></li>
+<li><p>The values are case insensitive.</p></li>
+<li><p>The purpose of spreading your lends is to skip dust offers in the lendbook, and also to take advantage of any spikes that occur.</p></li>
+<li><dl class="simple">
+<dt>Mode descriptions:</dt><dd><ul>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">Relative</span></code> - <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> will be relative to your balance for each coin individually.</dt><dd><ul>
+<li><p>This is relative to your total lending balance, both loaned and unloaned.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> will be in percents of your balance. (A setting of 100 will equal 100%)</p></li>
+<li><p>Example: You have 1BTC. If <code class="docutils literal notranslate"><span class="pre">gap_bottom</span> <span class="pre">=</span> <span class="pre">100</span></code> then you will skip 100% of your balance of dust offers, thus skipping 1BTC into the lendbook. If <code class="docutils literal notranslate"><span class="pre">gap_top</span> <span class="pre">=</span> <span class="pre">200</span></code> then you will continue into the lendbook until you reach 200% of your balance, thus 2BTC. Then, if <code class="docutils literal notranslate"><span class="pre">spread_lend</span> <span class="pre">=</span> <span class="pre">5</span></code>, you will make 5 equal volume loans over that gap.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">RawBTC</span></code> - <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> will be in a raw BTC value, converted to each coin.</dt><dd><ul>
+<li><p>Recommended when using one-size-fits-all settings.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> will be in BTC. (A setting of 3 will equal 3 BTC)</p></li>
+<li><p>Example: If <code class="docutils literal notranslate"><span class="pre">gap_bottom</span> <span class="pre">=</span> <span class="pre">1</span></code> and you are currently lending ETH, the bot will check the current exchange rate, say 1BTC = 10ETH. Then the bot will skip 10ETH of dust offers at the bottom of the lendbook before lending. If <code class="docutils literal notranslate"><span class="pre">gap_top</span> <span class="pre">=</span> <span class="pre">10</span></code>, then using the same exchange rate 10BTC will be 100ETH. The bot will then continue 100ETH into the loanbook before stopping. Then, if <code class="docutils literal notranslate"><span class="pre">spread_lend</span> <span class="pre">=</span> <span class="pre">5</span></code>, you will make 5 equal volume loans over that gap.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">Raw</span></code> - <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> will be in a raw value of the coin being lent.</dt><dd><ul>
+<li><p>Recommended when used with coin-specific settings.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> will be in value of the coin. (A setting of 3 will equal 3 BTC, 3 ETH, 3 DOGE, or whatever coin is being lent.)</p></li>
+<li><p>Example: If <code class="docutils literal notranslate"><span class="pre">gap_bottom</span> <span class="pre">=</span> <span class="pre">1</span></code> and you are currently lending ETH, the bot will skip 1ETH of dust offers at the bottom of the lendbook before lending. If <code class="docutils literal notranslate"><span class="pre">gap_top</span> <span class="pre">=</span> <span class="pre">10</span></code>, the bot will then continue 10ETH into the loanbook before stopping. Then, if <code class="docutils literal notranslate"><span class="pre">spread_lend</span> <span class="pre">=</span> <span class="pre">5</span></code>, you will make 5 equal volume loans over that gap.</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> is the lower setting for your <code class="docutils literal notranslate"><span class="pre">gap_mode</span></code> values, and will be where you start to lend.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 10 percent</p></li>
+<li><p>Allowed range: 0 to &lt;arbitrary large number&gt;</p></li>
+<li><p>10% <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> is recommended to skip past dust at the bottom of the lending book, but if you have a VERY high volume this will cause issues as you stray to far away from the most competitive bid.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">gap_top</span></code> is the upper setting for your <code class="docutils literal notranslate"><span class="pre">gap_mode</span></code> values, and will be where you finish spreading your lends.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 200 percent</p></li>
+<li><p>Allowed range: 0 to &lt;arbitrary large number&gt;</p></li>
+<li><p>This value should be adjusted based on your coin volume to avoid going astronomically far away from a realistic rate.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.default]</span>
+<span class="n">spread_lend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3</span>
+<span class="n">gap_mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;RawBTC&quot;</span>
+<span class="n">gap_bottom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">40</span>
+<span class="n">gap_top</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span>
+</pre></div>
+</div>
+</section>
+<section id="auto-transfer-from-exchange-balance">
+<h2><span class="section-number">2.7. </span>Auto-transfer from Exchange Balance<a class="headerlink" href="#auto-transfer-from-exchange-balance" title="Link to this heading"></a></h2>
+<p>If you regularly transfer funds into your account but don’t enjoy having to log in yourself and transfer them to the lending balance, this feature is for you.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">transferable_currencies</span></code> is a list of currencies you would like to be transferred from your exchange balance to your lending balance. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: Empty list (disabled)</p></li>
+<li><p>Format: A list of currency tickers, e.g., <code class="docutils literal notranslate"><span class="pre">[&quot;BTC&quot;,</span> <span class="pre">&quot;ETH&quot;,</span> <span class="pre">&quot;USD&quot;]</span></code></p></li>
+<li><p>Commenting it out or leaving it as an empty list will disable the feature.</p></li>
+<li><p>Coins will be transferred every time the bot runs, so if you intend to trade or withdraw it is recommended to turn off the bot or disable this feature.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
+<span class="n">transferable_currencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;BTC&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ETH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;USD&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="unimportant-settings">
+<h2><span class="section-number">2.8. </span>Unimportant settings<a class="headerlink" href="#unimportant-settings" title="Link to this heading"></a></h2>
+<p>Very few situations require you to change these settings.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code> is the minimum size that a bot will make a loan at. Found in the <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> or specific <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 0.01 of a coin</p></li>
+<li><p>Allowed range: 0.01 and up.</p></li>
+<li><p>If you dislike loan fragmentation, then this will make the minimum for each loan larger.</p></li>
+<li><p>Automatically adjusts to at least meet the minimum of each coin.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">keep_stuck_orders</span></code> If True, keeps orders that are “stuck” in the market instead of canceling them. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: True</p></li>
+<li><p>Allowed values: True or False</p></li>
+<li><p>A “Stuck” order occurs when it partially fills and leaves the coins balance total (total = open orders + let in balance) below your <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code> and so the bot would not be able to lend it again if it was canceled.</p></li>
+<li><p>When disabled, stuck orders will be canceled and held in balance until enough orders expire to allow it to lend again.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">hide_coins</span></code> If True, will not lend any of a coin if its market low is below the set <code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code>. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: True</p></li>
+<li><p>Allowed values: True or False. Commented defaults to True</p></li>
+<li><p>This hides your coins from appearing in walls.</p></li>
+<li><p>Allows you to catch a higher rate if it spikes past your <code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code>.</p></li>
+<li><p>Not necessarily recommended if used with <code class="docutils literal notranslate"><span class="pre">MarketAnalysis</span></code> with an aggressive <code class="docutils literal notranslate"><span class="pre">lending_style</span></code>, as the bot may miss short-lived rate spikes. This is not the case if using <code class="docutils literal notranslate"><span class="pre">MACD</span></code> with <code class="docutils literal notranslate"><span class="pre">analysis_method</span></code>. In that case it is recommended to set <code class="docutils literal notranslate"><span class="pre">hide_coins</span></code> to True.</p></li>
+<li><p>If you are using the <code class="docutils literal notranslate"><span class="pre">MarketAnalysis</span></code> plugin, you will likely see a lot of <code class="docutils literal notranslate"><span class="pre">Not</span> <span class="pre">lending</span> <span class="pre">BTC</span> <span class="pre">due</span> <span class="pre">to</span> <span class="pre">rate</span> <span class="pre">below</span> <span class="pre">0.9631%</span></code> type messages in the logs. This is normal.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">end_date</span></code> Bot will try to make sure all your loans are done by this date so you can withdraw or do whatever you need. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: Disabled</p></li>
+<li><p>Uncomment to enable.</p></li>
+<li><p>Format: <code class="docutils literal notranslate"><span class="pre">YEAR-MONTH-DAY</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="max-to-be-lent">
+<h2><span class="section-number">2.9. </span>Max to be lent<a class="headerlink" href="#max-to-be-lent" title="Link to this heading"></a></h2>
+<p>This feature group allows you to only lend a certain percentage of your total holding in a coin, until the lending rate surpasses a certain threshold. Then it will lend at max capacity. These settings are found in the <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> section or specific <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> sections.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_to_lend</span></code> is a raw number of how much you will lend of each coin whose lending rate is below <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 0 (disabled)</p></li>
+<li><p>Allowed range: 0 (disabled) or <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code> and up</p></li>
+<li><p>If set to 0, it is disabled.</p></li>
+<li><p>If disabled, the bot will check if <code class="docutils literal notranslate"><span class="pre">max_percent_to_lend</span></code> is enabled and use that instead.</p></li>
+<li><p>Setting this overrides <code class="docutils literal notranslate"><span class="pre">max_percent_to_lend</span></code>.</p></li>
+<li><p>This is a setting for the raw value of coin that will be lent if the coin’s lending rate is under <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p></li>
+<li><p>Has no effect if current rate is higher than <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p></li>
+<li><p>If the remainder (after subtracting <code class="docutils literal notranslate"><span class="pre">max_to_lend</span></code>) in a coin’s balance is less than <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code>, then the remainder will be lent anyway. Otherwise, the coins would go to waste since you can’t lend under <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_percent_to_lend</span></code> is a percentage of how much you will lend of each coin whose lending rate is below <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 0 (disabled)</p></li>
+<li><p>Allowed range: 0 (disabled) to 100 percent</p></li>
+<li><p>If set to 0, it is disabled.</p></li>
+<li><p>If disabled in addition to <code class="docutils literal notranslate"><span class="pre">max_to_lend</span></code>, the entire feature will be disabled (100% of balance will be lent).</p></li>
+<li><p>This percentage is calculated per-coin, and is the percentage of the balance that will be lent if the coin’s current rate is less than <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p></li>
+<li><p>Has no effect if current rate is higher than <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p></li>
+<li><p>If the remainder in a coin’s balance is less than <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code>, then the remainder will be lent anyway.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code> is the rate threshold (in percent) when all coins are lent.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 0 (disabled)</p></li>
+<li><p>Allowed range: 0 (disabled) or <code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code> to 5 percent</p></li>
+<li><p>Setting this to 0 with a limit in place causes the limit to always be active.</p></li>
+<li><p>When an individual coin’s lending rate passes this threshold, all of the coin will be lent instead of applying the limits from <code class="docutils literal notranslate"><span class="pre">max_to_lend</span></code> or <code class="docutils literal notranslate"><span class="pre">max_percent_to_lend</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.default]</span>
+<span class="n">max_to_lend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="n">max_percent_to_lend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+<span class="n">max_to_lend_rate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
+</pre></div>
+</div>
+</section>
+<section id="config-per-coin">
+<h2><span class="section-number">2.10. </span>Config per Coin<a class="headerlink" href="#config-per-coin" title="Link to this heading"></a></h2>
+<p>You can define specific configurations for each currency by creating a section named <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> (e.g., <code class="docutils literal notranslate"><span class="pre">[coin.BTC]</span></code>, <code class="docutils literal notranslate"><span class="pre">[coin.USD]</span></code>). Any settings defined in a coin-specific section will override the defaults set in <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code>.</p>
+<p>Configuration should look like this (using TOML format):</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.BTC]</span>
+<span class="n">min_loan_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.01</span>
+<span class="n">min_daily_rate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.1</span>
+<span class="n">max_active_amount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span>
+<span class="n">gap_mode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Raw&quot;</span>
+<span class="n">gap_bottom</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">10</span>
+<span class="n">gap_top</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">20</span>
+<span class="n">strategy</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Spread&quot;</span>
+<span class="n">spread_lend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span>
+<span class="n">xday_thresholds</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="n">rate</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mf">0.05</span><span class="p">,</span><span class="w"> </span><span class="n">days</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="mi">30</span><span class="w"> </span><span class="p">}</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+<section id="max-active-amount-limit-total-lending">
+<h3><span class="section-number">2.10.1. </span>Max Active Amount (Limit Total Lending)<a class="headerlink" href="#max-active-amount-limit-total-lending" title="Link to this heading"></a></h3>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_active_amount</span></code> limits the total amount that can be lent out for a currency. Found in the <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> or specific <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: -1 (unlimited)</p></li>
+<li><dl class="simple">
+<dt>Allowed values:</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-1</span></code> = Unlimited (no restriction on total lending)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">0</span></code> = Disabled (skip this coin entirely, equivalent to not listing it in <code class="docutils literal notranslate"><span class="pre">all_currencies</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&gt;</span> <span class="pre">0</span></code> = Limit (cap total lending to this amount in coin units)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>This is useful when you want to maintain a reserve or limit exposure for a specific currency.</p></li>
+<li><p>The limit applies to the total amount currently lent out (active loans). If you have 10000 USD and set <code class="docutils literal notranslate"><span class="pre">max_active_amount</span> <span class="pre">=</span> <span class="pre">5000</span></code>, the bot will only lend up to 5000 USD total.</p></li>
+<li><p>Example: If you have <code class="docutils literal notranslate"><span class="pre">max_active_amount</span> <span class="pre">=</span> <span class="pre">1000</span></code> for USD and currently have 800 USD lent out, the bot will only offer up to 200 USD more in new loans.</p></li>
+</ul>
+<p>Example configuration:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.USD]</span>
+<span class="n">min_loan_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">150</span>
+<span class="n">max_active_amount</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5000.0</span><span class="w">  </span><span class="c1"># Only lend up to 5000 USD total</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</section>
+</section>
+<section id="advanced-logging-and-web-display">
+<h2><span class="section-number">2.11. </span>Advanced logging and Web Display<a class="headerlink" href="#advanced-logging-and-web-display" title="Link to this heading"></a></h2>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot.web]</span></code> section) if true, this enables a webserver on the <code class="docutils literal notranslate"><span class="pre">www/</span></code> folder.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">true</span></code></p></li>
+<li><p>The server page can be accessed locally, at <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/lendingbot.html</span></code> by default.</p></li>
+<li><p>When enabled, JSON logging is automatically enabled with output to <code class="docutils literal notranslate"><span class="pre">www/botlog.json</span></code>.</p></li>
+<li><p>You must close bot with a keyboard interrupt (CTRL-C on Windows) to properly shutdown the server and release the socket, otherwise you may have to wait several minutes for it to release itself.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">json_log_size</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section) is the amount of lines the botlog will keep before deleting the oldest event.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: 200</p></li>
+<li><p>Reasons to lower this include: you are conscious of bandwidth when hosting your webserver, you prefer (slightly) faster loading times and less RAM usage of bot.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">host</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot.web]</span></code> section) is the IP address that the webserver can be found at.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Advanced users only.</p></li>
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code></p></li>
+<li><p>Format: <code class="docutils literal notranslate"><span class="pre">IP</span></code></p></li>
+<li><p>Setting the ip to <code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code> will ONLY allow the webpage to be accessed at localhost (<code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>)</p></li>
+<li><p>Setting the ip to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> will allow the webpage to be accessed at localhost (<code class="docutils literal notranslate"><span class="pre">127.0.0.1</span></code>) as well as at the computer’s LAN IP address within the local network.</p></li>
+<li><p>You must know what you are doing when changing the IP address to anything other than the suggested configurations above.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">port</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot.web]</span></code> section) is the IP port that the webserver can be found at.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Advanced users only.</p></li>
+<li><p>Default value: 8000</p></li>
+<li><p>Format: <code class="docutils literal notranslate"><span class="pre">PORT</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">template</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot.web]</span></code> section) is the location the bot will use for WebServer HTML GUI template.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">www</span></code></p></li>
+<li><p>Format: <code class="docutils literal notranslate"><span class="pre">PATH</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">output_currency</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section) this is the ticker of the coin which you would like the website to report your summary earnings in.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: BTC</p></li>
+<li><p>Acceptable values: BTC, USDT, Any coin with a direct BTC trading pair (ex. DOGE, MAID, ETH), Currencies that have a BTC exchange rate on blockchain.info (i.e. EUR, USD)</p></li>
+<li><p>Will be a close estimate, due to unexpected market fluctuations, trade fees, and other unforseeable factors.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">label</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section) is a custom name of the bot, that will be displayed in html page.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: Lending Bot</p></li>
+<li><p>Allowed values: Any literal string</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
+<span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Lending Bot&quot;</span>
+<span class="n">output_currency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;BTC&quot;</span>
+<span class="n">json_log_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span>
+
+<span class="k">[bot.web]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span>
+<span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8000</span>
+<span class="n">template</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;www&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="plugins">
+<h2><span class="section-number">2.12. </span>Plugins<a class="headerlink" href="#plugins" title="Link to this heading"></a></h2>
+<p>Plugins allow extending Bot functionality with extra features.
+To enable/disable a plugin add/remove it to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list config option under the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section, example:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
+<span class="n">plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;AccountStats&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Charts&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Plugins can add their own HTML pages by calling <code class="docutils literal notranslate"><span class="pre">self.log.addSectionlog('plugins',</span> <span class="pre">'&lt;pluginName&gt;',</span> <span class="pre">'navbar',</span> <span class="pre">True);</span></code> within their init code.
+This will add a navbar element on the main lendingbot.html page linking to &lt;pluginName&gt;.html</p>
+<section id="accountstats-plugin">
+<h3><span class="section-number">2.12.1. </span>AccountStats Plugin<a class="headerlink" href="#accountstats-plugin" title="Link to this heading"></a></h3>
+<p>The AccountStats plugin fetches all your loan history and provides statistics based on it.
+Current implementation sends a earnings summary Notification (see Notifications sections) every 24hr.</p>
+<p>To enable the plugin add <code class="docutils literal notranslate"><span class="pre">AccountStats</span></code> to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list, example:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
+<span class="n">plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;AccountStats&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>There is an optional setting to change how frequently this plugin reports. By default, once per day. Example:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[plugins.account_stats]</span>
+<span class="n">report_interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">86400</span>
+</pre></div>
+</div>
+<p>Be aware that first initialization might take longer as the bot will fetch all the history.</p>
+</section>
+<section id="profit-charts-plugin">
+<h3><span class="section-number">2.12.2. </span>Profit Charts Plugin<a class="headerlink" href="#profit-charts-plugin" title="Link to this heading"></a></h3>
+<p>The Charts plugin dumps out the historical lending data to a JSON structure which is read by the new charts.html page.
+This page reads this dump data and constructs a Google Chart showing daily profit over time.</p>
+<p>The AccountStats plugin must be enabled for the Charts plugin to function correctly.</p>
+<p>To enable the plugin add <code class="docutils literal notranslate"><span class="pre">Charts</span></code> to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list, example:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
+<span class="n">plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;AccountStats&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Charts&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>There is an optional setting to change how frequently this plugin dumps data. By default, four times per day. Example:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[plugins.charts]</span>
+<span class="n">dump_interval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">21600</span>
+</pre></div>
+</div>
+<p>The history data is automatically saved to <code class="docutils literal notranslate"><span class="pre">logs/history.json</span></code>.</p>
+<p>On a new installation, the AccountStats database may not be up to date on first iteration of the Charts plugin and no data will get dumped. Simply wait for the next interval or restart the bot after the AccountStats plugin is finished.</p>
+</section>
+</section>
+<section id="lendingbot-html-options">
+<h2><span class="section-number">2.13. </span>lendingbot.html options<a class="headerlink" href="#lendingbot-html-options" title="Link to this heading"></a></h2>
+<p>You can pass options to statistics page by adding them to URL. Eg, <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/lendingbot.html?option1=value&amp;option2=0</span></code></p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">effrate</span></code> controls how effective loan rate is calculated. Yearly rates are calculated based on effective rate, so this option affects them as well. Last used mode remembered by browser, so you do not have to specify this option every time. By default, effective loan rate is calculated considering lent precentage (from total available coins) and exchange fee.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">lentperc</span></code>, <code class="docutils literal notranslate"><span class="pre">onlyfee</span></code>.</p></li>
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">lentperc</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">onlyfee</span></code> calculates effective rate without considering lent coin percentage.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">displayUnit</span></code> controls BTC’s unit output.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">BTC</span></code>, <code class="docutils literal notranslate"><span class="pre">mBTC</span></code>, <code class="docutils literal notranslate"><span class="pre">Bits</span></code>, <code class="docutils literal notranslate"><span class="pre">Satoshi</span></code></p></li>
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">BTC</span></code></p></li>
+<li><p>This setting will change all display of Bitcoin to that unit. Ex. 1 BTC -&gt; 1000 mBTC.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">earningsInOutputCurrency</span></code> define which earnings are shown in the output currency.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">all</span></code>, <code class="docutils literal notranslate"><span class="pre">summary</span></code></p></li>
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">all</span></code></p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</section>
+<section id="notifications">
+<h2><span class="section-number">2.14. </span>Notifications<a class="headerlink" href="#notifications" title="Link to this heading"></a></h2>
+<p>The bot supports sending notifications for several different events on several different platforms. To enable notifications, you must set <code class="docutils literal notranslate"><span class="pre">enabled</span> <span class="pre">=</span> <span class="pre">true</span></code> in the <code class="docutils literal notranslate"><span class="pre">[notifications]</span></code> section, enable at least one of the following events and also at least one notification platform. The list of events you can notify about are:</p>
+<section id="global-notification-settings">
+<h3><span class="section-number">2.14.1. </span>Global Notification Settings<a class="headerlink" href="#global-notification-settings" title="Link to this heading"></a></h3>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">notify_new_loans</span></code></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Sends a notification each time a loan offer is filled.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">notify_tx_coins</span></code></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>This will send a notification if any coins are transferred from your exchange account, to your lending account. You must have <code class="docutils literal notranslate"><span class="pre">transferable_currencies</span></code> enabled for this to work.  Then you should set <code class="docutils literal notranslate"><span class="pre">notify_tx_coins</span> <span class="pre">=</span> <span class="pre">true</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">notify_xday_threshold</span></code></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>This will send a notification every time a loan is created that is above your <code class="docutils literal notranslate"><span class="pre">xday_thresholds</span></code> config value. To enable you should set <code class="docutils literal notranslate"><span class="pre">notify_xday_threshold</span> <span class="pre">=</span> <span class="pre">true</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">notify_summary_minutes</span></code></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>This will send a summary of the current loans you have every X minutes. To enable this add <code class="docutils literal notranslate"><span class="pre">notify_summary_minutes</span> <span class="pre">=</span> <span class="pre">120</span></code>. This will send you a notification every 2 hours (120 minutes).</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">notify_caught_exception</span></code></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>This is more useful for developers. This will send a notification every time there is an exception thrown in the bot that we don’t handle. To enable add <code class="docutils literal notranslate"><span class="pre">notify_caught_exception</span> <span class="pre">=</span> <span class="pre">true</span></code>.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">notify_prefix</span></code></p>
+<blockquote>
+<div><ul class="simple">
+<li><p>This string, if set, will be prepended to any notifications. Useful if you are running multiple bots and need to differentiate the source.</p></li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>Once you have decided which notifications you want to receive, you can then go about configuring platforms to send them on. Currently the bot supports:</p>
+</section>
+<section id="email-notifications">
+<h3><span class="section-number">2.14.2. </span>Email notifications<a class="headerlink" href="#email-notifications" title="Link to this heading"></a></h3>
+<p>To enable email you should configure the following in the <code class="docutils literal notranslate"><span class="pre">[notifications.email]</span></code> section:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.email]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">login_address</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;me@gmail.com&quot;</span>
+<span class="n">login_password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;secretPassword&quot;</span>
+<span class="n">smtp_server</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;smtp.gmail.com&quot;</span>
+<span class="n">smtp_port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">465</span>
+<span class="n">smtp_starttls</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">false</span>
+<span class="n">to_addresses</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;me@gmail.com&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;you@gmail.com&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="slack-notifications">
+<h3><span class="section-number">2.14.3. </span>Slack notifications<a class="headerlink" href="#slack-notifications" title="Link to this heading"></a></h3>
+<p>Before you can post to slack you need to create an API token. Once you have a token you can then configure the bot as so:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.slack]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;xoxp-...&quot;</span>
+<span class="n">channels</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;#cryptocurrency&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;@someUser&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="telegram-notifications">
+<h3><span class="section-number">2.14.4. </span>Telegram notifications<a class="headerlink" href="#telegram-notifications" title="Link to this heading"></a></h3>
+<p>To have telegram notifications you need to get a bot id from the BotFather. Once you have a bot id you need to get your Chat ID or create a channel and invite the bot. Once you have all this in place you configure it like so:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.telegram]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">bot_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;281421543:...&quot;</span>
+<span class="n">chat_ids</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;123456789&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;@cryptocurrency&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="pushbullet-notifications">
+<h3><span class="section-number">2.14.5. </span>Pushbullet notifications<a class="headerlink" href="#pushbullet-notifications" title="Link to this heading"></a></h3>
+<p>To enable Pushbullet notifications, you first need to create an API key and then discover your device ID.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.pushbullet]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;l.2mDDvy...&quot;</span>
+<span class="n">deviceid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ujpah7...&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="irc-notifications">
+<h3><span class="section-number">2.14.6. </span>IRC notifications<a class="headerlink" href="#irc-notifications" title="Link to this heading"></a></h3>
+<p>IRC is very easy to configure, if you are already interested in using it you’ll understand what each of the options are.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.irc]</span>
+<span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+<span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;irc.freenode.net&quot;</span>
+<span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">6667</span>
+<span class="n">nick</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;LendingBot&quot;</span>
+<span class="n">ident</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;lendingbot&quot;</span>
+<span class="n">realname</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Poloniex lending bot&quot;</span>
+<span class="n">target</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;#bitbotfactory&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="market-analysis-plugin">
+<h3><span class="section-number">2.14.7. </span>Market Analysis Plugin<a class="headerlink" href="#market-analysis-plugin" title="Link to this heading"></a></h3>
+<p>The Market Analysis plugin records currency market data and allows the bot to see trends. This data can be used to compute a recommended minimum lending rate.</p>
+<p>To enable the plugin, add <code class="docutils literal notranslate"><span class="pre">MarketAnalysis</span></code> to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list and configure the <code class="docutils literal notranslate"><span class="pre">[plugins.market_analysis]</span></code> section.</p>
+<p>For more detailed information on all available parameters, please refer to the <a class="reference internal" href="market_analysis.html#market-analysis-section"><span class="std std-ref">Market Analysis</span></a> documentation.</p>
+<p>Example configuration:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[plugins.market_analysis]</span>
+<span class="n">analyse_currencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;BTC&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ETH&quot;</span><span class="p">]</span>
+<span class="n">lending_style</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">75</span>
+<span class="n">analysis_method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Percentile&quot;</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="1. Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="market_analysis.html" class="btn btn-neutral float-right" title="3. Market Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2016, Mikadily and Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

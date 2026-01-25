@@ -1,0 +1,388 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3. Market Analysis &mdash; Poloniexlendingbot 1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=29a6c3e3"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="4. Contributing" href="contributing.html" />
+    <link rel="prev" title="2. Configuration" href="configuration.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Poloniexlendingbot
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">1. Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">2. Configuration</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">3. Market Analysis</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">3.1. Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#percentile">3.2. Percentile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#macd">3.3. MACD</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#suggested-loan-rate">3.3.1. suggested loan rate</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#configuring">3.3.2. configuring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#notes">3.3.3. notes</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#recording-currencies">3.4. Recording currencies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#analyse-currencies">3.4.1. analyse_currencies</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#update-interval">3.4.2. update_interval</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#recorded-levels">3.4.3. recorded_levels</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#analysing-currencies">3.5. Analysing currencies</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#lending-style">3.5.1. lending_style</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#percentile-window">3.5.2. percentile_window</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#macd-long-window">3.5.3. macd_long_window</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#data-tolerance">3.5.4. data_tolerance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#analysis-method">3.5.5. analysis_method</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#daily-min-multiplier">3.5.6. daily_min_multiplier</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ma-debug-log">3.5.7. ma_debug_log</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">4. Contributing</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Poloniexlendingbot</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">3. </span>Market Analysis</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/market_analysis.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="market-analysis">
+<span id="market-analysis-section"></span><h1><span class="section-number">3. </span>Market Analysis<a class="headerlink" href="#market-analysis" title="Link to this heading"></a></h1>
+<section id="overview">
+<h2><span class="section-number">3.1. </span>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>This feature records a currency’s market and allows the bot to see trends. With this data, we can compute a recommended minimum lending rate per currency to avoid lending at times when the rate dips.</p>
+<p>When this module is enabled, it will start recording the lending rates for the market in an SQLite database. This data is stored in the <code class="docutils literal notranslate"><span class="pre">market_data</span></code> folder.</p>
+<p>A separate database is created for each currency you wish to record. These are enabled in the <code class="docutils literal notranslate"><span class="pre">analyse_currencies</span></code> configuration option within the <code class="docutils literal notranslate"><span class="pre">[plugins.market_analysis]</span></code> section.</p>
+<blockquote>
+<div><div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The more currencies you record, the more data is stored on disk and more CPU processing time is used. You may also experience API rate limit issues (429 errors) if you record too many currencies with a low update interval.</p>
+</div>
+</div></blockquote>
+<p>A quick list of each config option and what they do:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><cite>analyse_currencies</cite></p></td>
+<td><p>A list of each currency you wish to record and analyse.</p></td>
+</tr>
+<tr class="row-odd"><td><p><cite>update_interval</cite></p></td>
+<td><p>The frequency (in seconds) between rates requested and stored in the DB.</p></td>
+</tr>
+<tr class="row-even"><td><p><cite>lending_style</cite></p></td>
+<td><p>The percentile used for the percentile calculation (1-99).</p></td>
+</tr>
+<tr class="row-odd"><td><p><cite>percentile_window</cite></p></td>
+<td><p>The number of seconds to analyse when working out the percentile.</p></td>
+</tr>
+<tr class="row-even"><td><p><cite>macd_long_window</cite></p></td>
+<td><p>The number of seconds used for the long moving average.</p></td>
+</tr>
+<tr class="row-odd"><td><p><cite>recorded_levels</cite></p></td>
+<td><p>The depth of the lending book to record in the DB (number of unfilled loans).</p></td>
+</tr>
+<tr class="row-even"><td><p><cite>data_tolerance</cite></p></td>
+<td><p>The percentage of data that can be ignored as missing.</p></td>
+</tr>
+<tr class="row-odd"><td><p><cite>analysis_method</cite></p></td>
+<td><p>Which method (MACD or Percentile) to use for the daily min calculation.</p></td>
+</tr>
+<tr class="row-even"><td><p><cite>daily_min_multiplier</cite></p></td>
+<td><p>Multiplier for the MACD method to scale up the returned rate value.</p></td>
+</tr>
+<tr class="row-odd"><td><p><cite>ma_debug_log</cite></p></td>
+<td><p>Print extra debug info regarding rate calculations.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>In the latest version, some parameters are now automatically derived from others:
+- <code class="docutils literal notranslate"><span class="pre">MACD_short_win_seconds</span></code> is now derived as <code class="docutils literal notranslate"><span class="pre">macd_long_window</span> <span class="pre">/</span> <span class="pre">12</span></code>.
+- <code class="docutils literal notranslate"><span class="pre">keep_history_seconds</span></code> is now derived as <code class="docutils literal notranslate"><span class="pre">max(macd_long_window,</span> <span class="pre">percentile_window)</span> <span class="pre">*</span> <span class="pre">1.1</span></code>.</p>
+</div>
+<p>The module has two main methods to calculate the minimum rate:</p>
+</section>
+<section id="percentile">
+<h2><span class="section-number">3.2. </span>Percentile<a class="headerlink" href="#percentile" title="Link to this heading"></a></h2>
+<p>This method takes all the data for the given time period (<code class="docutils literal notranslate"><span class="pre">percentile_window</span></code>) and works out the Xth percentile (<code class="docutils literal notranslate"><span class="pre">lending_style</span></code>) for that set of data. For example, if you are using a <code class="docutils literal notranslate"><span class="pre">lending_style</span></code> of 85 and you had a list of rates like so:</p>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd">Example<span class="colon">:</span></dt>
+<dd class="field-odd"><p>0.04, 0.04, 0.05, 0.05, 0.05, 0.05, 0.06, 0.06, 0.06, 0.07, 0.07, 0.07, 0.08, 0.08, 0.09, 0.09, 0.09, 0.10, 0.10, 0.10</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>The 85th percentile would be 0.0985 because 85% of rates are below this.</p>
+<p>The following configuration options should be considered when using the percentile calculation method:
+- <cite>percentile_window</cite>
+- <cite>lending_style</cite></p>
+</section>
+<section id="macd">
+<h2><span class="section-number">3.3. </span>MACD<a class="headerlink" href="#macd" title="Link to this heading"></a></h2>
+<p>Moving Average Convergence Divergence. This method uses moving averages to work out if it’s a good time to lend. It looks at the best rate available for two windows: a long window (<code class="docutils literal notranslate"><span class="pre">macd_long_window</span></code>) and a short window (derived). If the short average is higher than the long average, the market trend is going up, and it will return a suggested loan rate.</p>
+<p>If the long window is greater than the short window, then we will not lend as trend for rates is below what it should be.
+So for example:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Time</p></th>
+<th class="head"><p>Short</p></th>
+<th class="head"><p>Long</p></th>
+<th class="head"><p>Suggested</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>12:00</p></td>
+<td><p>0.08</p></td>
+<td><p>0.1</p></td>
+<td><p>0.1</p></td>
+</tr>
+<tr class="row-odd"><td><p>12:01</p></td>
+<td><p>0.09</p></td>
+<td><p>0.1</p></td>
+<td><p>0.1</p></td>
+</tr>
+<tr class="row-even"><td><p>12:02</p></td>
+<td><p>0.1</p></td>
+<td><p>0.1</p></td>
+<td><p>0.105</p></td>
+</tr>
+<tr class="row-odd"><td><p>12:03</p></td>
+<td><p>0.11</p></td>
+<td><p>0.1</p></td>
+<td><p>0.1155</p></td>
+</tr>
+<tr class="row-even"><td><p>12:04</p></td>
+<td><p>0.12</p></td>
+<td><p>0.1</p></td>
+<td><p>0.126</p></td>
+</tr>
+</tbody>
+</table>
+<p>In this example, the bot would start to lend at 12:02 and it would suggest a minimum lending rate of <code class="docutils literal notranslate"><span class="pre">long_average</span> <span class="pre">*</span> <span class="pre">daily_min_multiplier</span></code> (default 1.05). Giving a rate of 0.105. This is then passed back to the main lendingbot where it will use your <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code>, along with spreads and all the other smarts to place loan offers.</p>
+<p>Currently using this method gives the best results with well configured <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code>. This allows you to catch spikes in the market as see above.</p>
+<p>The short window and long window are configured by a number of seconds, the data is then taken from the DB requesting <code class="docutils literal notranslate"><span class="pre">macd_long_window</span> <span class="pre">*</span> <span class="pre">1.1</span></code>. This is to get an extra 10% of data as there is usually some lost in the recording.
+You can also use the <cite>data_tolerance</cite> to help with the amount of data required by the bot for this calculation, that is the percentage of data that can be missing for the data to still be valid.</p>
+<section id="suggested-loan-rate">
+<h3><span class="section-number">3.3.1. </span>suggested loan rate<a class="headerlink" href="#suggested-loan-rate" title="Link to this heading"></a></h3>
+<p>If the average of the short window is greater than the average of the long window, we return the calculated rate.</p>
+</section>
+<section id="configuring">
+<h3><span class="section-number">3.3.2. </span>configuring<a class="headerlink" href="#configuring" title="Link to this heading"></a></h3>
+<p>The Market Analysis plugin can be configured in the <code class="docutils literal notranslate"><span class="pre">[plugins.market_analysis]</span></code> section of your <code class="docutils literal notranslate"><span class="pre">config.toml</span></code>.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[plugins.market_analysis]</span>
+<span class="n">analyse_currencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;BTC&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ETH&quot;</span><span class="p">]</span>
+<span class="n">lending_style</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">75</span>
+<span class="n">macd_long_window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1800</span>
+<span class="n">percentile_window</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">86400</span>
+<span class="n">daily_min_multiplier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.05</span>
+<span class="n">analysis_method</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Percentile&quot;</span>
+</pre></div>
+</div>
+<p>The number of config options and combinations for this can be quite daunting. We have put in sensible defaults into the config. Change the currency to whatever you want, though best not use more than 3 really, as it slows down the API calls considerably.</p>
+<p>The most important is probably setting <cite>hide_coins</cite> to <code class="docutils literal notranslate"><span class="pre">false</span></code>. This means that it will always place loans so you don’t need to have as low a resolution on the sleep timers. You also want to make sure the <code class="docutils literal notranslate"><span class="pre">gap_top</span></code> and <code class="docutils literal notranslate"><span class="pre">gap_bottom</span></code> are high so you can get a large spread.</p>
+<p>Recommended Bot Settings for Market Analysis:</p>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Config</p></th>
+<th class="head"><p>Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>period_active</p></td>
+<td><p>10</p></td>
+</tr>
+<tr class="row-odd"><td><p>period_inactive</p></td>
+<td><p>10</p></td>
+</tr>
+<tr class="row-even"><td><p>spread_lend</p></td>
+<td><p>3</p></td>
+</tr>
+<tr class="row-odd"><td><p>gap_mode</p></td>
+<td><p>RawBTC</p></td>
+</tr>
+<tr class="row-even"><td><p>gap_bottom</p></td>
+<td><p>40</p></td>
+</tr>
+<tr class="row-odd"><td><p>gap_top</p></td>
+<td><p>200</p></td>
+</tr>
+<tr class="row-even"><td><p>hide_coins</p></td>
+<td><p>false</p></td>
+</tr>
+<tr class="row-odd"><td><p>analyse_currencies</p></td>
+<td><p>ETH,BTC</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="notes">
+<h3><span class="section-number">3.3.3. </span>notes<a class="headerlink" href="#notes" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><cite>analysis_method</cite> will default back to the percentile method if it can’t function. This will happen at start up for a while when it’s collecting data and can also happen if something goes wrong with the Database or other failures.</p></li>
+<li><p>You can turn on <cite>ma_debug_log</cite> to get some more information if things aren’t working.</p></li>
+<li><p>When it’s starting up you will see <code class="docutils literal notranslate"><span class="pre">Need</span> <span class="pre">more</span> <span class="pre">data</span> <span class="pre">for</span> <span class="pre">analysis,</span> <span class="pre">still</span> <span class="pre">collecting.</span> <span class="pre">I</span> <span class="pre">have</span> <span class="pre">Y/X</span> <span class="pre">records</span></code>, so long as it’s still increasing then this is fine. If it always prints that message then you should change your <cite>data_tolerance</cite>.</p></li>
+</ul>
+</section>
+</section>
+<section id="recording-currencies">
+<h2><span class="section-number">3.4. </span>Recording currencies<a class="headerlink" href="#recording-currencies" title="Link to this heading"></a></h2>
+<p>All the data is stored in an SQLite database per currency. You can see the database files in the <code class="docutils literal notranslate"><span class="pre">market_data</span></code> folder of the bot.
+There are a number of things to consider before configuring this section. The most important being that you can only make a limited number of API calls to exchanges per second.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If you start to see the error message: <code class="docutils literal notranslate"><span class="pre">HTTP</span> <span class="pre">Error</span> <span class="pre">429:</span> <span class="pre">Too</span> <span class="pre">Many</span> <span class="pre">Requests</span></code> then you need to review the settings in this file. Increase your timer or decrease the number of recorded currencies.</p>
+</div>
+<section id="analyse-currencies">
+<h3><span class="section-number">3.4.1. </span>analyse_currencies<a class="headerlink" href="#analyse-currencies" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">analyse_currencies</span></code> is the list of currencies to record and analyse.</p>
+<p>None of the points below need be considered problematic unless you are planning to run with low (single digit seconds) timers on the bot.</p>
+<p>With that said, every currency you add to this will:
+- Increase the number of db files (and therefore disk usage).
+- Increase I/O and CPU usage (each currency will be writing to disk).
+- Reduce the number of requests you can make to the API per second for other tasks.</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[plugins.market_analysis]</span>
+<span class="n">analyse_currencies</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;BTC&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;ETH&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;LTC&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="update-interval">
+<h3><span class="section-number">3.4.2. </span>update_interval<a class="headerlink" href="#update-interval" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">update_interval</span></code> is how long the bot will sleep between requests for rate data. Default is 10 seconds.
+You are not guaranteed to get data at exactly the update interval if you have many currencies or if the API is slow.</p>
+</section>
+<section id="recorded-levels">
+<h3><span class="section-number">3.4.3. </span>recorded_levels<a class="headerlink" href="#recorded-levels" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">recorded_levels</span></code> is the number of rates found in the current offers that will be recorded in the DB. Default is 10.</p>
+</section>
+</section>
+<section id="analysing-currencies">
+<h2><span class="section-number">3.5. </span>Analysing currencies<a class="headerlink" href="#analysing-currencies" title="Link to this heading"></a></h2>
+<p>Everything in this section relates to how the analysis is carried out.</p>
+<section id="lending-style">
+<h3><span class="section-number">3.5.1. </span>lending_style<a class="headerlink" href="#lending-style" title="Link to this heading"></a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">lending_style</span></code> lets you choose the percentile of each currency’s market to lend at.
+- Conservative: 50
+- Moderate: 75
+- Aggressive: 90
+- Very Aggressive: 99</p>
+<p>This is a percentile, so choosing 75 would mean that your minimum will be the value that the market is above 25% of the recorded time.</p>
+</section>
+<section id="percentile-window">
+<h3><span class="section-number">3.5.2. </span>percentile_window<a class="headerlink" href="#percentile-window" title="Link to this heading"></a></h3>
+<p>The number of seconds worth of data to use for the percentile calculation. Default is 86400 (1 day).</p>
+</section>
+<section id="macd-long-window">
+<h3><span class="section-number">3.5.3. </span>macd_long_window<a class="headerlink" href="#macd-long-window" title="Link to this heading"></a></h3>
+<p>The number of seconds used for the long window average in the MACD method. Default is 1800 (30 minutes).</p>
+</section>
+<section id="data-tolerance">
+<h3><span class="section-number">3.5.4. </span>data_tolerance<a class="headerlink" href="#data-tolerance" title="Link to this heading"></a></h3>
+<p>The percentage of data that can be missed and still considered valid. Default is 15.
+If you keep seeing messages saying <code class="docutils literal notranslate"><span class="pre">Need</span> <span class="pre">more</span> <span class="pre">data</span> <span class="pre">for</span> <span class="pre">analysis,</span> <span class="pre">still</span> <span class="pre">collecting.</span> <span class="pre">I</span> <span class="pre">have</span> <span class="pre">Y/X</span> <span class="pre">records</span></code>, then you need to increase this or reduce the number of currencies you are analysing.</p>
+</section>
+<section id="analysis-method">
+<h3><span class="section-number">3.5.5. </span>analysis_method<a class="headerlink" href="#analysis-method" title="Link to this heading"></a></h3>
+<p>The method used to calculate the daily minimum: <code class="docutils literal notranslate"><span class="pre">MACD</span></code> or <code class="docutils literal notranslate"><span class="pre">Percentile</span></code>.
+This will not change the <code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code> that you have set for coins in the main config. So you will never lend below what you have statically configured.</p>
+</section>
+<section id="daily-min-multiplier">
+<h3><span class="section-number">3.5.6. </span>daily_min_multiplier<a class="headerlink" href="#daily-min-multiplier" title="Link to this heading"></a></h3>
+<p>Used by the MACD method to scale up the returned average. Default is 1.05.</p>
+</section>
+<section id="ma-debug-log">
+<h3><span class="section-number">3.5.7. </span>ma_debug_log<a class="headerlink" href="#ma-debug-log" title="Link to this heading"></a></h3>
+<p>When enabled, prints internal information around calculations. Default is <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="configuration.html" class="btn btn-neutral float-left" title="2. Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="contributing.html" class="btn btn-neutral float-right" title="4. Contributing" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2016, Mikadily and Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
