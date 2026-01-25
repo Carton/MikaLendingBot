@@ -50,7 +50,7 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Configuration Documentation Update**
-*Link: [./tracks/docs_config_update_20260125/](./tracks/docs_config_update_20260125/)*
+- [x] **Track: Market Analysis Documentation Restoration**
+*Link: [./tracks/market_analysis_docs_restoration_20260125/](./tracks/market_analysis_docs_restoration_20260125/)*
 
 
