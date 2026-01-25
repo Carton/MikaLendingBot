@@ -2,7 +2,8 @@
 
 ## Backend
 - **Language:** Python 3.12+
-- **Data Modeling:** Python Dataclasses
+- **Data Modeling & Validation:** Pydantic (BaseModel)
+- **Configuration:** Hierarchical TOML (tomllib)
 - **Numerical Processing:** NumPy
 - **Data Analysis:** Pandas
 - **HTTP Client:** Requests
