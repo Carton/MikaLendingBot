@@ -18,9 +18,9 @@ Recommended for easier use:
     - git
     - uv (modern Python package manager, project default)
 
-It is highly recommended to use ``uv`` to manage the environment and dependencies:
+It is highly recommended to use ``uv`` to manage the environment and dependencies::
 
-``uv sync``
+    uv sync
 
 Downloading
 -----------
@@ -61,23 +61,25 @@ To download the bot you can either:
     Credit to GitHub user utdrmac.
     
     
-    The permission on the unit file may need to be set to 644 (depending on your OS) :
-    
-    ```
-       sudo chmod 644 /lib/systemd/system/lendingbot.service
-    ```
+    The permission on the unit file may need to be set to 644 (depending on your OS):
+
+    .. code-block:: bash
+
+        sudo chmod 644 /lib/systemd/system/lendingbot.service
 
     Modify the ExecStart and WorkingDirectory to match your setup.
-    
+
     First you need to configure systemd (depending on your OS):
-    ```
+
+    .. code-block:: bash
+
         sudo systemctl daemon-reload
-    ```
 
     Enable the service using the command below:
-    ```
+
+    .. code-block:: bash
+
         sudo systemctl enable lendingbot.service
-    ```
 
 * OSx:
 
