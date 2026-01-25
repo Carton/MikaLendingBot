@@ -57,7 +57,8 @@ uv run python lendingbot.py
 
 ## Documentation
 
-For the original documentation, visit [readthedocs.io](http://poloniexlendingbot.readthedocs.io/en/latest/index.html).
+- **New Documentation**: [carton.github.io/MikaLendingBot](https://carton.github.io/MikaLendingBot) (Recommended)
+- **Original Documentation**: [readthedocs.io](http://poloniexlendingbot.readthedocs.io/en/latest/index.html)
 
 > [!IMPORTANT]
-> This version introduces a major configuration overhaul. The bot now uses **TOML** format. Please refer to `docs/configuration.rst` for detailed setup instructions and see `config_sample.toml` for the latest available options.
+> This version introduces a major configuration overhaul. The bot now uses **TOML** format. Please refer to [docs/configuration.rst](https://carton.github.io/MikaLendingBot/configuration.html) for detailed setup instructions and see `config_sample.toml` for the latest available options.
