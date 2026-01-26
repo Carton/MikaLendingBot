@@ -6,11 +6,12 @@
 - [x] See if some settings can be optimized, especially web configs
 - [x] Check and make sure new docker works
 - [ ] Check and make sure new docker works with new configuration
+- [ ] Try to fix market analysis
 
 
 # Config
 - [x] Rearch configs: use toml? make sure current env override works, also simplify API and strict to only use API
-- [ ] Try to make default config usable for most user
+- [x] Try to make default config usable for most user
 - [x] Clean unused options in config
 - [x] Make rate:dur mapping configurable in Settings
 - [x] Make my added features configurable in web settings (like frrdelta) and add proper docs for them

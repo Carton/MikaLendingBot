@@ -3,8 +3,10 @@
 [api]
 # Where to work? "Bitfinex" or "Poloniex". Default is "Bitfinex"
 exchange = "Bitfinex"
-# apikey = "YourAPIKey"
-# secret = "YourSecret"
+# Change this to your API KEY
+apikey = "YourAPIKey"
+# Change this to your secret
+secret = "YourSecret"
 
 # Supported currencies whitelist. Choose based on your exchange.
 # Bitfinex:
@@ -68,7 +70,7 @@ json_log_size = 200
 [coin.default]
 # Minimum daily lend rate in percent (0.0031-5)
 # Setting to 0.0031 is about 1% a year, not worth it.
-min_daily_rate = 0.005
+min_daily_rate = 0.01
 
 # Maximum lending rate. 2% is good choice because it's default at margin trader interface.
 # 5% is the maximum rate accepted by the exchange (0.003-5)
@@ -94,7 +96,7 @@ max_to_lend_rate = 0
 # Lending Strategy Selection. "Spread" or "FRR" (Bitfinex only).
 # Spread: Standard gap/spread based lending.
 # FRR: Flash Return Rate based lending. Forces spread_lend = 1.
-strategy = "Spread"
+strategy = "FRR"
 
 # --- Spread Strategy Settings ---
 
