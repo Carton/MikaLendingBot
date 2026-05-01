@@ -23,7 +23,7 @@ class TestLogger:
             mock_write.assert_called()
 
     def test_json_output(self, tmp_path):
-        json_file = tmp_path / "botlog.json"
+        json_file = tmp_path / "bot_stats.json"
         out = JsonOutput(str(json_file), 10, "POLONIEX")
 
         out.status("Status", "2025-12-30", " - 1 Day")
@@ -37,11 +37,14 @@ class TestLogger:
             data = json.load(f)
             assert data["exchange"] == "POLONIEX"
             assert data["last_status"] == "Status"
-            assert "Log Line 1" in data["log"]
+            assert "log" not in data
             assert data["raw_data"]["BTC"]["lentSum"] == "1.0"
 
+        # Test get_recent_logs
+        assert "Log Line 1" in out.get_recent_logs()
+
     def test_logger_lifecycle(self, tmp_path):
-        json_file = tmp_path / "botlog.json"
+        json_file = tmp_path / "bot_stats.json"
         logger = Logger(str(json_file), 5, "BITFINEX")
 
         logger.log("Info Message")

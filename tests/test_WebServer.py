@@ -34,6 +34,9 @@ class MockLogger:
         for cb in self.callbacks:
             cb(msg)
 
+    def get_recent_logs(self) -> list[str]:
+        return ["Mocked Log 1", "Mocked Log 2"]
+
 
 @pytest.fixture
 async def web_server() -> WebServer:
@@ -92,6 +95,17 @@ async def test_get_settings(web_server: WebServer) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["refreshRate"] == 30
+
+
+@pytest.mark.asyncio
+async def test_recent_logs(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/recent_logs")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["log"] == ["Mocked Log 1", "Mocked Log 2"]
 
 
 @pytest.mark.asyncio

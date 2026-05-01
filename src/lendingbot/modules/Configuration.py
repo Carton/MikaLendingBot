@@ -59,7 +59,7 @@ class BotConfig(BaseModel):
     period_inactive: float = Field(300.0, ge=1, le=3600)
     request_timeout: int = Field(30, ge=1, le=180)
     api_debug_log: bool = False
-    json_file: str = "www/botlog.json"
+    json_file: str = "www/bot_stats.json"
     json_log_size: int = 200
     log_file: str = "logs/lendingbot.log"
     log_file_days: int = Field(10, ge=1)

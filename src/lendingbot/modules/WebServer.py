@@ -86,6 +86,10 @@ class WebServer:
             self.save_web_settings({"lending_paused": False})
             return Response(content="Lending resumed")
 
+        @self.app.get("/recent_logs", response_model=None)
+        async def recent_logs() -> dict[str, Any]:
+            return {"log": self.log.get_recent_logs()}
+
         @self.app.get("/stream-logs", response_model=None)
         async def stream_logs(request: Request) -> StreamingResponse:
             queue: asyncio.Queue[str] = asyncio.Queue()

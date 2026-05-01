@@ -516,12 +516,30 @@ function setupSSE() {
     };
 }
 
+function fetchRecentLogs() {
+    if (window.location.protocol === "file:") return;
+    $.getJSON('/recent_logs', function (data) {
+        if (data && data.log) {
+            var rowCount = data.log.length;
+            var table = $('#logtable');
+            table.empty();
+            for (var i = rowCount - 1; i >= 0; i--) {
+                table.append($('<tr/>').append($('<td colspan="2" />').text(data.log[i])));
+            }
+            initialLogsLoaded = true;
+        }
+    }).fail(function (err) {
+        console.error("Failed to fetch recent logs:", err);
+    });
+}
+
 function update() {
     fetchSettings().always(function () {
         if (window.location.protocol == "file:") {
             $('#file').show();
         } else {
             setupSSE();
+            fetchRecentLogs();
         }
         loadData();
     });

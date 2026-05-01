@@ -14,7 +14,8 @@ from lendingbot.modules.PluginsManager import PluginsManager
 def mock_config():
     # Setup config to enable plugins
     return RootConfig(
-        plugins=PluginsConfig(account_stats={"enabled": True}, charts={"enabled": True})
+        bot={"plugins": ["AccountStats", "Charts"]},
+        plugins=PluginsConfig(account_stats={"enabled": True}, charts={"enabled": True}),
     )
 
 
@@ -69,7 +70,7 @@ class TestPluginsManager:
 
         with patch("lendingbot.plugins.AccountStats", MockAccountStats):
             # Only enable AccountStats
-            mock_config.plugins.charts["enabled"] = False
+            mock_config.bot.plugins = ["AccountStats"]
 
             manager = PluginsManager(mock_config, mock_api, mock_log)
 
@@ -84,7 +85,7 @@ class TestPluginsManager:
         instance.before_lending.side_effect = Exception("Runtime error")
 
         with patch("lendingbot.plugins.AccountStats", MockAccountStats):
-            mock_config.plugins.charts["enabled"] = False
+            mock_config.bot.plugins = ["AccountStats"]
 
             manager = PluginsManager(mock_config, mock_api, mock_log)
             assert len(manager.active_plugins) == 1
@@ -100,7 +101,7 @@ class TestPluginsManager:
             del mock_plugins_mod.AccountStats
 
             # Disable charts to focus on AccountStats
-            mock_config.plugins.charts["enabled"] = False
+            mock_config.bot.plugins = ["AccountStats"]
 
             manager = PluginsManager(mock_config, mock_api, mock_log)
 

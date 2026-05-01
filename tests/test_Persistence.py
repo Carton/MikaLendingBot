@@ -72,7 +72,8 @@ class TestPersistence:
         """Verify WebServer.save_web_settings writes correctly to file."""
 
         mock_engine = MagicMock()
-        web_server = WebServer(mock_config, mock_engine)
+        mock_log = MagicMock()
+        web_server = WebServer(mock_config, mock_engine, mock_log)
 
         test_file = tmp_path / "web_settings_test.json"
         web_server.web_settings_file = str(test_file)

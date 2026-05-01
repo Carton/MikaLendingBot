@@ -79,8 +79,10 @@ class JsonOutput:
             path.parent.mkdir(parents=True, exist_ok=True)
 
         with path.open("w", encoding="utf-8") as f:
-            self.jsonOutput["log"] = list(self.jsonOutputLog)
             f.write(json.dumps(self.jsonOutput, ensure_ascii=True, sort_keys=True))
+
+    def get_recent_logs(self) -> list[str]:
+        return list(self.jsonOutputLog)
 
     def addSectionLog(self, section: str, key: str, value: Any) -> None:
         if section not in self.jsonOutput:
@@ -225,6 +227,11 @@ class Logger:
     def updateOutputCurrency(self, key: str, value: Any) -> None:
         if hasattr(self.output, "outputCurrency"):
             self.output.outputCurrency(key, value)
+
+    def get_recent_logs(self) -> list[str]:
+        if hasattr(self.output, "get_recent_logs"):
+            return self.output.get_recent_logs()
+        return []
 
     def persistStatus(self) -> None:
         if hasattr(self.output, "writeJsonFile"):
