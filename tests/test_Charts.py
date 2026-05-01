@@ -42,6 +42,14 @@ class TestCharts:
         assert charts_plugin.db is not None
         charts_plugin.log.addSectionLog.assert_called()
 
+    def test_default_history_file(self):
+        # Create a plugin instance without overriding history_file
+        mock_cfg = RootConfig(
+            plugins=PluginsConfig(charts={"enabled": True, "DumpInterval": 21600})
+        )
+        plugin = Charts(mock_cfg, Mock(), MagicMock(), {})
+        assert plugin.history_file == "www/history.json"
+
     def test_dump_history(self, charts_plugin):
         # Insert dummy data
         charts_plugin.db.execute(

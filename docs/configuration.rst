@@ -476,7 +476,7 @@ There is an optional setting to change how frequently this plugin dumps data. By
     [plugins.charts]
     dump_interval = 21600
 
-The history data is automatically saved to ``logs/history.json``.
+The history data is automatically saved to ``www/history.json``.
 
 On a new installation, the AccountStats database may not be up to date on first iteration of the Charts plugin and no data will get dumped. Simply wait for the next interval or restart the bot after the AccountStats plugin is finished.
 
