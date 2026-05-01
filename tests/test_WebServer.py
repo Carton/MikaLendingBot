@@ -1,6 +1,15 @@
+from __future__ import annotations
+
 import asyncio
+import socket
+from typing import TYPE_CHECKING, Any
+
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Callable
 
 import pytest
+import uvicorn
 from httpx import ASGITransport, AsyncClient
 
 from lendingbot.modules.Configuration import RootConfig
@@ -8,35 +17,61 @@ from lendingbot.modules.WebServer import WebServer
 
 
 class MockEngine:
-    def __init__(self):
-        self.lending_paused = False
-        self.coin_cfg = {}
-        self.frrdelta_min = -10
-        self.frrdelta_max = 10
+    def __init__(self) -> None:
+        self.lending_paused: bool = False
+        self.coin_cfg: dict[str, Any] = {}
+        self.frrdelta_min: int = -10
+        self.frrdelta_max: int = 10
 
 
 class MockLogger:
-    def __init__(self):
-        self.callbacks = []
+    def __init__(self) -> None:
+        self.callbacks: list[Callable[[str], None]] = []
 
-    def log(self, msg):
+    def log(self, msg: str) -> None:
         for cb in self.callbacks:
             cb(msg)
 
 
 @pytest.fixture
-async def web_server():
+async def web_server() -> WebServer:
     cfg = RootConfig()
     engine = MockEngine()
     logger = MockLogger()
     logger.callbacks = []
-    ws = WebServer(cfg, engine, logger)
+    ws = WebServer(cfg, engine, logger)  # type: ignore[arg-type]
     ws.loop = asyncio.get_running_loop()
     return ws
 
 
+@pytest.fixture
+async def live_web_server(web_server: WebServer) -> AsyncGenerator[str, None]:
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    host, port = sock.getsockname()
+    sock.close()
+
+    config = uvicorn.Config(
+        app=web_server.app,
+        host=host,
+        port=port,
+        log_level="warning",
+        loop="asyncio",
+    )
+    server = uvicorn.Server(config)
+    server_task = asyncio.create_task(server.serve())
+
+    try:
+        while not server.started:
+            await asyncio.sleep(0.01)
+        yield f"http://{host}:{port}"
+    finally:
+        server.should_exit = True
+        await asyncio.wait_for(server_task, timeout=5.0)
+
+
 @pytest.mark.asyncio
-async def test_get_status(web_server):
+async def test_get_status(web_server: WebServer) -> None:
     async with AsyncClient(
         transport=ASGITransport(app=web_server.app), base_url="http://test"
     ) as ac:
@@ -47,7 +82,7 @@ async def test_get_status(web_server):
 
 
 @pytest.mark.asyncio
-async def test_get_settings(web_server):
+async def test_get_settings(web_server: WebServer) -> None:
     async with AsyncClient(
         transport=ASGITransport(app=web_server.app), base_url="http://test"
     ) as ac:
@@ -58,7 +93,7 @@ async def test_get_settings(web_server):
 
 
 @pytest.mark.asyncio
-async def test_pause_resume(web_server):
+async def test_pause_resume(web_server: WebServer) -> None:
     async with AsyncClient(
         transport=ASGITransport(app=web_server.app), base_url="http://test"
     ) as ac:
@@ -69,9 +104,9 @@ async def test_pause_resume(web_server):
 
 
 @pytest.mark.asyncio
-async def test_sse_stream(web_server):
+async def test_sse_stream(web_server: WebServer, live_web_server: str) -> None:
     async with (
-        AsyncClient(transport=ASGITransport(app=web_server.app), base_url="http://test") as ac,
+        AsyncClient(base_url=live_web_server, timeout=5.0) as ac,
         ac.stream("GET", "/stream-logs") as response,
     ):
         assert response.status_code == 200
@@ -87,10 +122,11 @@ async def test_sse_stream(web_server):
         # Use wait_for to prevent hanging
         try:
 
-            async def read_stream():
+            async def read_stream() -> str:
                 async for line in response.aiter_lines():
                     if line.startswith("data: "):
                         return line
+                return ""
 
             line = await asyncio.wait_for(read_stream(), timeout=5.0)
             assert test_msg in line

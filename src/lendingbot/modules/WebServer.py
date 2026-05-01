@@ -120,12 +120,17 @@ class WebServer:
         )
 
     def start(self) -> None:
+        """Start the web server in a separate daemon thread.
+
+        This initializes the asyncio event loop and runs the Uvicorn ASGI server.
+        """
         print(f"Starting WebServer at {self.web_server_ip} on port {self.web_server_port}")
         self.thread = threading.Thread(target=self._run_server)
         self.thread.daemon = True
         self.thread.start()
 
     def _run_server(self) -> None:
+        """Internal method to run the Uvicorn server in a new event loop."""
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
@@ -136,11 +141,17 @@ class WebServer:
             log_level="warning",
             loop="asyncio",
         )
-        server = uvicorn.Server(config)
-        self.loop.run_until_complete(server.serve())
+        self.server = uvicorn.Server(config)
+        self.loop.run_until_complete(self.server.serve())
 
     def stop(self) -> None:
+        """Gracefully stop the web server.
+
+        Signals the Uvicorn server to exit its event loop.
+        """
         print("Stopping WebServer")
+        if self.server:
+            self.server.should_exit = True
 
     # Web Settings methods
     def get_web_settings(self) -> dict[str, Any]:

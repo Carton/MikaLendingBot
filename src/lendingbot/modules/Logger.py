@@ -152,7 +152,7 @@ class Logger:
         return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
     def _broadcast(self, msg: str) -> None:
-        for callback in self.callbacks:
+        for callback in list(self.callbacks):
             with contextlib.suppress(Exception):
                 callback(msg)
 
