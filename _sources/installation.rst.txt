@@ -148,7 +148,7 @@ Creating the Web App (Optional)
 #. To have the webserver communicate with your bot, you need to edit your settings (``config.toml``) and uncomment (remove the ``#`` in front of) the following settings: ``json_file`` and ``json_log_size``. Make sure that ``enabled`` (under ``[bot.web]``) REMAINS commented.
 
 
-.. warning:: Do not use the built-in Simple Web Server on any host you do not control.
+.. warning:: Do not use the built-in FastAPI Web Server on any host you do not control.
 
 Running the Bot
 ---------------

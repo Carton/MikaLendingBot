@@ -59,20 +59,21 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#advanced-logging-and-web-display">2.11. Advanced logging and Web Display</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#plugins">2.12. Plugins</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#accountstats-plugin">2.12.1. AccountStats Plugin</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#profit-charts-plugin">2.12.2. Profit Charts Plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plugins">2.12. Plugins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#web-server-real-time">2.13. Web Server (Real-time)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#accountstats-plugin">2.13.1. AccountStats Plugin</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#profit-charts-plugin">2.13.2. Profit Charts Plugin</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#lendingbot-html-options">2.13. lendingbot.html options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#notifications">2.14. Notifications</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#global-notification-settings">2.14.1. Global Notification Settings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#email-notifications">2.14.2. Email notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#slack-notifications">2.14.3. Slack notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#telegram-notifications">2.14.4. Telegram notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#pushbullet-notifications">2.14.5. Pushbullet notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#irc-notifications">2.14.6. IRC notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#market-analysis-plugin">2.14.7. Market Analysis Plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lendingbot-html-options">2.14. lendingbot.html options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notifications">2.15. Notifications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#global-notification-settings">2.15.1. Global Notification Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#email-notifications">2.15.2. Email notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slack-notifications">2.15.3. Slack notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#telegram-notifications">2.15.4. Telegram notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pushbullet-notifications">2.15.5. Pushbullet notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irc-notifications">2.15.6. IRC notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market-analysis-plugin">2.15.7. Market Analysis Plugin</a></li>
 </ul>
 </li>
 </ul>
@@ -644,8 +645,13 @@ To enable/disable a plugin add/remove it to the <code class="docutils literal no
 </div>
 <p>Plugins can add their own HTML pages by calling <code class="docutils literal notranslate"><span class="pre">self.log.addSectionlog('plugins',</span> <span class="pre">'&lt;pluginName&gt;',</span> <span class="pre">'navbar',</span> <span class="pre">True);</span></code> within their init code.
 This will add a navbar element on the main lendingbot.html page linking to &lt;pluginName&gt;.html</p>
+</section>
+<section id="web-server-real-time">
+<h2><span class="section-number">2.13. </span>Web Server (Real-time)<a class="headerlink" href="#web-server-real-time" title="Link to this heading"></a></h2>
+<p>The bot includes a high-performance built-in web server (powered by FastAPI) to monitor and control its status in real-time.
+Logs are now pushed instantly to the dashboard using SSE (Server-Sent Events) technology, eliminating the need for periodic page reloads.</p>
 <section id="accountstats-plugin">
-<h3><span class="section-number">2.12.1. </span>AccountStats Plugin<a class="headerlink" href="#accountstats-plugin" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.13.1. </span>AccountStats Plugin<a class="headerlink" href="#accountstats-plugin" title="Link to this heading"></a></h3>
 <p>The AccountStats plugin fetches all your loan history and provides statistics based on it.
 Current implementation sends a earnings summary Notification (see Notifications sections) every 24hr.</p>
 <p>To enable the plugin add <code class="docutils literal notranslate"><span class="pre">AccountStats</span></code> to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list, example:</p>
@@ -661,7 +667,7 @@ Current implementation sends a earnings summary Notification (see Notifications 
 <p>Be aware that first initialization might take longer as the bot will fetch all the history.</p>
 </section>
 <section id="profit-charts-plugin">
-<h3><span class="section-number">2.12.2. </span>Profit Charts Plugin<a class="headerlink" href="#profit-charts-plugin" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.13.2. </span>Profit Charts Plugin<a class="headerlink" href="#profit-charts-plugin" title="Link to this heading"></a></h3>
 <p>The Charts plugin dumps out the historical lending data to a JSON structure which is read by the new charts.html page.
 This page reads this dump data and constructs a Google Chart showing daily profit over time.</p>
 <p>The AccountStats plugin must be enabled for the Charts plugin to function correctly.</p>
@@ -680,7 +686,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </section>
 </section>
 <section id="lendingbot-html-options">
-<h2><span class="section-number">2.13. </span>lendingbot.html options<a class="headerlink" href="#lendingbot-html-options" title="Link to this heading"></a></h2>
+<h2><span class="section-number">2.14. </span>lendingbot.html options<a class="headerlink" href="#lendingbot-html-options" title="Link to this heading"></a></h2>
 <p>You can pass options to statistics page by adding them to URL. Eg, <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/lendingbot.html?option1=value&amp;option2=0</span></code></p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">effrate</span></code> controls how effective loan rate is calculated. Yearly rates are calculated based on effective rate, so this option affects them as well. Last used mode remembered by browser, so you do not have to specify this option every time. By default, effective loan rate is calculated considering lent precentage (from total available coins) and exchange fee.</p>
@@ -712,10 +718,10 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </ul>
 </section>
 <section id="notifications">
-<h2><span class="section-number">2.14. </span>Notifications<a class="headerlink" href="#notifications" title="Link to this heading"></a></h2>
+<h2><span class="section-number">2.15. </span>Notifications<a class="headerlink" href="#notifications" title="Link to this heading"></a></h2>
 <p>The bot supports sending notifications for several different events on several different platforms. To enable notifications, you must set <code class="docutils literal notranslate"><span class="pre">enabled</span> <span class="pre">=</span> <span class="pre">true</span></code> in the <code class="docutils literal notranslate"><span class="pre">[notifications]</span></code> section, enable at least one of the following events and also at least one notification platform. The list of events you can notify about are:</p>
 <section id="global-notification-settings">
-<h3><span class="section-number">2.14.1. </span>Global Notification Settings<a class="headerlink" href="#global-notification-settings" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.15.1. </span>Global Notification Settings<a class="headerlink" href="#global-notification-settings" title="Link to this heading"></a></h3>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">notify_new_loans</span></code></p>
 <blockquote>
@@ -763,7 +769,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 <p>Once you have decided which notifications you want to receive, you can then go about configuring platforms to send them on. Currently the bot supports:</p>
 </section>
 <section id="email-notifications">
-<h3><span class="section-number">2.14.2. </span>Email notifications<a class="headerlink" href="#email-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.15.2. </span>Email notifications<a class="headerlink" href="#email-notifications" title="Link to this heading"></a></h3>
 <p>To enable email you should configure the following in the <code class="docutils literal notranslate"><span class="pre">[notifications.email]</span></code> section:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.email]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -777,7 +783,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="slack-notifications">
-<h3><span class="section-number">2.14.3. </span>Slack notifications<a class="headerlink" href="#slack-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.15.3. </span>Slack notifications<a class="headerlink" href="#slack-notifications" title="Link to this heading"></a></h3>
 <p>Before you can post to slack you need to create an API token. Once you have a token you can then configure the bot as so:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.slack]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -787,7 +793,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="telegram-notifications">
-<h3><span class="section-number">2.14.4. </span>Telegram notifications<a class="headerlink" href="#telegram-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.15.4. </span>Telegram notifications<a class="headerlink" href="#telegram-notifications" title="Link to this heading"></a></h3>
 <p>To have telegram notifications you need to get a bot id from the BotFather. Once you have a bot id you need to get your Chat ID or create a channel and invite the bot. Once you have all this in place you configure it like so:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.telegram]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -797,7 +803,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="pushbullet-notifications">
-<h3><span class="section-number">2.14.5. </span>Pushbullet notifications<a class="headerlink" href="#pushbullet-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.15.5. </span>Pushbullet notifications<a class="headerlink" href="#pushbullet-notifications" title="Link to this heading"></a></h3>
 <p>To enable Pushbullet notifications, you first need to create an API key and then discover your device ID.</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.pushbullet]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -807,7 +813,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="irc-notifications">
-<h3><span class="section-number">2.14.6. </span>IRC notifications<a class="headerlink" href="#irc-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.15.6. </span>IRC notifications<a class="headerlink" href="#irc-notifications" title="Link to this heading"></a></h3>
 <p>IRC is very easy to configure, if you are already interested in using it you’ll understand what each of the options are.</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.irc]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -821,7 +827,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="market-analysis-plugin">
-<h3><span class="section-number">2.14.7. </span>Market Analysis Plugin<a class="headerlink" href="#market-analysis-plugin" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.15.7. </span>Market Analysis Plugin<a class="headerlink" href="#market-analysis-plugin" title="Link to this heading"></a></h3>
 <p>The Market Analysis plugin records currency market data and allows the bot to see trends. This data can be used to compute a recommended minimum lending rate.</p>
 <p>To enable the plugin, add <code class="docutils literal notranslate"><span class="pre">MarketAnalysis</span></code> to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list and configure the <code class="docutils literal notranslate"><span class="pre">[plugins.market_analysis]</span></code> section.</p>
 <p>For more detailed information on all available parameters, please refer to the <a class="reference internal" href="market_analysis.html#market-analysis-section"><span class="std std-ref">Market Analysis</span></a> documentation.</p>
