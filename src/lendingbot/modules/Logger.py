@@ -64,7 +64,11 @@ class JsonOutput:
     def writeJsonFile(self) -> None:
         from pathlib import Path
 
-        with Path(self.jsonOutputFile).open("w", encoding="utf-8") as f:
+        path = Path(self.jsonOutputFile)
+        if path.parent:
+            path.parent.mkdir(parents=True, exist_ok=True)
+
+        with path.open("w", encoding="utf-8") as f:
             self.jsonOutput["log"] = list(self.jsonOutputLog)
             f.write(json.dumps(self.jsonOutput, ensure_ascii=True, sort_keys=True))
 

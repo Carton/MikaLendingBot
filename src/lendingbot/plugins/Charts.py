@@ -21,6 +21,9 @@ class Charts(Plugin):
 
     def on_bot_init(self) -> None:
         super().on_bot_init()
+        # Ensure directories exist
+        Path("market_data").mkdir(exist_ok=True)
+        Path("www").mkdir(exist_ok=True)
 
         # If there's no history database, can't use this
         if not Path(DB_PATH).is_file():

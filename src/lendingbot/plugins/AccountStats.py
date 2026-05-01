@@ -1,6 +1,7 @@
 import datetime
 import sqlite3
 import time
+from pathlib import Path
 from typing import Any
 
 from ..modules.Utils import format_amount_currency
@@ -48,6 +49,8 @@ class AccountStats(Plugin):
 
     def on_bot_init(self) -> None:
         super().on_bot_init()
+        # Ensure directory exists
+        Path("market_data").mkdir(exist_ok=True)
         self.init_db()
         self.check_upgrade()
         self.report_interval = int(self.config.plugins.account_stats.get("report_interval", 86400))
@@ -58,12 +61,14 @@ class AccountStats(Plugin):
                 self.log.updateStatusValue(coin, key, self.earnings[coin][key])
 
     def after_lending(self) -> None:
-        if (
-            self.get_db_version() > 0
-            and self.last_notification != 0
-            and self.last_notification + self.report_interval > time.time()
-        ):
-            return
+        if self.get_db_version() > 0 and self.last_notification != 0:
+            next_update = self.last_notification + self.report_interval
+            if next_update > time.time():
+                # We can log this to help user debug, but maybe too chatty for normal use.
+                # However, since the user is debugging, I'll add it.
+                # self.log.log(f"AccountStats: Next update at {datetime.datetime.fromtimestamp(next_update)}")
+                return
+        self.log.log("AccountStats: Updating lending history from exchange...")
         self.update_history()
         self.notify_stats()
 
