@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import atexit
+import contextlib
 import datetime
 import json
 import logging
@@ -8,7 +11,11 @@ import sys
 import time
 from collections import deque
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from .Notify import send_notification
 from .Utils import format_amount_currency, format_rate_pct
@@ -117,6 +124,7 @@ class Logger:
 
         # Set up text file logger
         self.file_logger: logging.Logger | None = None
+        self.callbacks: list[Callable[[str], None]] = []
         if log_file:
             path = Path(log_file)
             if path.parent:
@@ -143,11 +151,17 @@ class Logger:
         ts = time.time()
         return datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
+    def _broadcast(self, msg: str) -> None:
+        for callback in self.callbacks:
+            with contextlib.suppress(Exception):
+                callback(msg)
+
     def log(self, msg: str) -> None:
         log_message = f"{self.timestamp()} {msg}"
         self.output.printline(log_message)
         if self.file_logger:
             self.file_logger.info(log_message)
+        self._broadcast(log_message)
         self.refreshStatus()
 
     def log_error(self, msg: str) -> None:
@@ -157,6 +171,7 @@ class Logger:
             self.file_logger.error(log_message)
         if isinstance(self.output, JsonOutput):
             print(log_message)
+        self._broadcast(log_message)
         self.refreshStatus()
 
     def offer(
@@ -181,6 +196,7 @@ class Logger:
         self.output.printline(line)
         if self.file_logger:
             self.file_logger.info(line)
+        self._broadcast(line)
         self.refreshStatus()
 
     def cancelOrder(self, cur: str, msg: Any) -> None:
@@ -188,6 +204,7 @@ class Logger:
         self.output.printline(line)
         if self.file_logger:
             self.file_logger.info(line)
+        self._broadcast(line)
         self.refreshStatus()
 
     def refreshStatus(self, lent: str = "", days_remaining: str = "") -> None:

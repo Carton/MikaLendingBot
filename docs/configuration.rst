@@ -432,6 +432,12 @@ To enable/disable a plugin add/remove it to the ``plugins`` list config option u
 Plugins can add their own HTML pages by calling ``self.log.addSectionlog('plugins', '<pluginName>', 'navbar', True);`` within their init code.
 This will add a navbar element on the main lendingbot.html page linking to <pluginName>.html
 
+Web Server (Real-time)
+----------------------
+
+The bot includes a high-performance built-in web server (powered by FastAPI) to monitor and control its status in real-time.
+Logs are now pushed instantly to the dashboard using SSE (Server-Sent Events) technology, eliminating the need for periodic page reloads.
+
 AccountStats Plugin
 ~~~~~~~~~~~~~~~~~~~
 

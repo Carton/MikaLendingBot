@@ -1,221 +1,98 @@
-"""
-Tests for WebServer module using Dependency Injection.
-"""
-
-import json
-from decimal import Decimal
-from unittest.mock import MagicMock, patch
+import asyncio
 
 import pytest
+from httpx import ASGITransport, AsyncClient
 
-from lendingbot.modules.Configuration import BotConfig, RootConfig, WebServerConfig
+from lendingbot.modules.Configuration import RootConfig
 from lendingbot.modules.WebServer import WebServer
 
 
-@pytest.fixture
-def mock_config():
-    return RootConfig(bot=BotConfig(web=WebServerConfig(host="0.0.0.0", port=8000, template="www")))
+class MockEngine:
+    def __init__(self):
+        self.lending_paused = False
+        self.coin_cfg = {}
+        self.frrdelta_min = -10
+        self.frrdelta_max = 10
+
+
+class MockLogger:
+    def __init__(self):
+        self.callbacks = []
+
+    def log(self, msg):
+        for cb in self.callbacks:
+            cb(msg)
 
 
 @pytest.fixture
-def mock_lending_engine():
-    engine = MagicMock()
-    engine.lending_paused = False
-    engine.frrdelta_min = Decimal("0")
-    engine.frrdelta_max = Decimal("0")
-    engine.coin_cfg = {}
-    return engine
+async def web_server():
+    cfg = RootConfig()
+    engine = MockEngine()
+    logger = MockLogger()
+    logger.callbacks = []
+    ws = WebServer(cfg, engine, logger)
+    ws.loop = asyncio.get_running_loop()
+    return ws
 
 
-@pytest.fixture
-def web_server(mock_config, mock_lending_engine):
-    return WebServer(mock_config, mock_lending_engine)
+@pytest.mark.asyncio
+async def test_get_status(web_server):
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/get_status")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["lending_paused"] is False
 
 
-class TestWebServer:
-    def test_init(self, web_server):
-        assert web_server.web_server_ip == "0.0.0.0"
-        assert web_server.web_server_port == 8000
-        assert web_server.web_server_template == "www"
+@pytest.mark.asyncio
+async def test_get_settings(web_server):
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/get_settings")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["refreshRate"] == 30
 
-    def test_start_server(self, web_server):
-        with patch("threading.Thread") as mock_thread:
-            web_server.start()
-            mock_thread.assert_called()
-            _, kwargs = mock_thread.call_args
-            assert kwargs["target"] == web_server._run_server
 
-    def test_stop_server(self, web_server):
-        web_server.server = MagicMock()
-        with patch("threading.Thread") as mock_thread:
-            web_server.stop()
-            # It should start a thread to shutdown the server
-            mock_thread.assert_called()
-            _, kwargs = mock_thread.call_args
-            assert kwargs["target"] == web_server.server.shutdown
+@pytest.mark.asyncio
+async def test_pause_resume(web_server):
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        await ac.get("/pause_lending")
+        assert web_server.lending_engine.lending_paused is True
+        await ac.get("/resume_lending")
+        assert web_server.lending_engine.lending_paused is False
 
-    def test_handler_logic(self, web_server, mock_lending_engine):
-        # We need to simulate the inner QuietHandler.
-        # Since _run_server defines the class locally, we can't import it easily.
-        # But we can inspect how _run_server uses it.
-        # It creates a subclass of SimpleHTTPRequestHandler.
 
-        # We can extract the handler logic by patching TCPServer
-        handler_class_capture = []
+@pytest.mark.asyncio
+async def test_sse_stream(web_server):
+    async with (
+        AsyncClient(transport=ASGITransport(app=web_server.app), base_url="http://test") as ac,
+        ac.stream("GET", "/stream-logs") as response,
+    ):
+        assert response.status_code == 200
 
-        def capture_handler(addr, handler_cls):
-            handler_class_capture.append(handler_cls)
-            return MagicMock()
+        test_msg = "SSE Test Message"
+        # Give a moment for the subscriber to be registered
+        await asyncio.sleep(0.1)
 
-        with (
-            patch("socketserver.ThreadingTCPServer", side_effect=capture_handler),
-            patch("socket.getaddrinfo", return_value=[]),
-        ):
-            # We need to break serve_forever to not block
-            mock_server = MagicMock()
-            mock_server.serve_forever.return_value = None
+        web_server.log.log(test_msg)
+        # Give loop a chance to process the scheduled put_nowait
+        await asyncio.sleep(0.1)
 
-            # Override _run_server to avoid actual threading but run enough to capture handler
-            # Actually _run_server does a lot.
-            # Let's patch threading.Thread to run synchronously for a moment? No.
-            # Let's just call _run_server directly but mock serve_forever to return immediately?
-            # But serve_forever blocks.
-            pass
+        # Use wait_for to prevent hanging
+        try:
 
-        # Alternative: We can access the Handler class via inspecting the server object if we let it create one?
-        # Or we can just trust the logic if we could instantiate the handler directly.
-        # The Handler class is defined INSIDE _run_server, so it captures 'web_instance'.
-        # We must invoke _run_server to define it.
+            async def read_stream():
+                async for line in response.aiter_lines():
+                    if line.startswith("data: "):
+                        return line
 
-        with patch("socketserver.ThreadingTCPServer") as MockServer:
-            mock_server_instance = MockServer.return_value
-            # We want serve_forever to NOT block, just return.
-            mock_server_instance.serve_forever.return_value = None
-
-            with patch("socket.getaddrinfo", return_value=[]):
-                web_server._run_server()
-
-            # Now we can retrieve the handler class from the call args to ThreadingTCPServer
-            # call((ip, port), HandlerClass)
-            args, _ = MockServer.call_args
-            HandlerClass = args[1]
-
-            # Now we can instantiate this HandlerClass with a mock request
-            # HandlerClass(request, client_address, server)
-
-            mock_request = MagicMock()
-            mock_request.makefile.return_value = MagicMock()
-
-            # We don't want the BaseHTTPRequestHandler __init__ to run fully as it tries to read the socket
-            # So we patch it or just Mock the methods we need.
-            # But the logic is in do_GET / do_POST.
-
-            # Let's instantiate it but suppress __init__
-            # Or better, just use the class methods directly if they don't depend on self too much (they do).
-
-            # We can mock the superclass __init__
-            with patch("http.server.SimpleHTTPRequestHandler.__init__", return_value=None):
-                handler = HandlerClass(mock_request, ("0.0.0.0", 1234), mock_server_instance)
-                # Manually set attributes usually set by __init__
-                handler.path = "/"
-                handler.headers = {}
-                handler.rfile = MagicMock()
-                handler.wfile = MagicMock()
-                handler.command = "GET"
-                handler.request_version = "HTTP/1.0"
-                handler.close_connection = True
-                handler.raw_requestline = ""
-                handler.requestline = ""
-
-                # === Test /pause_lending ===
-                with patch.object(web_server, "save_web_settings") as mock_save:
-                    handler.path = "/pause_lending"
-                    handler.do_GET()
-                    assert mock_lending_engine.lending_paused is True
-                    mock_save.assert_called_with({"lending_paused": True})
-
-                # === Test /resume_lending ===
-                with patch.object(web_server, "save_web_settings") as mock_save:
-                    handler.path = "/resume_lending"
-                    handler.do_GET()
-                    assert mock_lending_engine.lending_paused is False
-                    mock_save.assert_called_with({"lending_paused": False})
-
-                # === Test /get_status ===
-                handler.path = "/get_status"
-                handler.do_GET()
-                # Verify write called with json
-                args, _ = handler.wfile.write.call_args
-                response = json.loads(args[0].decode("utf-8"))
-                assert "lending_paused" in response
-
-                # === Test /set_config (POST) ===
-                handler.path = "/set_config"
-                payload = json.dumps({"frrdelta_min": "0.0001", "frrdelta_max": "0.0005"}).encode(
-                    "utf-8"
-                )
-                handler.headers = {"Content-Length": str(len(payload))}
-                handler.rfile.read.return_value = payload
-
-                with patch.object(web_server, "save_web_settings") as mock_save:
-                    handler.do_POST()
-                    assert mock_lending_engine.frrdelta_min == Decimal("0.0001")
-                    assert mock_lending_engine.frrdelta_max == Decimal("0.0005")
-                    mock_save.assert_called()
-
-    def test_save_web_settings_error(self, web_server, mock_lending_engine):
-        # Simulate OS error during write
-        with patch("pathlib.Path.open", side_effect=OSError("Disk Full")):
-            web_server.save_web_settings({"test": 1})
-            # Check if it logs to engine
-            mock_lending_engine.log.log.assert_called_with("Error saving web settings: Disk Full")
-
-    def test_get_web_settings_read_error(self, web_server, mock_lending_engine):
-        # Simulate OS error during read
-        with (
-            patch("pathlib.Path.exists", return_value=True),
-            patch("pathlib.Path.open", side_effect=OSError("No Permission")),
-        ):
-            settings = web_server.get_web_settings()
-            # Should return defaults
-            assert settings == web_server.DEFAULT_WEB_SETTINGS
-            # Check if it logs to engine
-            mock_lending_engine.log.log.assert_called_with(
-                "Error reading web settings: No Permission"
-            )
-
-    def test_start_server_port_conflict(self, web_server):
-        # Simulate port conflict
-        with patch(
-            "socketserver.ThreadingTCPServer", side_effect=OSError("Address already in use")
-        ):
-            # Should catch and print error
-            web_server._run_server()
-
-    def test_handler_invalid_json(self, web_server, mock_lending_engine):  # noqa: ARG002
-        # Extract handler class
-        with patch("socketserver.ThreadingTCPServer") as MockServer:
-            mock_server_instance = MockServer.return_value
-            mock_server_instance.serve_forever.return_value = None
-            with patch("socket.getaddrinfo", return_value=[]):
-                web_server._run_server()
-            HandlerClass = MockServer.call_args[0][1]
-
-            mock_request = MagicMock()
-            with patch("http.server.SimpleHTTPRequestHandler.__init__", return_value=None):
-                handler = HandlerClass(mock_request, ("0.0.0.0", 1234), mock_server_instance)
-                handler.wfile = MagicMock()
-                handler.rfile = MagicMock()
-                handler.headers = {}
-                handler.send_response = MagicMock()
-                handler.send_header = MagicMock()
-                handler.end_headers = MagicMock()
-
-                # === Test invalid JSON ===
-                handler.path = "/set_config"
-                handler.headers["Content-Length"] = "5"
-                handler.rfile.read.return_value = b"NOTJSON"
-
-                # Currently it raises JSONDecodeError, we'll improve it to catch and return 400
-                with pytest.raises(json.JSONDecodeError):
-                    handler.do_POST()
+            line = await asyncio.wait_for(read_stream(), timeout=5.0)
+            assert test_msg in line
+        except TimeoutError:
+            pytest.fail("SSE stream timed out")

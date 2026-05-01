@@ -23,6 +23,7 @@ var Bits = new BTCDisplayUnit("Bits", 1000000);
 var Satoshi = new BTCDisplayUnit("Satoshi", 100000000);
 var displayUnit = BTC;
 var btcDisplayUnitsModes = [BTC, mBTC, Bits, Satoshi];
+var logSSE = null;
 
 function updateJson(data) {
     $('#status').text(data.last_status);
@@ -30,11 +31,14 @@ function updateJson(data) {
     $('#title').text(data.exchange + ' ' + data.label)
     document.title = data.exchange + ' ' + data.label
 
-    var rowCount = data.log.length;
-    var table = $('#logtable');
-    table.empty();
-    for (var i = rowCount - 1; i >= 0; i--) {
-        table.append($('<tr/>').append($('<td colspan="2" />').text(data.log[i])));
+    // Only update the table from JSON if SSE is not active
+    if (!logSSE) {
+        var rowCount = data.log.length;
+        var table = $('#logtable');
+        table.empty();
+        for (var i = rowCount - 1; i >= 0; i--) {
+            table.append($('<tr/>').append($('<td colspan="2" />').text(data.log[i])));
+        }
     }
 
     updateOutputCurrency(data.outputCurrency);
@@ -469,10 +473,37 @@ function updateJsonWithCurrentData() {
     // Let's just leave it to the next cycle or user forced refresh for V1.
 }
 
+function setupSSE() {
+    if (logSSE || window.location.protocol === "file:") return;
+
+    logSSE = new EventSource("/stream-logs");
+    logSSE.onmessage = function(event) {
+        var logLine = event.data;
+        var table = $('#logtable');
+        var newRow = $('<tr/>').append($('<td colspan="2" />').text(logLine));
+        table.prepend(newRow);
+
+        // Limit rows to avoid DOM bloat
+        var rows = table.find('tr');
+        if (rows.length > 500) {
+            rows.last().remove();
+        }
+    };
+    logSSE.onerror = function() {
+        if (logSSE) {
+            logSSE.close();
+            logSSE = null;
+        }
+        setTimeout(setupSSE, 5000);
+    };
+}
+
 function update() {
     fetchSettings().always(function () {
         if (window.location.protocol == "file:") {
             $('#file').show();
+        } else {
+            setupSSE();
         }
         loadData();
     });

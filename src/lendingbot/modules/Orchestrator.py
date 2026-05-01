@@ -115,7 +115,7 @@ class BotOrchestrator:
 
         # Initialize Web Server
         if self.config.bot.web.enabled:
-            self.web_server = WebServer.WebServer(self.config, self.engine)
+            self.web_server = WebServer.WebServer(self.config, self.engine, self.log)
             # Global for backward compatibility
             WebServer._web_server = self.web_server
 

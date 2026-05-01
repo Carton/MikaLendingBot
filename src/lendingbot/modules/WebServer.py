@@ -1,25 +1,150 @@
-import http.server
+import asyncio
 import json
-import socket
-import socketserver
 import threading
+from collections.abc import AsyncGenerator
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+import uvicorn
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+
 from . import Configuration
+from .Logger import Logger
 
 
 class WebServer:
-    def __init__(self, config: Configuration.RootConfig, lending_engine: Any):
+    def __init__(self, config: Configuration.RootConfig, lending_engine: Any, log: Logger):
         self.config = config
         self.lending_engine = lending_engine
-        self.server: socketserver.TCPServer | None = None
+        self.log = log
         self.web_server_ip = config.bot.web.host
         self.web_server_port = config.bot.web.port
         self.web_server_template = config.bot.web.template
         self.web_settings_file = "web_settings.json"
-        self.DEFAULT_WEB_SETTINGS: dict[str, Any] = {
+
+        self.app = FastAPI(title="LendingBot Dashboard")
+        self._setup_routes()
+        self._setup_static()
+
+        self.thread: threading.Thread | None = None
+        self.loop: asyncio.AbstractEventLoop | None = None
+
+    def _setup_routes(self) -> None:
+        @self.app.get("/get_status", response_model=None)
+        async def get_status() -> dict[str, Any]:
+            strategies = {cur: cfg.strategy for cur, cfg in self.lending_engine.coin_cfg.items()}
+            return {
+                "lending_paused": self.lending_engine.lending_paused,
+                "lending_strategies": strategies,
+            }
+
+        @self.app.get("/get_settings", response_model=None)
+        async def get_settings() -> dict[str, Any]:
+            return self.get_web_settings()
+
+        @self.app.post("/set_config", response_model=None)
+        async def set_config(request: Request) -> dict[str, Any] | JSONResponse:
+            config_data = await request.json()
+            if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
+                try:
+                    self.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
+                    self.lending_engine.frrdelta_max = Decimal(str(config_data["frrdelta_max"]))
+                    self.log.log(
+                        f"Settings updated by user: FRR Delta Min={self.lending_engine.frrdelta_min}%, Max={self.lending_engine.frrdelta_max}%"
+                    )
+                    self.save_web_settings(config_data)
+                    return {
+                        "success": True,
+                        "frrdelta_min": str(self.lending_engine.frrdelta_min),
+                        "frrdelta_max": str(self.lending_engine.frrdelta_max),
+                    }
+                except (ValueError, TypeError, InvalidOperation) as e:
+                    return JSONResponse(
+                        status_code=400, content={"success": False, "error": str(e)}
+                    )
+            else:
+                try:
+                    self.save_web_settings(config_data)
+                    return {"success": True}
+                except Exception as e:
+                    return JSONResponse(
+                        status_code=400, content={"success": False, "error": str(e)}
+                    )
+
+        @self.app.get("/pause_lending", response_model=None)
+        async def pause_lending() -> Response:
+            self.lending_engine.lending_paused = True
+            self.save_web_settings({"lending_paused": True})
+            return Response(content="Lending paused")
+
+        @self.app.get("/resume_lending", response_model=None)
+        async def resume_lending() -> Response:
+            self.lending_engine.lending_paused = False
+            self.save_web_settings({"lending_paused": False})
+            return Response(content="Lending resumed")
+
+        @self.app.get("/stream-logs", response_model=None)
+        async def stream_logs(request: Request) -> StreamingResponse:
+            queue: asyncio.Queue[str] = asyncio.Queue()
+
+            def log_callback(msg: str) -> None:
+                if self.loop:
+                    self.loop.call_soon_threadsafe(queue.put_nowait, msg)
+
+            self.log.callbacks.append(log_callback)
+
+            async def event_generator() -> AsyncGenerator[str, None]:
+                try:
+                    while True:
+                        if await request.is_disconnected():
+                            break
+                        message = await queue.get()
+                        yield f"data: {message}\n\n"
+                finally:
+                    if log_callback in self.log.callbacks:
+                        self.log.callbacks.remove(log_callback)
+
+            return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+    def _setup_static(self) -> None:
+        # Serve logs directory
+        if Path("logs").exists():
+            self.app.mount("/logs", StaticFiles(directory="logs"), name="logs")
+
+        # Serve main template (www)
+        self.app.mount(
+            "/", StaticFiles(directory=self.web_server_template, html=True), name="static"
+        )
+
+    def start(self) -> None:
+        print(f"Starting WebServer at {self.web_server_ip} on port {self.web_server_port}")
+        self.thread = threading.Thread(target=self._run_server)
+        self.thread.daemon = True
+        self.thread.start()
+
+    def _run_server(self) -> None:
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        config = uvicorn.Config(
+            app=self.app,
+            host=self.web_server_ip,
+            port=self.web_server_port,
+            log_level="warning",
+            loop="asyncio",
+        )
+        server = uvicorn.Server(config)
+        self.loop.run_until_complete(server.serve())
+
+    def stop(self) -> None:
+        print("Stopping WebServer")
+
+    # Web Settings methods
+    def get_web_settings(self) -> dict[str, Any]:
+        default_settings = {
             "refreshRate": 30,
             "timespanNames": ["Year", "Month", "Week", "Day", "Hour"],
             "btcDisplayUnit": "BTC",
@@ -28,239 +153,32 @@ class WebServer:
             "frrdelta_min": -10,
             "frrdelta_max": 10,
         }
-
-    def start(self) -> None:
-        """
-        Setup the web server and start the web server thread
-        """
-        print(
-            f"Starting WebServer at {self.web_server_ip} on port {self.web_server_port} with template {self.web_server_template}"
-        )
-
-        thread = threading.Thread(target=self._run_server)
-        thread.daemon = True
-        thread.start()
-
-    def _run_server(self) -> None:
-        """
-        Internal method to start the server loop
-        """
-        try:
-            # We need to capture self in a variable that the inner class can access via closure
-            # but in Python 3, it's better to just use the instance attributes.
-            web_instance = self
-
-            class QuietHandler(http.server.SimpleHTTPRequestHandler):
-                real_server_path = Path(web_instance.web_server_template).resolve()
-                logs_path = Path("logs").resolve()
-
-                def log_message(self, _format_str: str, *_args: Any) -> None:
-                    return
-
-                def translate_path(self, path: str) -> str:
-                    url_path = path.split("?", 1)[0].split("#", 1)[0].lstrip("/")
-                    if url_path.startswith("logs/"):
-                        return str(Path.cwd() / url_path)
-                    root = Path.cwd() / web_instance.web_server_template
-                    if not url_path:
-                        url_path = "index.html"
-                    return str(root / url_path)
-
-                def end_headers(self) -> None:
-                    path = self.path.split("?")[0]
-                    if path.endswith((".json", ".js", ".css", ".html", ".htm")):
-                        self.send_header("Cache-Control", "no-cache, must-revalidate")
-                        self.send_header("Pragma", "no-cache")
-                        self.send_header("Expires", "0")
-                    super().end_headers()
-
-                def send_head(self) -> Any:
-                    local_path = self.translate_path(self.path)
-                    resolved_path = Path(local_path).resolve()
-                    in_www = str(resolved_path).startswith(str(self.real_server_path))
-                    in_logs = str(resolved_path).startswith(str(self.logs_path))
-                    if not (in_www or in_logs):
-                        self.send_error(404, "These aren't the droids you're looking for")
-                        return None
-                    return super().send_head()
-
-                def do_GET(self) -> None:
-                    if self.path == "/pause_lending":
-                        web_instance.lending_engine.lending_paused = True
-                        web_instance.save_web_settings({"lending_paused": True})
-                        self.send_response(200)
-                        self.end_headers()
-                        self.wfile.write(b"Lending paused")
-                    elif self.path == "/resume_lending":
-                        web_instance.lending_engine.lending_paused = False
-                        web_instance.save_web_settings({"lending_paused": False})
-                        self.send_response(200)
-                        self.end_headers()
-                        self.wfile.write(b"Lending resumed")
-                    elif self.path == "/get_status":
-                        self.send_response(200)
-                        self.send_header("Content-Type", "application/json")
-                        self.end_headers()
-
-                        strategies = {
-                            cur: cfg.strategy
-                            for cur, cfg in web_instance.lending_engine.coin_cfg.items()
-                        }
-                        status_data = {
-                            "lending_paused": web_instance.lending_engine.lending_paused,
-                            "lending_strategies": strategies,
-                        }
-                        self.wfile.write(json.dumps(status_data).encode("utf-8"))
-                    elif self.path == "/get_settings":
-                        self.send_response(200)
-                        self.send_header("Content-Type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(
-                            json.dumps(web_instance.get_web_settings()).encode("utf-8")
-                        )
-                    else:
-                        super().do_GET()
-
-                def do_POST(self) -> None:
-                    if self.path == "/set_config":
-                        content_length = int(self.headers["Content-Length"])
-                        post_data = self.rfile.read(content_length)
-                        config_data = json.loads(post_data.decode("utf-8"))
-
-                        if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
-                            try:
-                                web_instance.lending_engine.frrdelta_min = Decimal(
-                                    str(config_data["frrdelta_min"])
-                                )
-                                web_instance.lending_engine.frrdelta_max = Decimal(
-                                    str(config_data["frrdelta_max"])
-                                )
-                                if web_instance.lending_engine.log:
-                                    web_instance.lending_engine.log.log(
-                                        f"Settings updated by user: FRR Delta Min={web_instance.lending_engine.frrdelta_min}%, Max={web_instance.lending_engine.frrdelta_max}%"
-                                    )
-                                web_instance.save_web_settings(config_data)
-                                response = {
-                                    "success": True,
-                                    "frrdelta_min": str(web_instance.lending_engine.frrdelta_min),
-                                    "frrdelta_max": str(web_instance.lending_engine.frrdelta_max),
-                                }
-                            except (ValueError, TypeError, InvalidOperation) as e:
-                                response = {"success": False, "error": str(e)}
-                        else:
-                            try:
-                                web_instance.save_web_settings(config_data)
-                                response = {"success": True}
-                            except Exception as e:
-                                response = {"success": False, "error": str(e)}
-
-                        self.send_response(200 if response["success"] else 400)
-                        self.send_header("Content-Type", "application/json")
-                        self.end_headers()
-                        self.wfile.write(json.dumps(response).encode("utf-8"))
-                    else:
-                        self.send_error(404, "File not found")
-
-            socketserver.TCPServer.allow_reuse_address = True
-            self.server = socketserver.ThreadingTCPServer(
-                (self.web_server_ip, self.web_server_port), QuietHandler
-            )
-
-            # Host display logic
-            if self.web_server_ip == "0.0.0.0":
-                addresses = [
-                    str(i[4][0])
-                    for i in socket.getaddrinfo(
-                        socket.gethostname().split(".")[0], self.web_server_port
-                    )
-                ]
-                addresses = [i for i in addresses if ":" not in i]
-                addresses.append("127.0.0.1")
-                hosts = list(set(addresses))
-            else:
-                hosts = [self.web_server_ip]
-
-            serving_msg = f"http://{hosts[0]}:{self.web_server_port}/lendingbot.html"
-            for h in hosts[1:]:
-                serving_msg += f", http://{h}:{self.web_server_port}/lendingbot.html"
-            print(f"Started WebServer, lendingbot status available at {serving_msg}")
-            self.server.serve_forever()
-        except Exception as ex:
-            print(f"Failed to start WebServer: {ex}")
-
-    def stop(self) -> None:
-        """
-        Stop the web server
-        """
-        try:
-            print("Stopping WebServer")
-            if self.server:
-                threading.Thread(target=self.server.shutdown).start()
-        except Exception as ex:
-            print(f"Failed to stop WebServer: {ex}")
-
-    def get_web_settings(self) -> dict[str, Any]:
-        """
-        Retrieves the current web settings.
-        """
         if not Path(self.web_settings_file).exists():
-            settings = self.DEFAULT_WEB_SETTINGS.copy()
-            # Initial seeding from lending_engine
-            try:
-                settings["frrdelta_min"] = float(self.lending_engine.frrdelta_min)
-                settings["frrdelta_max"] = float(self.lending_engine.frrdelta_max)
-            except (ValueError, AttributeError):
-                pass
-            self.save_web_settings(settings)
-            return settings
+            return default_settings
 
         try:
             with Path(self.web_settings_file).open("r", encoding="utf-8") as f:
                 data = json.load(f)
-                return data if isinstance(data, dict) else self.DEFAULT_WEB_SETTINGS.copy()
-        except (json.JSONDecodeError, OSError) as e:
-            if self.lending_engine and self.lending_engine.log:
-                self.lending_engine.log.log(f"Error reading web settings: {e}")
-            return self.DEFAULT_WEB_SETTINGS.copy()
+                if isinstance(data, dict):
+                    return data
+                return default_settings
+        except Exception:
+            return default_settings
 
     def save_web_settings(self, settings: dict[str, Any]) -> None:
-        """
-        Saves the given settings to the web_settings.json file.
-        """
+        current = self.get_web_settings()
+        current.update(settings)
         try:
-            current: dict[str, Any] = {}
-            if Path(self.web_settings_file).exists():
-                with Path(self.web_settings_file).open("r", encoding="utf-8") as f:
-                    try:
-                        loaded = json.load(f)
-                        if isinstance(loaded, dict):
-                            current = loaded
-                    except json.JSONDecodeError:
-                        pass
-            current.update(settings)
             with Path(self.web_settings_file).open("w", encoding="utf-8") as f:
                 json.dump(current, f, indent=4)
-        except OSError as e:
-            if self.lending_engine and self.lending_engine.log:
-                self.lending_engine.log.log(f"Error saving web settings: {e}")
-            else:
-                print(f"Error saving web settings: {e}")
+        except Exception as e:
+            print(f"Error saving web settings: {e}")
 
 
-# Backward compatibility wrappers
 _web_server: WebServer | None = None
 
 
 def get_web_settings() -> dict[str, Any]:
     if _web_server:
         return _web_server.get_web_settings()
-    # Fallback for early calls
-    return {
-        "refreshRate": 30,
-        "timespanNames": ["Year", "Month", "Week", "Day", "Hour"],
-        "btcDisplayUnit": "BTC",
-        "outputCurrencyDisplayMode": "all",
-        "effRateMode": "lentperc",
-        "frrdelta_min": -10,
-        "frrdelta_max": 10,
-    }
+    return {}
