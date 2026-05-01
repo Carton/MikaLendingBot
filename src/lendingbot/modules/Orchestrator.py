@@ -106,6 +106,9 @@ class BotOrchestrator:
             self.plugins_manager = PluginsManager.PluginsManager(self.config, self.api, self.log)
             # Backward compatibility globals (to be phased out ideally)
             PluginsManager._manager = self.plugins_manager
+            self.log.log(
+                f"Loaded plugins: {[p.__class__.__name__ for p in self.plugins_manager.active_plugins]}"
+            )
         except Exception as ex:
             print(f"Error initializing Plugins: {ex}")
             sys.exit(1)

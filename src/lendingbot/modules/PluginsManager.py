@@ -13,11 +13,7 @@ class PluginsManager:
         self.active_plugins: list[Any] = []
 
         # Initialize plugins based on config
-        plugin_names = []
-        if self.config.plugins.account_stats.get("enabled"):
-            plugin_names.append("AccountStats")
-        if self.config.plugins.charts.get("enabled"):
-            plugin_names.append("Charts")
+        plugin_names = self.config.bot.plugins
 
         for name in plugin_names:
             try:
