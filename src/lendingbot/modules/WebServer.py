@@ -101,13 +101,28 @@ class WebServer:
                     while True:
                         if await request.is_disconnected():
                             break
-                        message = await queue.get()
-                        yield f"data: {message}\n\n"
+                        try:
+                            # Wait with timeout to periodically send keep-alives
+                            message = await asyncio.wait_for(queue.get(), timeout=15.0)
+                            yield f"data: {message}\n\n"
+                        except TimeoutError:
+                            # Send SSE comment as keep-alive ping to prevent proxy timeouts
+                            yield ": keepalive\n\n"
+                except asyncio.CancelledError:
+                    pass
                 finally:
                     if log_callback in self.log.callbacks:
                         self.log.callbacks.remove(log_callback)
 
-            return StreamingResponse(event_generator(), media_type="text/event-stream")
+            return StreamingResponse(
+                event_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",  # Disable Nginx buffering
+                },
+            )
 
     def _setup_static(self) -> None:
         # Serve logs directory
@@ -171,7 +186,10 @@ class WebServer:
             with Path(self.web_settings_file).open("r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
-                    return data
+                    settings = default_settings | data
+                    if not settings.get("timespanNames"):
+                        settings["timespanNames"] = default_settings["timespanNames"]
+                    return settings
                 return default_settings
         except Exception:
             return default_settings

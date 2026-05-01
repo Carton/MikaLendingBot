@@ -15,6 +15,7 @@ var outputCurrencyDisplayMode = 'all'
 var validOutputCurrencyDisplayModes = ['all', 'summary'];
 var effRateMode = 'lentperc';
 var validEffRateModes = ['lentperc', 'onlyfee'];
+var defaultTimespanNames = ["Year", "Month", "Week", "Day", "Hour"];
 
 // BTC DisplayUnit
 var BTC = new BTCDisplayUnit("BTC", 1);
@@ -117,6 +118,7 @@ function updateRawValues(rawData) {
     table.innerHTML = "";
     var currencies = Object.keys(rawData);
     var totalBTCEarnings = {};
+    var displayedCurrencies = 0;
     for (var keyIndex = 0; keyIndex < currencies.length; ++keyIndex) {
         var currency = currencies[keyIndex];
         var btcMultiplier = currency == 'BTC' ? displayUnit.multiplier : 1;
@@ -134,10 +136,14 @@ function updateRawValues(rawData) {
         var couple = rawData[currency]['couple'];
 
         if (!isNaN(averageLendingRate) && !isNaN(lentSum) || !isNaN(totalCoins)) {
+            displayedCurrencies += 1;
 
             // cover cases where totalCoins isn't updated because all coins are lent
             if (isNaN(totalCoins) && !isNaN(lentSum)) {
                 totalCoins = lentSum;
+            }
+            if (isNaN(maxToLend) || maxToLend <= 0) {
+                maxToLend = totalCoins;
             }
             var rate = +averageLendingRate * 0.85 / 100; // 15% goes to exchange fees
 
@@ -185,7 +191,7 @@ function updateRawValues(rawData) {
             var compoundRateText = makeTooltip("Compound rate, the result of reinvesting the interest.", "Comp.");
             var lentStr = 'Lent ' + printFloat(lentSum * btcMultiplier, 4) + ' of ' + printFloat(totalCoins * btcMultiplier, 4) + ' (' + printFloat(lentPerc, 2) + '%)';
 
-            if (totalCoins != maxToLend) {
+            if (!isNaN(maxToLend) && maxToLend > 0 && totalCoins != maxToLend) {
                 lentStr += ' <b>Total</b><br/>Lent ' + printFloat(lentSum * btcMultiplier, 4) + ' of ' + printFloat(maxToLend * btcMultiplier, 4) + ' (' + printFloat(lentPercLendable, 2) + '%) <b>Lendable</b>';
             }
 
@@ -214,8 +220,8 @@ function updateRawValues(rawData) {
 
             var earningsColspan = rowValues.length - 1;
             // print coin earnings
-            var row = table.insertRow();
-            if (lentSum > 0) {
+            if (lentSum > 0 && (earnings != '' || earningsSummaryCoin != '')) {
+                var row = table.insertRow();
                 var cell1 = row.appendChild(document.createElement("td"));
                 cell1.innerHTML = "<span class='hidden-xs'>" + displayCurrency + "<br/></span>Est. " + compoundRateText + "<br/>Earnings";
                 var cell2 = row.appendChild(document.createElement("td"));
@@ -233,18 +239,22 @@ function updateRawValues(rawData) {
     var thead = table.createTHead();
 
     // show account summary
-    if (currencies.length > 1 || summaryCoin != earningsOutputCoin) {
+    if (displayedCurrencies > 1 || summaryCoin != earningsOutputCoin) {
         earnings = '';
         timespans.forEach(function (timespan) {
-            earnings += timespan.formatEarnings(summaryCoin, totalBTCEarnings[timespan.name] * summaryCoinRate);
+            if (!isNaN(totalBTCEarnings[timespan.name])) {
+                earnings += timespan.formatEarnings(summaryCoin, totalBTCEarnings[timespan.name] * summaryCoinRate);
+            }
         });
-        var row = thead.insertRow(0);
-        var cell = row.appendChild(document.createElement("th"));
-        cell.innerHTML = "Account<br/>Estimated<br/>Earnings";
-        cell.style.verticalAlign = "text-top";
-        cell = row.appendChild(document.createElement("th"));
-        cell.setAttribute("colspan", 2);
-        cell.innerHTML = earnings;
+        if (earnings != '') {
+            var row = thead.insertRow(0);
+            var cell = row.appendChild(document.createElement("th"));
+            cell.innerHTML = "Account<br/>Estimated<br/>Earnings";
+            cell.style.verticalAlign = "text-top";
+            cell = row.appendChild(document.createElement("th"));
+            cell.setAttribute("colspan", 2);
+            cell.innerHTML = earnings;
+        }
     }
 }
 
@@ -319,7 +329,10 @@ function applyWebSettings(settings) {
     $('#refresh_interval').val(refreshRate);
 
     // 2. Timespans
-    var timespanNames = settings.timespanNames || ["Year", "Month", "Week", "Day", "Hour"];
+    var timespanNames = settings.timespanNames;
+    if (!Array.isArray(timespanNames) || timespanNames.length == 0) {
+        timespanNames = defaultTimespanNames;
+    }
     timespans = [Year, Month, Week, Day, Hour].filter(function (t) {
         return timespanNames.indexOf(t.name) !== -1;
     });
@@ -431,10 +444,13 @@ function doSave() {
     newSettings.refreshRate = parseInt(tempRefreshRate);
 
     var timespanNames = [];
-    $('input[type="checkbox"]:checked').each(function (i, c) {
+    $('input[type="checkbox"][data-timespan]:checked').each(function (i, c) {
         var ts = $(c).attr('data-timespan');
         if (ts) timespanNames.push(ts);
     });
+    if (timespanNames.length == 0) {
+        timespanNames = defaultTimespanNames;
+    }
     newSettings.timespanNames = timespanNames;
 
     newSettings.btcDisplayUnit = $('input[name="btcDisplayUnit"]:checked').val();

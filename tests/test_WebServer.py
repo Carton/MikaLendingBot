@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import socket
 from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
+    from pathlib import Path
 
 import pytest
 import uvicorn
@@ -90,6 +92,28 @@ async def test_get_settings(web_server: WebServer) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["refreshRate"] == 30
+
+
+@pytest.mark.asyncio
+async def test_get_settings_restores_default_timespans(
+    web_server: WebServer, tmp_path: Path
+) -> None:
+    settings_file = tmp_path / "web_settings.json"
+    settings_file.write_text(
+        json.dumps({"refreshRate": 15, "timespanNames": []}),
+        encoding="utf-8",
+    )
+    web_server.web_settings_file = str(settings_file)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/get_settings")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["refreshRate"] == 15
+    assert data["timespanNames"] == ["Year", "Month", "Week", "Day", "Hour"]
 
 
 @pytest.mark.asyncio
