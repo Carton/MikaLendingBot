@@ -50,67 +50,67 @@ class ConsoleOutput:
         sys.stderr.write(update)
 
 
-class JsonOutput:
+class StatsOutput:
     def __init__(
         self, file_path: str, log_limit: int, exchange: str = "", label: str = "Lending Bot"
     ) -> None:
-        self.jsonOutputFile: str = file_path
-        self.jsonOutput: dict[str, Any] = {}
-        self.jsonOutputCoins: dict[str, Any] = {}
-        self.jsonOutputCurrency: dict[str, Any] = {}
+        self.stats_file: str = file_path
+        self.stats_output: dict[str, Any] = {}
+        self.stats_coins: dict[str, Any] = {}
+        self.stats_currency: dict[str, Any] = {}
         self.clearStatusValues()
-        self.jsonOutputLog: deque[str] = deque(maxlen=log_limit)
-        self.jsonOutput["exchange"] = exchange
-        self.jsonOutput["label"] = label
+        self.recent_logs: deque[str] = deque(maxlen=log_limit)
+        self.stats_output["exchange"] = exchange
+        self.stats_output["label"] = label
 
     def status(self, status: str, time_str: str, days_remaining_msg: str) -> None:
-        self.jsonOutput["last_update"] = time_str + days_remaining_msg
-        self.jsonOutput["last_status"] = status
+        self.stats_output["last_update"] = time_str + days_remaining_msg
+        self.stats_output["last_status"] = status
 
     def printline(self, line: str) -> None:
         line = line.replace("\n", " | ")
-        self.jsonOutputLog.append(line)
+        self.recent_logs.append(line)
 
-    def writeJsonFile(self) -> None:
+    def writeStatsFile(self) -> None:
         from pathlib import Path
 
-        path = Path(self.jsonOutputFile)
+        path = Path(self.stats_file)
         if path.parent:
             path.parent.mkdir(parents=True, exist_ok=True)
 
         with path.open("w", encoding="utf-8") as f:
-            f.write(json.dumps(self.jsonOutput, ensure_ascii=True, sort_keys=True))
+            f.write(json.dumps(self.stats_output, ensure_ascii=True, sort_keys=True))
 
     def get_recent_logs(self) -> list[str]:
-        return list(self.jsonOutputLog)
+        return list(self.recent_logs)
 
     def addSectionLog(self, section: str, key: str, value: Any) -> None:
-        if section not in self.jsonOutput:
-            self.jsonOutput[section] = {}
-        if key not in self.jsonOutput[section]:
-            self.jsonOutput[section][key] = {}
-        self.jsonOutput[section][key] = value
+        if section not in self.stats_output:
+            self.stats_output[section] = {}
+        if key not in self.stats_output[section]:
+            self.stats_output[section][key] = {}
+        self.stats_output[section][key] = value
 
     def statusValue(self, coin: str, key: str, value: Any) -> None:
-        if coin not in self.jsonOutputCoins:
-            self.jsonOutputCoins[coin] = {}
-        self.jsonOutputCoins[coin][key] = str(value)
+        if coin not in self.stats_coins:
+            self.stats_coins[coin] = {}
+        self.stats_coins[coin][key] = str(value)
 
     def clearStatusValues(self) -> None:
-        self.jsonOutputCoins = {}
-        self.jsonOutput["raw_data"] = self.jsonOutputCoins
-        self.jsonOutputCurrency = {}
-        self.jsonOutput["outputCurrency"] = self.jsonOutputCurrency
+        self.stats_coins = {}
+        self.stats_output["raw_data"] = self.stats_coins
+        self.stats_currency = {}
+        self.stats_output["outputCurrency"] = self.stats_currency
 
     def outputCurrency(self, key: str, value: Any) -> None:
-        self.jsonOutputCurrency[key] = str(value)
+        self.stats_currency[key] = str(value)
 
 
 class Logger:
     def __init__(
         self,
-        json_file: str = "",
-        json_log_size: int = -1,
+        stats_file: str = "",
+        recent_logs_limit: int = -1,
         log_file: str = "",
         log_file_days: int = 10,
         exchange: str = "",
@@ -118,9 +118,9 @@ class Logger:
     ) -> None:
         self._lent: str = ""
         self._daysRemaining: str = ""
-        self.output: JsonOutput | ConsoleOutput
-        if json_file != "" and json_log_size != -1:
-            self.output = JsonOutput(json_file, json_log_size, exchange, label)
+        self.output: StatsOutput | ConsoleOutput
+        if stats_file != "" and recent_logs_limit != -1:
+            self.output = StatsOutput(stats_file, recent_logs_limit, exchange, label)
         else:
             self.output = ConsoleOutput()
 
@@ -171,7 +171,7 @@ class Logger:
         self.output.printline(log_message)
         if self.file_logger:
             self.file_logger.error(log_message)
-        if isinstance(self.output, JsonOutput):
+        if isinstance(self.output, StatsOutput):
             print(log_message)
         self._broadcast(log_message)
         self.refreshStatus()
@@ -234,8 +234,8 @@ class Logger:
         return []
 
     def persistStatus(self) -> None:
-        if hasattr(self.output, "writeJsonFile"):
-            self.output.writeJsonFile()
+        if hasattr(self.output, "writeStatsFile"):
+            self.output.writeStatsFile()
         if hasattr(self.output, "clearStatusValues"):
             self.output.clearStatusValues()
 

@@ -6,7 +6,7 @@ import json
 import os
 from unittest.mock import patch
 
-from lendingbot.modules.Logger import ConsoleOutput, JsonOutput, Logger
+from lendingbot.modules.Logger import ConsoleOutput, Logger, StatsOutput
 
 
 class TestLogger:
@@ -22,18 +22,18 @@ class TestLogger:
             out.printline("Test Line")
             mock_write.assert_called()
 
-    def test_json_output(self, tmp_path):
-        json_file = tmp_path / "bot_stats.json"
-        out = JsonOutput(str(json_file), 10, "POLONIEX")
+    def test_stats_output(self, tmp_path):
+        stats_file = tmp_path / "bot_stats.json"
+        out = StatsOutput(str(stats_file), 10, "POLONIEX")
 
         out.status("Status", "2025-12-30", " - 1 Day")
         out.printline("Log Line 1")
         out.statusValue("BTC", "lentSum", "1.0")
 
-        out.writeJsonFile()
+        out.writeStatsFile()
 
-        assert json_file.exists()
-        with json_file.open() as f:
+        assert stats_file.exists()
+        with stats_file.open() as f:
             data = json.load(f)
             assert data["exchange"] == "POLONIEX"
             assert data["last_status"] == "Status"
@@ -44,8 +44,8 @@ class TestLogger:
         assert "Log Line 1" in out.get_recent_logs()
 
     def test_logger_lifecycle(self, tmp_path):
-        json_file = tmp_path / "bot_stats.json"
-        logger = Logger(str(json_file), 5, "BITFINEX")
+        stats_file = tmp_path / "bot_stats.json"
+        logger = Logger(str(stats_file), 5, "BITFINEX")
 
         logger.log("Info Message")
         logger.log_error("Error Message")
@@ -55,7 +55,7 @@ class TestLogger:
         logger.updateStatusValue("BTC", "test", "val")
         logger.persistStatus()
 
-        assert json_file.exists()
+        assert stats_file.exists()
 
     def test_digest_api_msg(self):
         assert Logger.digestApiMsg({"message": "success"}) == "success"

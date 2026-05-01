@@ -59,8 +59,8 @@ class BotOrchestrator:
         # Initialize Logger
         try:
             self.log = Logger(
-                json_file=self.config.bot.json_file,
-                json_log_size=self.config.bot.json_log_size,
+                stats_file=self.config.bot.stats_file,
+                recent_logs_limit=self.config.bot.recent_logs_limit,
                 log_file=self.config.bot.log_file,
                 log_file_days=self.config.bot.log_file_days,
                 exchange=self.config.api.exchange.value,

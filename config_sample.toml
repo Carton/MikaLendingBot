@@ -54,15 +54,15 @@ plugins = ["AccountStats", "Charts"]
 # transferable_currencies = ["USD", "BTC", "ETH"]
 
 [bot.web]
-# Enables a webserver for the www folder, in order to easily use the lendingbot.html with the .json log.
+# Enables a webserver for the www folder, in order to easily use the lendingbot.html with the JSON stats.
 enabled = true
 # Customize the IP and port that the webserver is hosted on.
 host = "127.0.0.1"
 port = 8000
 # Customize or select the desired template for the webserver.
 template = "www"
-# Limits the amount of log lines to save in botlog.json.
-json_log_size = 200
+# Limits the amount of recent log lines to keep in memory for the web interface.
+recent_logs_limit = 200
 
 # Text log file path (for long term storage/auditing). Set to empty string to disable.
 log_file = "logs/lendingbot.log"
@@ -226,4 +226,6 @@ percentile_window = 259200
 [plugins.market_analysis.daily_min]
 # This defaults to percentile, MACD is the moving average calc and should give better rates
 # method = "MACD"
+multiplier = 1.05
+
 multiplier = 1.05

@@ -33,7 +33,7 @@
 | `host` (old: `customWebServerAddress`) | `str` | `"0.0.0.0"` | Valid IP address format | `WebServer.py:27` |
 | `port` (old: `customWebServerPort`) | `int` | `8000` | Valid port (1-65535) | `WebServer.py:38` |
 | `template` (old: `customWebServerTemplate`) | `str` | `"www"` | None | `WebServer.py:41` |
-| `json_log_size` (old: `jsonlogsize`) | `int` | `200` | Not strictly enforced in code but good to limit | `Configuration.py:187` |
+| `recent_logs_limit` (old: `json_log_size`) | `int` | `200` | Not strictly enforced in code but good to limit | `Configuration.py:187` |
 
 ## 3. Coin Configuration (`[coin.*]`)
 

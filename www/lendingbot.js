@@ -272,8 +272,8 @@ function loadData() {
         reader.readAsText(localFile, 'utf-8');
         setTimeout('loadData()', refreshRate * 1000)
     } else {
-        // expect the botlog.json to be in the same folder on the webserver
-        var file = 'botlog.json?_t=' + new Date().getTime();
+        // expect the bot_stats.json to be in the same folder on the webserver
+        var file = 'bot_stats.json?_t=' + new Date().getTime();
         $.getJSON(file, function (data) {
             updateJson(data);
             fetchStatus(); // Update status/strategy info along with data
