@@ -61,6 +61,8 @@ host = "127.0.0.1"
 port = 8000
 # Customize or select the desired template for the webserver.
 template = "www"
+# Refresh rate in seconds for dashboard statistics (bot_stats.json).
+refresh_rate = 300
 # Limits the amount of recent log lines to keep in memory for the web interface.
 recent_logs_limit = 200
 

@@ -175,7 +175,7 @@ class WebServer:
     # Web Settings methods
     def get_web_settings(self) -> dict[str, Any]:
         default_settings = {
-            "refreshRate": 30,
+            "refreshRate": self.config.bot.web.refresh_rate,
             "timespanNames": ["Year", "Month", "Week", "Day", "Hour"],
             "btcDisplayUnit": "BTC",
             "outputCurrencyDisplayMode": "all",
