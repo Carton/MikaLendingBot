@@ -1,10 +1,13 @@
 import atexit
 import datetime
 import json
+import logging
+import logging.handlers
 import shutil
 import sys
 import time
 from collections import deque
+from pathlib import Path
 from typing import Any
 
 from .Notify import send_notification
@@ -99,6 +102,8 @@ class Logger:
         self,
         json_file: str = "",
         json_log_size: int = -1,
+        log_file: str = "",
+        log_file_days: int = 10,
         exchange: str = "",
         label: str = "Lending Bot",
     ) -> None:
@@ -109,6 +114,28 @@ class Logger:
             self.output = JsonOutput(json_file, json_log_size, exchange, label)
         else:
             self.output = ConsoleOutput()
+
+        # Set up text file logger
+        self.file_logger: logging.Logger | None = None
+        if log_file:
+            path = Path(log_file)
+            if path.parent:
+                path.parent.mkdir(parents=True, exist_ok=True)
+            self.file_logger = logging.getLogger("LendingBotTextLog")
+            self.file_logger.setLevel(logging.INFO)
+            # Remove any existing handlers to prevent duplicate logs if re-initialized
+            self.file_logger.handlers = []
+            handler = logging.handlers.TimedRotatingFileHandler(
+                filename=str(path),
+                when="midnight",
+                interval=1,
+                backupCount=log_file_days,
+                encoding="utf-8",
+            )
+            # Use a simple formatter since the lines already contain timestamps
+            handler.setFormatter(logging.Formatter("%(message)s"))
+            self.file_logger.addHandler(handler)
+
         self.refreshStatus()
 
     @staticmethod
@@ -119,11 +146,15 @@ class Logger:
     def log(self, msg: str) -> None:
         log_message = f"{self.timestamp()} {msg}"
         self.output.printline(log_message)
+        if self.file_logger:
+            self.file_logger.info(log_message)
         self.refreshStatus()
 
     def log_error(self, msg: str) -> None:
         log_message = f"{self.timestamp()} Error {msg}"
         self.output.printline(log_message)
+        if self.file_logger:
+            self.file_logger.error(log_message)
         if isinstance(self.output, JsonOutput):
             print(log_message)
         self.refreshStatus()
@@ -148,11 +179,15 @@ class Logger:
 
         line = f"{self.timestamp()} [{cur}] Loan: {format_amount_currency(amt, cur)} @ {rate_info} for {days} days {status}"
         self.output.printline(line)
+        if self.file_logger:
+            self.file_logger.info(line)
         self.refreshStatus()
 
     def cancelOrder(self, cur: str, msg: Any) -> None:
         line = f"{self.timestamp()} Canceling {cur} order... {self.digestApiMsg(msg)}"
         self.output.printline(line)
+        if self.file_logger:
+            self.file_logger.info(line)
         self.refreshStatus()
 
     def refreshStatus(self, lent: str = "", days_remaining: str = "") -> None:

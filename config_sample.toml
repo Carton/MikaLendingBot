@@ -64,6 +64,11 @@ template = "www"
 # Limits the amount of log lines to save in botlog.json.
 json_log_size = 200
 
+# Text log file path (for long term storage/auditing). Set to empty string to disable.
+log_file = "logs/lendingbot.log"
+# Number of days to keep in the text log file
+log_file_days = 10
+
 # Currencies can be configured here.
 # [coin.default] serves as the base (default) configuration for all currencies.
 # If a specific coin (e.g. [coin.BTC]) has a setting, it overrides the value here.

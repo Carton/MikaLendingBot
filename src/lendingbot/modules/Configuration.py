@@ -61,6 +61,8 @@ class BotConfig(BaseModel):
     api_debug_log: bool = False
     json_file: str = "www/botlog.json"
     json_log_size: int = 200
+    log_file: str = "logs/lendingbot.log"
+    log_file_days: int = Field(10, ge=1)
     output_currency: str = "BTC"
     keep_stuck_orders: bool = True
     hide_coins: bool = True

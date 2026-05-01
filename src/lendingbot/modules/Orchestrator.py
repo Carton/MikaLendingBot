@@ -61,6 +61,8 @@ class BotOrchestrator:
             self.log = Logger(
                 json_file=self.config.bot.json_file,
                 json_log_size=self.config.bot.json_log_size,
+                log_file=self.config.bot.log_file,
+                log_file_days=self.config.bot.log_file_days,
                 exchange=self.config.api.exchange.value,
                 label=self.config.bot.label,
             )
