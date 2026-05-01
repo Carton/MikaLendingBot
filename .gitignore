@@ -80,6 +80,7 @@ config.toml
 *.sqlite3
 *.csv
 *.json
+!www/manifest.json
 nohup.out
 error.log
 config/

@@ -24,6 +24,7 @@ var Satoshi = new BTCDisplayUnit("Satoshi", 100000000);
 var displayUnit = BTC;
 var btcDisplayUnitsModes = [BTC, mBTC, Bits, Satoshi];
 var logSSE = null;
+var initialLogsLoaded = false;
 
 function updateJson(data) {
     $('#status').text(data.last_status);
@@ -31,14 +32,15 @@ function updateJson(data) {
     $('#title').text(data.exchange + ' ' + data.label)
     document.title = data.exchange + ' ' + data.label
 
-    // Only update the table from JSON if SSE is not active
-    if (!logSSE) {
+    // Only update the table from JSON if SSE is not active or if it's the first load
+    if (!logSSE || !initialLogsLoaded) {
         var rowCount = data.log.length;
         var table = $('#logtable');
         table.empty();
         for (var i = rowCount - 1; i >= 0; i--) {
             table.append($('<tr/>').append($('<td colspan="2" />').text(data.log[i])));
         }
+        initialLogsLoaded = true;
     }
 
     updateOutputCurrency(data.outputCurrency);
