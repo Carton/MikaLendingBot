@@ -562,12 +562,12 @@ especially to “Withdraw”.</p></li>
 <div><ul class="simple">
 <li><p>Default value: <code class="docutils literal notranslate"><span class="pre">true</span></code></p></li>
 <li><p>The server page can be accessed locally, at <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/lendingbot.html</span></code> by default.</p></li>
-<li><p>When enabled, JSON logging is automatically enabled with output to <code class="docutils literal notranslate"><span class="pre">www/botlog.json</span></code>.</p></li>
+<li><p>When enabled, JSON logging is automatically enabled with output to <code class="docutils literal notranslate"><span class="pre">www/bot_stats.json</span></code>.</p></li>
 <li><p>You must close bot with a keyboard interrupt (CTRL-C on Windows) to properly shutdown the server and release the socket, otherwise you may have to wait several minutes for it to release itself.</p></li>
 </ul>
 </div></blockquote>
 </li>
-<li><p><code class="docutils literal notranslate"><span class="pre">json_log_size</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section) is the amount of lines the botlog will keep before deleting the oldest event.</p>
+<li><p><code class="docutils literal notranslate"><span class="pre">recent_logs_limit</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section) is the amount of lines the in-memory recent log list will keep before deleting the oldest event.</p>
 <blockquote>
 <div><ul class="simple">
 <li><p>Default value: 200</p></li>
@@ -625,7 +625,7 @@ especially to “Withdraw”.</p></li>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
 <span class="n">label</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;Lending Bot&quot;</span>
 <span class="n">output_currency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;BTC&quot;</span>
-<span class="n">json_log_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span>
+<span class="n">recent_logs_limit</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">200</span>
 
 <span class="k">[bot.web]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
