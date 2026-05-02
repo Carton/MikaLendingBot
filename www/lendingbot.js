@@ -34,7 +34,7 @@ function updateJson(data) {
     document.title = data.exchange + ' ' + data.label
 
     // Only update the table from JSON if SSE is not active or if it's the first load
-    if (!logSSE || !initialLogsLoaded) {
+    if ((!logSSE || !initialLogsLoaded) && data.log) {
         var rowCount = data.log.length;
         var table = $('#logtable');
         table.empty();
