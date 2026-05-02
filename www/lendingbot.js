@@ -439,8 +439,8 @@ function fetchSettings() {
 function doSave() {
     // 1. Validation
     var tempRefreshRate = $('#refresh_interval').val();
-    if (tempRefreshRate < 10 || tempRefreshRate > 60) {
-        alert('Please input a value between 10 and 60 for refresh rate');
+    if (tempRefreshRate < 30 || tempRefreshRate > 600) {
+        alert('Please input a value between 30 and 600 for refresh rate');
         return false;
     }
 
@@ -501,7 +501,7 @@ function setupSSE() {
     if (logSSE || window.location.protocol === "file:") return;
 
     logSSE = new EventSource("/stream-logs");
-    logSSE.onmessage = function(event) {
+    logSSE.onmessage = function (event) {
         var logLine = event.data;
         var table = $('#logtable');
         var newRow = $('<tr/>').append($('<td colspan="2" />').text(logLine));
@@ -513,7 +513,7 @@ function setupSSE() {
             rows.last().remove();
         }
     };
-    logSSE.onerror = function() {
+    logSSE.onerror = function () {
         if (logSSE) {
             logSSE.close();
             logSSE = null;

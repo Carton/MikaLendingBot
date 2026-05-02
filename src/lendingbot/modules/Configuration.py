@@ -51,7 +51,7 @@ class WebServerConfig(BaseModel):
     host: str = "0.0.0.0"
     port: int = Field(8000, ge=1, le=65535)
     template: str = "www"
-    refresh_rate: int = Field(300, ge=1, le=86400)
+    refresh_rate: int = Field(300, ge=30, le=86400)
 
 
 class BotConfig(BaseModel):
