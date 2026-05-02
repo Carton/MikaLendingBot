@@ -280,10 +280,16 @@ function loadData() {
             // reload every 30sec
             setTimeout('loadData()', refreshRate * 1000)
         }).fail(function (d, textStatus, error) {
-            $('#status').text("getJSON failed, status: " + textStatus + ", error: " + error);
-            // retry after 60sec
-            setTimeout('loadData()', 60000)
-        });;
+            if (d.status === 404) {
+                $('#status').text("Waiting for bot status update...");
+                // retry faster if it's just not created yet
+                setTimeout('loadData()', 5000);
+            } else {
+                $('#status').text("getJSON failed, status: " + textStatus + ", error: " + error);
+                // retry after 60sec
+                setTimeout('loadData()', 60000);
+            }
+        });
     }
 }
 

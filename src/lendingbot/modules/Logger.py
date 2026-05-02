@@ -63,6 +63,10 @@ class StatsOutput:
         self.stats_output["exchange"] = exchange
         self.stats_output["label"] = label
 
+        # Write initial stats file on startup
+        self.status("Starting...", "", "")
+        self.writeStatsFile()
+
     def status(self, status: str, time_str: str, days_remaining_msg: str) -> None:
         self.stats_output["last_update"] = time_str + days_remaining_msg
         self.stats_output["last_status"] = status
