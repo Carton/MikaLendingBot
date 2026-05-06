@@ -174,14 +174,15 @@ class WebServer:
 
     # Web Settings methods
     def get_web_settings(self) -> dict[str, Any]:
+        default_coin_cfg = self.config.get_coin_config("default")
         default_settings = {
             "refreshRate": self.config.bot.web.refresh_rate,
             "timespanNames": ["Year", "Month", "Week", "Day", "Hour"],
             "btcDisplayUnit": "BTC",
             "outputCurrencyDisplayMode": "all",
             "effRateMode": "lentperc",
-            "frrdelta_min": -10,
-            "frrdelta_max": 10,
+            "frrdelta_min": float(default_coin_cfg.frr_delta_min),
+            "frrdelta_max": float(default_coin_cfg.frr_delta_max),
         }
         if not Path(self.web_settings_file).exists():
             return default_settings
@@ -211,7 +212,21 @@ class WebServer:
 _web_server: WebServer | None = None
 
 
+def read_web_settings() -> dict[str, Any]:
+    """Statically read web settings from file without needing WebServer instance."""
+    web_settings_file = Path("web_settings.json")
+    if web_settings_file.exists():
+        try:
+            with web_settings_file.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+
 def get_web_settings() -> dict[str, Any]:
     if _web_server:
         return _web_server.get_web_settings()
-    return {}
+    return read_web_settings()
