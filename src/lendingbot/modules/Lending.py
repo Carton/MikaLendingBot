@@ -137,6 +137,9 @@ class LendingEngine:
             if "frrdelta_min" in web_settings and "frrdelta_max" in web_settings:
                 self.frrdelta_min = Decimal(str(web_settings["frrdelta_min"]))
                 self.frrdelta_max = Decimal(str(web_settings["frrdelta_max"]))
+                self.has_web_frr_override = True
+            else:
+                self.has_web_frr_override = False
 
             if "lending_paused" in web_settings:
                 self.lending_paused = bool(web_settings["lending_paused"])
@@ -268,9 +271,14 @@ class LendingEngine:
         if cfg := self.coin_cfg.get(cur):
             min_rate = cfg.min_daily_rate
             frr_as_min = cfg.strategy == Configuration.LendingStrategy.FRR
-            # Config values are now percentages (e.g., -10 means -10%)
-            frr_d_min = cfg.frr_delta_min
-            frr_d_max = cfg.frr_delta_max
+            # If overridden by web settings, use the global min/max instead of coin specific
+            if getattr(self, "has_web_frr_override", False):
+                frr_d_min = self.frrdelta_min
+                frr_d_max = self.frrdelta_max
+            else:
+                # Config values are now percentages (e.g., -10 means -10%)
+                frr_d_min = cfg.frr_delta_min
+                frr_d_max = cfg.frr_delta_max
         else:
             min_rate = self.default_coin_cfg.min_daily_rate
             frr_as_min = self.default_coin_cfg.strategy == Configuration.LendingStrategy.FRR
@@ -282,10 +290,16 @@ class LendingEngine:
 
         # Let's use hard coded steps for now
         frr_delta_steps = 5
-        frr_delta_step = (frr_d_max - frr_d_min) / frr_delta_steps
 
-        if self.frrdelta_cur_step > frr_delta_steps:
+        # Calculate step size such that we hit both min and max
+        if frr_delta_steps > 1:
+            frr_delta_step = (frr_d_max - frr_d_min) / (frr_delta_steps - 1)
+        else:
+            frr_delta_step = Decimal(0)
+
+        if self.frrdelta_cur_step >= frr_delta_steps:
             self.frrdelta_cur_step = 0
+
         frr_delta_pct = frr_d_min + (frr_delta_step * self.frrdelta_cur_step)
         current_step = self.frrdelta_cur_step + 1  # 1-indexed for display
         self.frrdelta_cur_step += 1

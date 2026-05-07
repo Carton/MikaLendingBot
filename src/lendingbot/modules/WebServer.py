@@ -52,6 +52,7 @@ class WebServer:
                 try:
                     self.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
                     self.lending_engine.frrdelta_max = Decimal(str(config_data["frrdelta_max"]))
+                    self.lending_engine.has_web_frr_override = True
                     self.log.log(
                         f"Settings updated by user: FRR Delta Min={self.lending_engine.frrdelta_min}%, Max={self.lending_engine.frrdelta_max}%"
                     )

@@ -7,6 +7,7 @@
 - [x] Check and make sure new docker works
 - [ ] Check and make sure new docker works with new configuration
 - [ ] Try to fix market analysis
+- [ ] FRR range in web settings dialog should be seperated by coin type (USD/ETH etc.)
 
 
 # Config
