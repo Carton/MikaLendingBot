@@ -344,7 +344,7 @@ Advanced logging and Web Display
     - When enabled, JSON logging is automatically enabled with output to ``www/bot_stats.json``.
     - You must close bot with a keyboard interrupt (CTRL-C on Windows) to properly shutdown the server and release the socket, otherwise you may have to wait several minutes for it to release itself.
 
-- ``recent_logs_limit`` (within the ``[bot]`` section) is the amount of lines the in-memory recent log list will keep before deleting the oldest event.
+- ``recent_logs_limit`` (within the ``[bot.web]`` section) is the amount of lines the in-memory recent log list will keep before deleting the oldest event.
 
     - Default value: 200
     - Reasons to lower this include: you are conscious of bandwidth when hosting your webserver, you prefer (slightly) faster loading times and less RAM usage of bot.
