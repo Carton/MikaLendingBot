@@ -53,27 +53,27 @@
 <li class="toctree-l2"><a class="reference internal" href="#spreading-your-lends">2.6. Spreading your Lends</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#auto-transfer-from-exchange-balance">2.7. Auto-transfer from Exchange Balance</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#unimportant-settings">2.8. Unimportant settings</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#max-to-be-lent">2.9. Max to be lent</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#config-per-coin">2.10. Config per Coin</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#max-active-amount-limit-total-lending">2.10.1. Max Active Amount (Limit Total Lending)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#config-per-coin">2.9. Config per Coin</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#max-active-amount-limit-total-lending">2.9.1. Max Active Amount (Limit Total Lending)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#max-offer-size-smooth-lending-over-time">2.9.2. Max Offer Size (Smooth Lending Over Time)</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#advanced-logging-and-web-display">2.11. Advanced logging and Web Display</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#plugins">2.12. Plugins</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#web-server-real-time">2.13. Web Server (Real-time)</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#accountstats-plugin">2.13.1. AccountStats Plugin</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#profit-charts-plugin">2.13.2. Profit Charts Plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#advanced-logging-and-web-display">2.10. Advanced logging and Web Display</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#plugins">2.11. Plugins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#web-server-real-time">2.12. Web Server (Real-time)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#accountstats-plugin">2.12.1. AccountStats Plugin</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#profit-charts-plugin">2.12.2. Profit Charts Plugin</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#lendingbot-html-options">2.14. lendingbot.html options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#notifications">2.15. Notifications</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#global-notification-settings">2.15.1. Global Notification Settings</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#email-notifications">2.15.2. Email notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#slack-notifications">2.15.3. Slack notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#telegram-notifications">2.15.4. Telegram notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#pushbullet-notifications">2.15.5. Pushbullet notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#irc-notifications">2.15.6. IRC notifications</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#market-analysis-plugin">2.15.7. Market Analysis Plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lendingbot-html-options">2.13. lendingbot.html options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notifications">2.14. Notifications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#global-notification-settings">2.14.1. Global Notification Settings</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#email-notifications">2.14.2. Email notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#slack-notifications">2.14.3. Slack notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#telegram-notifications">2.14.4. Telegram notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#pushbullet-notifications">2.14.5. Pushbullet notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#irc-notifications">2.14.6. IRC notifications</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#market-analysis-plugin">2.14.7. Market Analysis Plugin</a></li>
 </ul>
 </li>
 </ul>
@@ -456,57 +456,8 @@ especially to “Withdraw”.</p></li>
 </li>
 </ul>
 </section>
-<section id="max-to-be-lent">
-<h2><span class="section-number">2.9. </span>Max to be lent<a class="headerlink" href="#max-to-be-lent" title="Link to this heading"></a></h2>
-<p>This feature group allows you to only lend a certain percentage of your total holding in a coin, until the lending rate surpasses a certain threshold. Then it will lend at max capacity. These settings are found in the <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> section or specific <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> sections.</p>
-<ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">max_to_lend</span></code> is a raw number of how much you will lend of each coin whose lending rate is below <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Default value: 0 (disabled)</p></li>
-<li><p>Allowed range: 0 (disabled) or <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code> and up</p></li>
-<li><p>If set to 0, it is disabled.</p></li>
-<li><p>If disabled, the bot will check if <code class="docutils literal notranslate"><span class="pre">max_percent_to_lend</span></code> is enabled and use that instead.</p></li>
-<li><p>Setting this overrides <code class="docutils literal notranslate"><span class="pre">max_percent_to_lend</span></code>.</p></li>
-<li><p>This is a setting for the raw value of coin that will be lent if the coin’s lending rate is under <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p></li>
-<li><p>Has no effect if current rate is higher than <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p></li>
-<li><p>If the remainder (after subtracting <code class="docutils literal notranslate"><span class="pre">max_to_lend</span></code>) in a coin’s balance is less than <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code>, then the remainder will be lent anyway. Otherwise, the coins would go to waste since you can’t lend under <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code>.</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">max_percent_to_lend</span></code> is a percentage of how much you will lend of each coin whose lending rate is below <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Default value: 0 (disabled)</p></li>
-<li><p>Allowed range: 0 (disabled) to 100 percent</p></li>
-<li><p>If set to 0, it is disabled.</p></li>
-<li><p>If disabled in addition to <code class="docutils literal notranslate"><span class="pre">max_to_lend</span></code>, the entire feature will be disabled (100% of balance will be lent).</p></li>
-<li><p>This percentage is calculated per-coin, and is the percentage of the balance that will be lent if the coin’s current rate is less than <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p></li>
-<li><p>Has no effect if current rate is higher than <code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code>.</p></li>
-<li><p>If the remainder in a coin’s balance is less than <code class="docutils literal notranslate"><span class="pre">min_loan_size</span></code>, then the remainder will be lent anyway.</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">max_to_lend_rate</span></code> is the rate threshold (in percent) when all coins are lent.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Default value: 0 (disabled)</p></li>
-<li><p>Allowed range: 0 (disabled) or <code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code> to 5 percent</p></li>
-<li><p>Setting this to 0 with a limit in place causes the limit to always be active.</p></li>
-<li><p>When an individual coin’s lending rate passes this threshold, all of the coin will be lent instead of applying the limits from <code class="docutils literal notranslate"><span class="pre">max_to_lend</span></code> or <code class="docutils literal notranslate"><span class="pre">max_percent_to_lend</span></code>.</p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.default]</span>
-<span class="n">max_to_lend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
-<span class="n">max_percent_to_lend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
-<span class="n">max_to_lend_rate</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span>
-</pre></div>
-</div>
-</section>
 <section id="config-per-coin">
-<h2><span class="section-number">2.10. </span>Config per Coin<a class="headerlink" href="#config-per-coin" title="Link to this heading"></a></h2>
+<h2><span class="section-number">2.9. </span>Config per Coin<a class="headerlink" href="#config-per-coin" title="Link to this heading"></a></h2>
 <p>You can define specific configurations for each currency by creating a section named <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> (e.g., <code class="docutils literal notranslate"><span class="pre">[coin.BTC]</span></code>, <code class="docutils literal notranslate"><span class="pre">[coin.USD]</span></code>). Any settings defined in a coin-specific section will override the defaults set in <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code>.</p>
 <p>Configuration should look like this (using TOML format):</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.BTC]</span>
@@ -524,7 +475,7 @@ especially to “Withdraw”.</p></li>
 </pre></div>
 </div>
 <section id="max-active-amount-limit-total-lending">
-<h3><span class="section-number">2.10.1. </span>Max Active Amount (Limit Total Lending)<a class="headerlink" href="#max-active-amount-limit-total-lending" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.9.1. </span>Max Active Amount (Limit Total Lending)<a class="headerlink" href="#max-active-amount-limit-total-lending" title="Link to this heading"></a></h3>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">max_active_amount</span></code> limits the total amount that can be lent out for a currency. Found in the <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> or specific <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> section.</p>
 <blockquote>
@@ -553,9 +504,35 @@ especially to “Withdraw”.</p></li>
 </li>
 </ul>
 </section>
+<section id="max-offer-size-smooth-lending-over-time">
+<h3><span class="section-number">2.9.2. </span>Max Offer Size (Smooth Lending Over Time)<a class="headerlink" href="#max-offer-size-smooth-lending-over-time" title="Link to this heading"></a></h3>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">max_offer_size</span></code> limits the maximum amount of coin placed in a single loan offer. Found in the <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> or specific <code class="docutils literal notranslate"><span class="pre">[coin.SYMBOL]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: -1 (unlimited)</p></li>
+<li><dl class="simple">
+<dt>Allowed values:</dt><dd><ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">-1</span></code> = Unlimited (standard spreading applies)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&gt;</span> <span class="pre">0</span></code> = Limit (cap each individual offer to this amount)</p></li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><p>If set to &gt;0, no individual loan offer will exceed this amount. Unused balance remains in your wallet and will be offered in the next bot cycle (e.g. 60 seconds later). This effectively creates a Dollar Cost Averaging (DCA) effect, smoothing out your lending rates over time.</p></li>
+</ul>
+<p>Example configuration:</p>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[coin.USD]</span>
+<span class="n">max_offer_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1000.0</span><span class="w">  </span><span class="c1"># Never place an offer larger than 1000 USD</span>
+</pre></div>
+</div>
+</div></blockquote>
+</li>
+</ul>
+</section>
 </section>
 <section id="advanced-logging-and-web-display">
-<h2><span class="section-number">2.11. </span>Advanced logging and Web Display<a class="headerlink" href="#advanced-logging-and-web-display" title="Link to this heading"></a></h2>
+<h2><span class="section-number">2.10. </span>Advanced logging and Web Display<a class="headerlink" href="#advanced-logging-and-web-display" title="Link to this heading"></a></h2>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">enabled</span></code> (within the <code class="docutils literal notranslate"><span class="pre">[bot.web]</span></code> section) if true, this enables a webserver on the <code class="docutils literal notranslate"><span class="pre">www/</span></code> folder.</p>
 <blockquote>
@@ -636,7 +613,7 @@ especially to “Withdraw”.</p></li>
 </div>
 </section>
 <section id="plugins">
-<h2><span class="section-number">2.12. </span>Plugins<a class="headerlink" href="#plugins" title="Link to this heading"></a></h2>
+<h2><span class="section-number">2.11. </span>Plugins<a class="headerlink" href="#plugins" title="Link to this heading"></a></h2>
 <p>Plugins allow extending Bot functionality with extra features.
 To enable/disable a plugin add/remove it to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list config option under the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section, example:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
@@ -647,11 +624,11 @@ To enable/disable a plugin add/remove it to the <code class="docutils literal no
 This will add a navbar element on the main lendingbot.html page linking to &lt;pluginName&gt;.html</p>
 </section>
 <section id="web-server-real-time">
-<h2><span class="section-number">2.13. </span>Web Server (Real-time)<a class="headerlink" href="#web-server-real-time" title="Link to this heading"></a></h2>
+<h2><span class="section-number">2.12. </span>Web Server (Real-time)<a class="headerlink" href="#web-server-real-time" title="Link to this heading"></a></h2>
 <p>The bot includes a high-performance built-in web server (powered by FastAPI) to monitor and control its status in real-time.
 Logs are now pushed instantly to the dashboard using SSE (Server-Sent Events) technology, eliminating the need for periodic page reloads.</p>
 <section id="accountstats-plugin">
-<h3><span class="section-number">2.13.1. </span>AccountStats Plugin<a class="headerlink" href="#accountstats-plugin" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.12.1. </span>AccountStats Plugin<a class="headerlink" href="#accountstats-plugin" title="Link to this heading"></a></h3>
 <p>The AccountStats plugin fetches all your loan history and provides statistics based on it.
 Current implementation sends a earnings summary Notification (see Notifications sections) every 24hr.</p>
 <p>To enable the plugin add <code class="docutils literal notranslate"><span class="pre">AccountStats</span></code> to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list, example:</p>
@@ -667,7 +644,7 @@ Current implementation sends a earnings summary Notification (see Notifications 
 <p>Be aware that first initialization might take longer as the bot will fetch all the history.</p>
 </section>
 <section id="profit-charts-plugin">
-<h3><span class="section-number">2.13.2. </span>Profit Charts Plugin<a class="headerlink" href="#profit-charts-plugin" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.12.2. </span>Profit Charts Plugin<a class="headerlink" href="#profit-charts-plugin" title="Link to this heading"></a></h3>
 <p>The Charts plugin dumps out the historical lending data to a JSON structure which is read by the new charts.html page.
 This page reads this dump data and constructs a Google Chart showing daily profit over time.</p>
 <p>The AccountStats plugin must be enabled for the Charts plugin to function correctly.</p>
@@ -686,7 +663,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </section>
 </section>
 <section id="lendingbot-html-options">
-<h2><span class="section-number">2.14. </span>lendingbot.html options<a class="headerlink" href="#lendingbot-html-options" title="Link to this heading"></a></h2>
+<h2><span class="section-number">2.13. </span>lendingbot.html options<a class="headerlink" href="#lendingbot-html-options" title="Link to this heading"></a></h2>
 <p>You can pass options to statistics page by adding them to URL. Eg, <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/lendingbot.html?option1=value&amp;option2=0</span></code></p>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">effrate</span></code> controls how effective loan rate is calculated. Yearly rates are calculated based on effective rate, so this option affects them as well. Last used mode remembered by browser, so you do not have to specify this option every time. By default, effective loan rate is calculated considering lent precentage (from total available coins) and exchange fee.</p>
@@ -718,10 +695,10 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </ul>
 </section>
 <section id="notifications">
-<h2><span class="section-number">2.15. </span>Notifications<a class="headerlink" href="#notifications" title="Link to this heading"></a></h2>
+<h2><span class="section-number">2.14. </span>Notifications<a class="headerlink" href="#notifications" title="Link to this heading"></a></h2>
 <p>The bot supports sending notifications for several different events on several different platforms. To enable notifications, you must set <code class="docutils literal notranslate"><span class="pre">enabled</span> <span class="pre">=</span> <span class="pre">true</span></code> in the <code class="docutils literal notranslate"><span class="pre">[notifications]</span></code> section, enable at least one of the following events and also at least one notification platform. The list of events you can notify about are:</p>
 <section id="global-notification-settings">
-<h3><span class="section-number">2.15.1. </span>Global Notification Settings<a class="headerlink" href="#global-notification-settings" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.14.1. </span>Global Notification Settings<a class="headerlink" href="#global-notification-settings" title="Link to this heading"></a></h3>
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">notify_new_loans</span></code></p>
 <blockquote>
@@ -769,7 +746,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 <p>Once you have decided which notifications you want to receive, you can then go about configuring platforms to send them on. Currently the bot supports:</p>
 </section>
 <section id="email-notifications">
-<h3><span class="section-number">2.15.2. </span>Email notifications<a class="headerlink" href="#email-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.14.2. </span>Email notifications<a class="headerlink" href="#email-notifications" title="Link to this heading"></a></h3>
 <p>To enable email you should configure the following in the <code class="docutils literal notranslate"><span class="pre">[notifications.email]</span></code> section:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.email]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -783,7 +760,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="slack-notifications">
-<h3><span class="section-number">2.15.3. </span>Slack notifications<a class="headerlink" href="#slack-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.14.3. </span>Slack notifications<a class="headerlink" href="#slack-notifications" title="Link to this heading"></a></h3>
 <p>Before you can post to slack you need to create an API token. Once you have a token you can then configure the bot as so:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.slack]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -793,7 +770,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="telegram-notifications">
-<h3><span class="section-number">2.15.4. </span>Telegram notifications<a class="headerlink" href="#telegram-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.14.4. </span>Telegram notifications<a class="headerlink" href="#telegram-notifications" title="Link to this heading"></a></h3>
 <p>To have telegram notifications you need to get a bot id from the BotFather. Once you have a bot id you need to get your Chat ID or create a channel and invite the bot. Once you have all this in place you configure it like so:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.telegram]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -803,7 +780,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="pushbullet-notifications">
-<h3><span class="section-number">2.15.5. </span>Pushbullet notifications<a class="headerlink" href="#pushbullet-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.14.5. </span>Pushbullet notifications<a class="headerlink" href="#pushbullet-notifications" title="Link to this heading"></a></h3>
 <p>To enable Pushbullet notifications, you first need to create an API key and then discover your device ID.</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.pushbullet]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -813,7 +790,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="irc-notifications">
-<h3><span class="section-number">2.15.6. </span>IRC notifications<a class="headerlink" href="#irc-notifications" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.14.6. </span>IRC notifications<a class="headerlink" href="#irc-notifications" title="Link to this heading"></a></h3>
 <p>IRC is very easy to configure, if you are already interested in using it you’ll understand what each of the options are.</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[notifications.irc]</span>
 <span class="n">enabled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
@@ -827,7 +804,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </div>
 </section>
 <section id="market-analysis-plugin">
-<h3><span class="section-number">2.15.7. </span>Market Analysis Plugin<a class="headerlink" href="#market-analysis-plugin" title="Link to this heading"></a></h3>
+<h3><span class="section-number">2.14.7. </span>Market Analysis Plugin<a class="headerlink" href="#market-analysis-plugin" title="Link to this heading"></a></h3>
 <p>The Market Analysis plugin records currency market data and allows the bot to see trends. This data can be used to compute a recommended minimum lending rate.</p>
 <p>To enable the plugin, add <code class="docutils literal notranslate"><span class="pre">MarketAnalysis</span></code> to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list and configure the <code class="docutils literal notranslate"><span class="pre">[plugins.market_analysis]</span></code> section.</p>
 <p>For more detailed information on all available parameters, please refer to the <a class="reference internal" href="market_analysis.html#market-analysis-section"><span class="std std-ref">Market Analysis</span></a> documentation.</p>
