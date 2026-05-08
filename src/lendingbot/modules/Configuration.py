@@ -90,7 +90,7 @@ class CoinConfig(BaseModel):
     min_daily_rate: Decimal = Field(Decimal("0.005"), ge=0, le=5)
     max_daily_rate: Decimal = Field(Decimal("5.0"), ge=0, le=5)
 
-    @field_validator("min_daily_rate", "max_daily_rate", "max_to_lend_rate", mode="after")
+    @field_validator("min_daily_rate", "max_daily_rate", mode="after")
     @classmethod
     def convert_percent_to_decimal(cls, v: Decimal) -> Decimal:
         return v / 100
@@ -101,9 +101,10 @@ class CoinConfig(BaseModel):
     #    0 = disabled (skip this coin entirely, equivalent to not including in all_currencies)
     #   >0 = limit (cap total lending to this amount in coin units, e.g., 1000 USD)
     max_active_amount: Decimal = Decimal("-1")
-    max_to_lend: Decimal = Decimal("0")
-    max_percent_to_lend: Decimal = Field(Decimal("0"), ge=0, le=100)
-    max_to_lend_rate: Decimal = Decimal("0")
+    # max_offer_size: Limits the maximum amount of a *single* loan offer.
+    #   -1 = unlimited (no limit on single offer size)
+    #   >0 = limit (cap single offer to this amount in coin units, e.g., 1000 USD)
+    max_offer_size: Decimal = Decimal("-1")
 
     # Strategy
     strategy: LendingStrategy = LendingStrategy.SPREAD

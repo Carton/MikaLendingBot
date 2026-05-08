@@ -16,5 +16,5 @@
 - [x] Clean unused options in config
 - [x] Make rate:dur mapping configurable in Settings
 - [x] Make my added features configurable in web settings (like frrdelta) and add proper docs for them
-- [ ] max_to_lend/max_percent_to_lend/max_to_lend_rate: These 3 config options are not useful and may conflict with FFR strategy? Consider removing them
+- [x] max_to_lend/max_percent_to_lend/max_to_lend_rate: These 3 config options are not useful and may conflict with FFR strategy? Consider removing them
 

@@ -80,9 +80,6 @@ min_loan_size = 0.01
 min_daily_rate = 0.005
 max_daily_rate = 5.0
 max_active_amount = -1    # -1 = unlimited
-max_to_lend = 0           # 0 = unlimited
-max_percent_to_lend = 0   # 0 = 100%
-max_to_lend_rate = 0      # 0 = disabled
 strategy = "Spread"       # or "FRR"
 
 # Spread Strategy Params

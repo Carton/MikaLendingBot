@@ -271,48 +271,6 @@ Very few situations require you to change these settings.
     - Uncomment to enable.
     - Format: ``YEAR-MONTH-DAY``
 
-Max to be lent
---------------
-
-This feature group allows you to only lend a certain percentage of your total holding in a coin, until the lending rate surpasses a certain threshold. Then it will lend at max capacity. These settings are found in the ``[coin.default]`` section or specific ``[coin.SYMBOL]`` sections.
-
-- ``max_to_lend`` is a raw number of how much you will lend of each coin whose lending rate is below ``max_to_lend_rate``.
-
-    - Default value: 0 (disabled)
-    - Allowed range: 0 (disabled) or ``min_loan_size`` and up
-    - If set to 0, it is disabled.
-    - If disabled, the bot will check if ``max_percent_to_lend`` is enabled and use that instead.
-    - Setting this overrides ``max_percent_to_lend``.
-    - This is a setting for the raw value of coin that will be lent if the coin's lending rate is under ``max_to_lend_rate``.
-    - Has no effect if current rate is higher than ``max_to_lend_rate``.
-    - If the remainder (after subtracting ``max_to_lend``) in a coin's balance is less than ``min_loan_size``, then the remainder will be lent anyway. Otherwise, the coins would go to waste since you can't lend under ``min_loan_size``.
-
-- ``max_percent_to_lend`` is a percentage of how much you will lend of each coin whose lending rate is below ``max_to_lend_rate``.
-
-    - Default value: 0 (disabled)
-    - Allowed range: 0 (disabled) to 100 percent
-    - If set to 0, it is disabled.
-    - If disabled in addition to ``max_to_lend``, the entire feature will be disabled (100% of balance will be lent).
-    - This percentage is calculated per-coin, and is the percentage of the balance that will be lent if the coin's current rate is less than ``max_to_lend_rate``.
-    - Has no effect if current rate is higher than ``max_to_lend_rate``.
-    - If the remainder in a coin's balance is less than ``min_loan_size``, then the remainder will be lent anyway.
-
-
-- ``max_to_lend_rate`` is the rate threshold (in percent) when all coins are lent.
-
-    - Default value: 0 (disabled)
-    - Allowed range: 0 (disabled) or ``min_daily_rate`` to 5 percent
-    - Setting this to 0 with a limit in place causes the limit to always be active.
-    - When an individual coin's lending rate passes this threshold, all of the coin will be lent instead of applying the limits from ``max_to_lend`` or ``max_percent_to_lend``.
-
-.. code-block:: toml
-
-    [coin.default]
-    max_to_lend = 0
-    max_percent_to_lend = 0
-    max_to_lend_rate = 0
-
-
 Config per Coin
 ---------------
 
@@ -356,6 +314,24 @@ Max Active Amount (Limit Total Lending)
         [coin.USD]
         min_loan_size = 150
         max_active_amount = 5000.0  # Only lend up to 5000 USD total
+
+Max Offer Size (Smooth Lending Over Time)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- ``max_offer_size`` limits the maximum amount of coin placed in a single loan offer. Found in the ``[coin.default]`` or specific ``[coin.SYMBOL]`` section.
+
+    - Default value: -1 (unlimited)
+    - Allowed values:
+        - ``-1`` = Unlimited (standard spreading applies)
+        - ``> 0`` = Limit (cap each individual offer to this amount)
+    - If set to >0, no individual loan offer will exceed this amount. Unused balance remains in your wallet and will be offered in the next bot cycle (e.g. 60 seconds later). This effectively creates a Dollar Cost Averaging (DCA) effect, smoothing out your lending rates over time.
+
+    Example configuration:
+
+    .. code-block:: toml
+
+        [coin.USD]
+        max_offer_size = 1000.0  # Never place an offer larger than 1000 USD
 
 
 Advanced logging and Web Display

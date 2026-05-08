@@ -92,13 +92,11 @@ min_loan_size = 0.01
 # >0 = limit (cap total lending to this amount, e.g., 1000 for USD means max 1000 USD total lent)
 max_active_amount = -1
 
-# How much to lend out
-# Raw maximum amount to lend if under max_to_lend_rate. 0 or commented = check max_percent_to_lend
-max_to_lend = 0
-# Maximum percent to lend if under max_to_lend_rate. 0 or commented = 100%
-max_percent_to_lend = 0
-# Max to lend conditional rate. If > 0, the limits above apply when rate <= max_to_lend_rate.
-max_to_lend_rate = 0
+# Limits the maximum amount of a single loan offer to smooth out lending rates over time.
+# Unused balance remains in the account and will be offered in the next bot cycle.
+# -1 = unlimited (no limit on single offer size, standard spreading applies)
+# >0 = limit (cap single offer to this amount, e.g., 100 for USD means each offer is max 100 USD)
+max_offer_size = -1
 
 # Lending Strategy Selection. "Spread" or "FRR" (Bitfinex only).
 # Spread: Standard gap/spread based lending.

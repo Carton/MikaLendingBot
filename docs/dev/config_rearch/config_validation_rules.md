@@ -45,9 +45,7 @@
 | `max_daily_rate` (old: `maxdailyrate`) | `Decimal` | `5.0` | `0.003 <= x <= 5.0` (in percent) | `Configuration.py:195` |
 | `min_loan_size` (old: `minloansize`) | `Decimal` | `0.01` | `>= 0.005` | `Configuration.py:244` |
 | `max_active_amount` (old: `maxactiveamount`) | `Decimal` | `-1` | `-1` = unlimited, `0` = disabled, `> 0` = limit (caps total lending) | `Configuration.py:85` |
-| `max_to_lend` (old: `maxtolend`) | `Decimal` | `0` | `>= 0`. `0` means unlimited/check percent. | `Configuration.py:179` |
-| `max_percent_to_lend` (old: `maxpercenttolend`) | `Decimal` | `0` | `0 <= x <= 100` | `Configuration.py:180` |
-| `max_to_lend_rate` (old: `maxtolendrate`) | `Decimal` | `0` | `>= 0` (in percent) | `Configuration.py:181` |
+| `max_offer_size` | `Decimal` | `-1` | `-1` = unlimited, `> 0` = cap on single offer size | `Configuration.py:90` |
 | `strategy` (old: `lending_strategy`) | `str` | `"Spread"` | Enum: `"Spread"`, `"FRR"` | `Configuration.py:190` |
 
 ### Spread Strategy

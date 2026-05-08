@@ -211,16 +211,17 @@ class TestLendingEngineLogic:
         assert rate_info.frr_enabled is False
 
     def test_get_frr_or_min_daily_rate_bitfinex_frr(self, engine, mock_api):
-        engine.initialize()
-        # ETH is FRR
-        mock_api.get_frr.return_value = 0.002  # 0.2%
-        # frr_delta_min/max are -5 to 5. Step 0 (start) is -5%
-        # Final rate = 0.002 * (1 - 0.05) = 0.0019
-        rate_info = engine.get_frr_or_min_daily_rate("ETH")
+        with patch("lendingbot.modules.WebServer.get_web_settings", return_value={}):
+            engine.initialize()
+            # ETH is FRR
+            mock_api.get_frr.return_value = 0.002  # 0.2%
+            # frr_delta_min/max are -5 to 5. Step 0 (start) is -5%
+            # Final rate = 0.002 * (1 - 0.05) = 0.0019
+            rate_info = engine.get_frr_or_min_daily_rate("ETH")
 
-        assert rate_info.frr_enabled is True
-        assert float(rate_info.final_rate) == pytest.approx(0.0019)
-        assert rate_info.frr_used is True  # 0.0019 > min_rate 0.001
+            assert rate_info.frr_enabled is True
+            assert float(rate_info.final_rate) == pytest.approx(0.0019)
+            assert rate_info.frr_used is True  # 0.0019 > min_rate 0.001
 
     def test_create_lend_offer_adjustment(self, engine, mock_api):
         engine.initialize()
@@ -275,6 +276,57 @@ class TestLendingEngineLogic:
         # Duration restricted by end_date
         assert engine._calculate_duration(0.001, "5") == "3"
         assert engine._calculate_duration(0.001, "2") == "2"  # default 2 is less than 3
+
+    def test_construct_orders_max_offer_size_unlimited(self, engine):
+        engine.initialize()
+        engine.coin_cfg["BTC"].max_offer_size = Decimal("-1")
+        # Ensure spread allows 3 orders
+        engine.spread_lend = 3
+        # Mock gap rates
+        with patch.object(engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]):
+            # cur_active_bal = 300. Expect 3 orders of 100.
+            resp = engine.construct_orders("BTC", Decimal("300"), Decimal("1000"), {})
+            assert len(resp["amounts"]) == 3
+            assert all(amt == Decimal("100") for amt in resp["amounts"])
+
+    def test_construct_orders_max_offer_size_limited(self, engine):
+        engine.initialize()
+        engine.coin_cfg["BTC"].max_offer_size = Decimal("50")
+        engine.spread_lend = 3
+        with patch.object(engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]):
+            # cur_active_bal = 300. Normally 100 per order, but capped at 50.
+            resp = engine.construct_orders("BTC", Decimal("300"), Decimal("1000"), {})
+            assert len(resp["amounts"]) == 3
+            assert all(amt == Decimal("50") for amt in resp["amounts"])
+            # The remaining 150 is left un-lent (handled correctly by only offering sum(amounts)).
+
+    def test_construct_orders_max_offer_size_with_remainder(self, engine):
+        engine.initialize()
+        engine.coin_cfg["BTC"].max_offer_size = Decimal("105")
+        engine.spread_lend = 3
+        with patch.object(engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]):
+            # cur_active_bal = 310.
+            # 310 / 3 = 103.33333333.
+            # Amounts before remainder: [103.33333333, 103.33333333, 103.33333333]
+            # Remainder: 310 - 309.99999999 = 0.00000001
+            # Allowance on first order: 105 - 103.33333333 = 1.66666667
+            # So remainder is fully added to the first order.
+            resp = engine.construct_orders("BTC", Decimal("310"), Decimal("1000"), {})
+            assert len(resp["amounts"]) == 3
+            assert resp["amounts"][0] == Decimal("103.33333334")
+            assert resp["amounts"][1] == Decimal("103.33333333")
+            assert resp["amounts"][2] == Decimal("103.33333333")
+
+    def test_construct_orders_max_offer_size_remainder_capped(self, engine):
+        engine.initialize()
+        # Cap exactly at the truncated amount
+        engine.coin_cfg["BTC"].max_offer_size = Decimal("103.33333333")
+        engine.spread_lend = 3
+        with patch.object(engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]):
+            # cur_active_bal = 310.
+            # Remainder is 0.00000001, but allowance is 0.
+            resp = engine.construct_orders("BTC", Decimal("310"), Decimal("1000"), {})
+            assert resp["amounts"][0] == Decimal("103.33333333") # Can't add remainder
 
 
 class TestLendingEngineFlow:

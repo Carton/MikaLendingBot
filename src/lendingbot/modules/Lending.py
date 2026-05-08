@@ -576,13 +576,24 @@ class LendingEngine:
 
         new_order_rates = sorted(set(order_rates))
         new_order_amounts = []
+
+        cur_max_offer_size = Decimal("-1")
+        if cfg := self.coin_cfg.get(cur):
+            cur_max_offer_size = cfg.max_offer_size
+
         for _ in range(len(new_order_rates)):
-            new_amount = self.data.truncate(cur_active_bal / len(new_order_rates), 8)
-            new_order_amounts.append(Decimal(str(new_amount)))
+            new_amount = Decimal(str(self.data.truncate(cur_active_bal / len(new_order_rates), 8)))
+            if cur_max_offer_size > 0 and new_amount > cur_max_offer_size:
+                new_amount = cur_max_offer_size
+            new_order_amounts.append(new_amount)
 
         remainder = cur_active_bal - sum(new_order_amounts)
         if remainder > 0:  # If truncating causes remainder, add that to first order.
-            new_order_amounts[0] += remainder
+            if cur_max_offer_size <= 0:
+                new_order_amounts[0] += remainder
+            elif new_order_amounts[0] < cur_max_offer_size:
+                allowance = cur_max_offer_size - new_order_amounts[0]
+                new_order_amounts[0] += min(remainder, allowance)
 
         resp = {"amounts": new_order_amounts, "rates": new_order_rates}
         return resp
@@ -677,10 +688,8 @@ class LendingEngine:
         # Pass the total_lent for this currency to enable max_active_amount limit
         cur_total_lent = total_lent.get(active_cur, Decimal(0))
         active_bal = MaxToLend.amount_to_lend(
-            active_cur_total_balance,
             active_cur,
             Decimal(str(lending_balances[active_cur])),
-            Decimal(str(order_book["rates"][0])),
             total_lent=cur_total_lent,
         )
 
@@ -749,9 +758,7 @@ class LendingEngine:
 
         for cur in sorted(total_lent):
             if not lending_balances or cur not in lending_balances:
-                MaxToLend.amount_to_lend(
-                    total_lent[cur], cur, Decimal(0), Decimal(0), total_lent=total_lent[cur]
-                )
+                MaxToLend.amount_to_lend(cur, Decimal(0), total_lent=total_lent[cur])
 
         usable_currencies = 0
         ticker: dict[str, dict[str, str]] | None = None
