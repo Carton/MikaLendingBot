@@ -39,7 +39,7 @@ def logger(config):
     """Create logger instance for integration tests."""
     return Logger(
         stats_file=config.bot.stats_file,
-        recent_logs_limit=config.bot.recent_logs_limit,
+        recent_logs_limit=config.bot.web.recent_logs_limit,
         exchange=config.api.exchange.value,
         label=config.bot.label,
     )

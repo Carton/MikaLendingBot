@@ -60,7 +60,7 @@ class BotOrchestrator:
         try:
             self.log = Logger(
                 stats_file=self.config.bot.stats_file,
-                recent_logs_limit=self.config.bot.recent_logs_limit,
+                recent_logs_limit=self.config.bot.web.recent_logs_limit,
                 log_file=self.config.bot.log_file,
                 log_file_days=self.config.bot.log_file_days,
                 exchange=self.config.api.exchange.value,

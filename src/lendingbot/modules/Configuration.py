@@ -52,6 +52,7 @@ class WebServerConfig(BaseModel):
     port: int = Field(8000, ge=1, le=65535)
     template: str = "www"
     refresh_rate: int = Field(300, ge=30, le=86400)
+    recent_logs_limit: int = 200
 
 
 class BotConfig(BaseModel):
@@ -61,7 +62,6 @@ class BotConfig(BaseModel):
     request_timeout: int = Field(30, ge=1, le=180)
     api_debug_log: bool = False
     stats_file: str = "www/bot_stats.json"
-    recent_logs_limit: int = 200
     log_file: str = "logs/lendingbot.log"
     log_file_days: int = Field(10, ge=1)
     output_currency: str = "BTC"

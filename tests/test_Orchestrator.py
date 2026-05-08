@@ -22,7 +22,7 @@ class TestOrchestrator:
         # Setup mocks
         mock_config = MagicMock()
         mock_config.bot.stats_file = "bot.json"
-        mock_config.bot.recent_logs_limit = 2000
+        mock_config.bot.web.recent_logs_limit = 2000
         mock_config.api.exchange.value = "poloniex"
         mock_config.bot.label = "TestBot"
         mock_config.plugins.market_analysis.analyse_currencies = False
