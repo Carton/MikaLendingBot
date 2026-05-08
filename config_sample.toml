@@ -53,6 +53,14 @@ plugins = ["AccountStats", "Charts"]
 # Uncomment and specify currencies to enable automatic transfer.
 # transferable_currencies = ["USD", "BTC", "ETH"]
 
+# Limits the amount of recent log lines to keep in memory for the web interface.
+recent_logs_limit = 200
+
+# Text log file path (for long term storage/auditing). Set to empty string to disable.
+log_file = "logs/lendingbot.log"
+# Number of days to keep in the text log file
+log_file_days = 10
+
 [bot.web]
 # Enables a webserver for the www folder, in order to easily use the lendingbot.html with the JSON stats.
 enabled = true
@@ -63,13 +71,6 @@ port = 8000
 template = "www"
 # Refresh rate in seconds for dashboard statistics (bot_stats.json).
 refresh_rate = 300
-# Limits the amount of recent log lines to keep in memory for the web interface.
-recent_logs_limit = 200
-
-# Text log file path (for long term storage/auditing). Set to empty string to disable.
-log_file = "logs/lendingbot.log"
-# Number of days to keep in the text log file
-log_file_days = 10
 
 # Currencies can be configured here.
 # [coin.default] serves as the base (default) configuration for all currencies.
