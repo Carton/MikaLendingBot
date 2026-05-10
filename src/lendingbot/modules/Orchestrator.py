@@ -161,6 +161,7 @@ class BotOrchestrator:
             self.plugins_manager.after_lending()
 
         lent_status_str = Data.stringify_total_lent(Data.get_total_lent())
+        self.log.refreshStatus(lent_status_str)
         if time.time() - self.last_summary_time >= self.config.bot.period_inactive:
             self.log.log(lent_status_str)
             self.last_summary_time = time.time()

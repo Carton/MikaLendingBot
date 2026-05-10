@@ -32,11 +32,25 @@ var btcDisplayUnitsModes = [BTC, mBTC, Bits, Satoshi];
 var logSSE = null;
 var initialLogsLoaded = false;
 
+function hasDashboardStats(data) {
+    return data && data.raw_data && Object.keys(data.raw_data).length > 0;
+}
+
+function updateStatusText(status, statsAvailable) {
+    if (status) {
+        $('#status').text(status);
+    } else if (statsAvailable) {
+        $('#status').text('Stats updated');
+    } else {
+        $('#status').text('Waiting for bot status update...');
+    }
+}
+
 function updateJson(data) {
     data = data || {};
     lastStatsData = data;
 
-    $('#status').text(data.last_status || 'Waiting for bot status update...');
+    updateStatusText(data.last_status, hasDashboardStats(data));
     $('#updated').text(data.last_update || 'Not updated');
     if (data.exchange || data.label) {
         var pageTitle = [data.exchange, data.label].filter(Boolean).join(' ');
@@ -613,8 +627,10 @@ function fetchStatus() {
 
     statusRequestInFlight = true;
     $.getJSON('/get_status?_t=' + new Date().getTime(), function (data) {
-        if (data.last_status !== undefined) {
-            $('#status').text(data.last_status || 'Waiting for bot status update...');
+        if (data.last_status) {
+            updateStatusText(data.last_status, false);
+        } else if (!hasDashboardStats(lastStatsData)) {
+            updateStatusText('', false);
         }
         if (data.last_update !== undefined) {
             $('#updated').text(data.last_update || 'Not updated');

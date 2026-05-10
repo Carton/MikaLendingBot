@@ -36,8 +36,7 @@ class WebServer:
         @self.app.get("/get_status", response_model=None)
         async def get_status() -> dict[str, Any]:
             strategies = {cur: cfg.strategy for cur, cfg in self.lending_engine.coin_cfg.items()}
-            status = self._get_live_stats_snapshot()
-            return status | {
+            return self._get_live_status_snapshot() | {
                 "lending_paused": self.lending_engine.lending_paused,
                 "lending_strategies": strategies,
             }
@@ -45,7 +44,7 @@ class WebServer:
         @self.app.get("/bot_stats.json", response_model=None)
         async def bot_stats() -> JSONResponse:
             return JSONResponse(
-                content=self._get_live_stats_snapshot(),
+                content=self._get_persisted_stats_snapshot(),
                 headers={"Cache-Control": "no-store"},
             )
 
@@ -181,13 +180,37 @@ class WebServer:
         if self.server:
             self.server.should_exit = True
 
-    def _get_live_stats_snapshot(self) -> dict[str, Any]:
+    def _get_live_status_snapshot(self) -> dict[str, Any]:
         get_snapshot = getattr(self.log, "get_stats_snapshot", None)
         if callable(get_snapshot):
             snapshot = get_snapshot()
             if isinstance(snapshot, dict) and snapshot:
-                return snapshot
+                return {
+                    key: snapshot[key]
+                    for key in ("last_status", "last_update")
+                    if key in snapshot
+                }
 
+        persisted = self._read_stats_file()
+        return {
+            key: persisted[key]
+            for key in ("last_status", "last_update")
+            if key in persisted
+        }
+
+    def _get_persisted_stats_snapshot(self) -> dict[str, Any]:
+        persisted = self._read_stats_file()
+        if persisted:
+            return persisted
+
+        get_snapshot = getattr(self.log, "get_stats_snapshot", None)
+        if callable(get_snapshot):
+            snapshot = get_snapshot()
+            if isinstance(snapshot, dict):
+                return snapshot
+        return {}
+
+    def _read_stats_file(self) -> dict[str, Any]:
         stats_file = Path(self.config.bot.stats_file)
         if stats_file.exists():
             try:

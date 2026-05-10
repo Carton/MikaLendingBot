@@ -66,6 +66,7 @@ class TestOrchestrator:
         orchestrator.engine.last_lending_status = False  # No change
         mock_time.return_value = 1000
         orchestrator.last_summary_time = 0
+        mock_data.stringify_total_lent.return_value = "total lent status"
 
         # Execute step
         orchestrator.step()
@@ -81,6 +82,7 @@ class TestOrchestrator:
         orchestrator.plugins_manager.after_lending.assert_called_once()
 
         # Verify logging
+        orchestrator.log.refreshStatus.assert_called_with("total lent status")
         orchestrator.log.persistStatus.assert_called_once()
 
     @patch("lendingbot.modules.Orchestrator.os._exit")

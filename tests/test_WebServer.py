@@ -3,12 +3,12 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
-    from pathlib import Path
 
 import pytest
 import uvicorn
@@ -50,8 +50,9 @@ class MockLogger:
 
 
 @pytest.fixture
-async def web_server() -> WebServer:
+async def web_server(tmp_path: Path) -> WebServer:
     cfg = RootConfig()
+    cfg.bot.stats_file = str(tmp_path / "bot_stats.json")
     engine = MockEngine()
     logger = MockLogger()
     logger.callbacks = []
@@ -97,10 +98,29 @@ async def test_get_status(web_server: WebServer) -> None:
     assert data["lending_paused"] is False
     assert data["last_status"] == "Live status from logger"
     assert data["last_update"] == "2026-05-10 12:00:00"
+    assert "raw_data" not in data
+    assert "outputCurrency" not in data
 
 
 @pytest.mark.asyncio
-async def test_bot_stats_json_serves_live_logger_snapshot(web_server: WebServer) -> None:
+async def test_bot_stats_json_prefers_persisted_stats_file(
+    web_server: WebServer,
+) -> None:
+    stats_file = Path(web_server.config.bot.stats_file)
+    stats_file.write_text(
+        json.dumps(
+            {
+                "last_status": "Persisted complete status",
+                "raw_data": {"USD": {"totalCoins": "139176.70496700"}},
+                "outputCurrency": {
+                    "currency": "USD",
+                    "highestBid": "80775.44426494346",
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
     async with AsyncClient(
         transport=ASGITransport(app=web_server.app), base_url="http://test"
     ) as ac:
@@ -108,8 +128,9 @@ async def test_bot_stats_json_serves_live_logger_snapshot(web_server: WebServer)
 
     assert response.status_code == 200
     data = response.json()
-    assert data["last_status"] == "Live status from logger"
-    assert data["raw_data"] == {}
+    assert data["last_status"] == "Persisted complete status"
+    assert data["raw_data"]["USD"]["totalCoins"] == "139176.70496700"
+    assert data["outputCurrency"]["currency"] == "USD"
 
 
 @pytest.mark.asyncio
