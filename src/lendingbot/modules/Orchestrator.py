@@ -158,6 +158,9 @@ class BotOrchestrator:
             self.engine.transfer_balances()
             self.engine.cancel_all()
             self.engine.lend_all()
+            lent_status_str = Data.stringify_total_lent(Data.get_total_lent())
+            self.log.refreshStatus(lent_status_str)
+            self.log.writeStatusSnapshot()
             self.plugins_manager.after_lending()
 
         lent_status_str = Data.stringify_total_lent(Data.get_total_lent())

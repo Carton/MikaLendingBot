@@ -85,6 +85,38 @@ class TestOrchestrator:
         orchestrator.log.refreshStatus.assert_called_with("total lent status")
         orchestrator.log.persistStatus.assert_called_once()
 
+    @patch("lendingbot.modules.Orchestrator.Data")
+    @patch("lendingbot.modules.Orchestrator.sys.stdout")
+    @patch("lendingbot.modules.Orchestrator.time.time")
+    def test_orchestrator_writes_stats_before_after_lending_plugins(
+        self, mock_time, _mock_stdout, mock_data
+    ):
+        orchestrator = BotOrchestrator(config_path="config.toml", dry_run=True)
+        orchestrator.config = MagicMock()
+        orchestrator.config.bot.output_currency = "BTC"
+        orchestrator.config.bot.web.enabled = True
+        orchestrator.config.bot.period_inactive = 60
+
+        call_order = []
+        orchestrator.log = MagicMock()
+        orchestrator.log.writeStatusSnapshot.side_effect = lambda: call_order.append(
+            "writeStatusSnapshot"
+        )
+        orchestrator.engine = MagicMock()
+        orchestrator.plugins_manager = MagicMock()
+        orchestrator.plugins_manager.after_lending.side_effect = lambda: call_order.append(
+            "after_lending"
+        )
+        orchestrator.engine.lending_paused = False
+        orchestrator.engine.last_lending_status = False
+        mock_time.return_value = 1000
+        orchestrator.last_summary_time = 0
+        mock_data.stringify_total_lent.return_value = "total lent status"
+
+        orchestrator.step()
+
+        assert call_order[:2] == ["writeStatusSnapshot", "after_lending"]
+
     @patch("lendingbot.modules.Orchestrator.os._exit")
     def test_orchestrator_stop(self, mock_exit):
         """Test the stop method."""

@@ -249,6 +249,10 @@ class Logger:
         if hasattr(self.output, "clearStatusValues"):
             self.output.clearStatusValues()
 
+    def writeStatusSnapshot(self) -> None:
+        if hasattr(self.output, "writeStatsFile"):
+            self.output.writeStatsFile()
+
     @staticmethod
     def digestApiMsg(msg: Any) -> str:
         if isinstance(msg, dict):

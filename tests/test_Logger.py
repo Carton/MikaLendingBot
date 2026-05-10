@@ -53,6 +53,18 @@ class TestLogger:
 
         assert logger.get_stats_snapshot()["raw_data"]["BTC"]["lentSum"] == "1.0"
 
+    def test_write_status_snapshot_does_not_clear_values(self, tmp_path):
+        stats_file = tmp_path / "bot_stats.json"
+        logger = Logger(str(stats_file), 5, "BITFINEX")
+        logger.updateStatusValue("BTC", "lentSum", "1.0")
+
+        logger.writeStatusSnapshot()
+
+        with stats_file.open() as f:
+            data = json.load(f)
+        assert data["raw_data"]["BTC"]["lentSum"] == "1.0"
+        assert logger.get_stats_snapshot()["raw_data"]["BTC"]["lentSum"] == "1.0"
+
     def test_logger_lifecycle(self, tmp_path):
         stats_file = tmp_path / "bot_stats.json"
         logger = Logger(str(stats_file), 5, "BITFINEX")
