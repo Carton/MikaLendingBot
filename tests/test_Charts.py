@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from lendingbot.modules.Configuration import PluginsConfig, RootConfig
+from lendingbot.modules.Configuration import ChartsConfig, PluginsConfig, RootConfig
 from lendingbot.plugins.Charts import Charts
 
 
@@ -18,7 +18,7 @@ class TestCharts:
     def charts_plugin(self, tmp_path):
         # Use real configuration object
         mock_cfg = RootConfig(
-            plugins=PluginsConfig(charts={"enabled": True, "DumpInterval": 21600})
+            plugins=PluginsConfig(charts=ChartsConfig(dump_interval=21600))
         )
         mock_api = Mock()
         mock_log = MagicMock()
@@ -45,7 +45,7 @@ class TestCharts:
     def test_default_history_file(self):
         # Create a plugin instance without overriding history_file
         mock_cfg = RootConfig(
-            plugins=PluginsConfig(charts={"enabled": True, "DumpInterval": 21600})
+            plugins=PluginsConfig(charts=ChartsConfig(dump_interval=21600))
         )
         plugin = Charts(mock_cfg, Mock(), MagicMock(), {})
         assert plugin.history_file == "www/history.json"

@@ -1,0 +1,159 @@
+# Advanced configuration example.
+# Start with config_sample.toml unless you need one of these optional features.
+
+[api]
+exchange = "Bitfinex"
+apikey = "YourAPIKey"
+secret = "YourSecret"
+
+# Bitfinex:
+all_currencies = ["USD", "USDt"]
+# Poloniex:
+# all_currencies = ["STR", "BTC", "BTS", "CLAM", "DOGE", "DASH", "LTC", "MAID", "XMR", "XRP", "ETH", "FCT"]
+
+[bot]
+label = "Lending Bot"
+plugins = ["AccountStats", "Charts"]
+output_currency = "USD"
+
+# Loop and API behavior.
+period_active = 60
+period_inactive = 300
+request_timeout = 30
+api_debug_log = false
+
+# Order handling behavior.
+keep_stuck_orders = true
+hide_coins = true
+
+# Stop opening loans after this date approaches. Preferred format: YYYY-MM-DD.
+# Legacy YYYY,M,D is still accepted.
+# end_date = "2026-12-25"
+
+# Auto-transfer funds from exchange balance to lending balance.
+# transferable_currencies = ["USD", "BTC", "ETH"]
+
+# Text log file path. Set to empty string to disable text log output.
+log_file = "logs/lendingbot.log"
+log_file_days = 10
+
+[bot.web]
+enabled = true
+host = "127.0.0.1"
+port = 8000
+template = "www"
+refresh_rate = 300
+recent_logs_limit = 200
+
+[coin.default]
+min_daily_rate = 0.01
+max_daily_rate = 5.0
+min_loan_size = 0.01
+
+# Total active lending cap for each currency:
+# omit = unlimited, 0 = disable this currency, >0 = cap in coin units.
+# Legacy -1 is still accepted as unlimited.
+# max_active_amount = 5000
+
+# Single offer size cap:
+# omit or 0 = unlimited, >0 = cap each offer in coin units.
+# Legacy -1 is still accepted as unlimited.
+# max_offer_size = 1000
+
+# Strategy selection: "FRR" (Bitfinex only) or "Spread".
+strategy = "FRR"
+
+# FRR rate adjustment, in percent relative to FRR.
+frr_delta_min = -10.0
+frr_delta_max = 10.0
+
+# Spread strategy settings. Used only when strategy = "Spread".
+# strategy = "Spread"
+# spread_lend = 3
+# gap_mode = "RawBTC"
+# gap_bottom = 40
+# gap_top = 200
+
+# Longer lending duration thresholds. Rates are daily percentages.
+xday_thresholds = [
+    { rate = 0.028, days = 20 },
+    { rate = 0.035, days = 30 },
+    { rate = 0.040, days = 60 },
+    { rate = 0.045, days = 90 },
+    { rate = 0.050, days = 120 },
+]
+
+[coin.USD]
+min_loan_size = 150
+
+# Example coin override:
+# [coin.BTC]
+# min_loan_size = 0.01
+# min_daily_rate = 0.18
+# max_active_amount = 1
+# gap_mode = "RawBTC"
+# gap_bottom = 20
+# gap_top = 400
+# strategy = "Spread"
+
+[plugins.account_stats]
+report_interval = 86400
+
+[plugins.charts]
+dump_interval = 21600
+
+[notifications]
+enabled = false
+notify_new_loans = false
+notify_tx_coins = false
+notify_xday_threshold = false
+notify_summary_minutes = 0
+notify_caught_exception = false
+# notify_prefix = "[Polo]"
+
+[notifications.email]
+enabled = false
+# login_address = "me@gmail.com"
+# login_password = "secretPassword"
+# smtp_server = "smtp.gmail.com"
+# smtp_port = 465
+# smtp_starttls = false
+# to_addresses = ["me@gmail.com", "you@gmail.com"]
+
+[notifications.slack]
+enabled = false
+# token = "1234567890abcdef"
+# channels = ["#cryptocurrency", "@someUser"]
+# username = "Poloniex Bot"
+
+[notifications.telegram]
+enabled = false
+# bot_id = "1234567890abcdef"
+# chat_ids = ["@polopolo", "@cryptocurrency"]
+
+[notifications.pushbullet]
+enabled = false
+# token = "1234567890abcdef"
+# deviceid = "1234567890abcdef"
+
+[notifications.irc]
+enabled = false
+# host = "irc.freenode.net"
+# port = 6667
+# nick = "LendingBot"
+# ident = "lendingbot"
+# realname = "Poloniex lending bot"
+# target = "#bitbotfactory"
+# debug = false
+
+[plugins.market_analysis]
+# Market Analysis is advanced and should be enabled only after reading docs/market_analysis.rst.
+# analyse_currencies = ["BTC", "ETH"]
+lending_style = 75
+macd_long_window = 1800
+percentile_window = 259200
+daily_min_multiplier = 1.05
+analysis_method = "Percentile"
+# recorded_levels = 10
+# data_tolerance = 15
+# ma_debug_log = false

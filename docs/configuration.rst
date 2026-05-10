@@ -7,7 +7,9 @@ Configuring the bot can be as simple as select the exchange to use and copy-past
 
 New features are generally backwards compatible with previous versions of the configuration but it is still recommended that you update your config immediately after updating to take advantage of new features.
 
-The bot now uses TOML format for configuration. To begin, copy ``config_sample.toml`` to ``config.toml``. Now you can edit your settings.
+The bot now uses TOML format for configuration. To begin, copy ``config_sample.toml`` to ``config.toml``. This starter sample contains only the common settings needed for normal use.
+
+Optional features and tuning examples are kept in ``config_sample_advanced.toml``. Use it as a reference when you need web-server tuning, log retention settings, notifications, Market Analysis, transfer automation, exposure limits, Spread strategy tuning, or plugin intervals.
 
 Exchange selection, API key and Secret
 --------------------------------------
@@ -269,7 +271,8 @@ Very few situations require you to change these settings.
 
     - Default value: Disabled
     - Uncomment to enable.
-    - Format: ``YEAR-MONTH-DAY``
+    - Preferred format: ``YYYY-MM-DD``.
+    - Legacy ``YYYY,M,D`` values are still accepted for existing configs.
 
 Config per Coin
 ---------------
@@ -298,11 +301,12 @@ Max Active Amount (Limit Total Lending)
 
 - ``max_active_amount`` limits the total amount that can be lent out for a currency. Found in the ``[coin.default]`` or specific ``[coin.SYMBOL]`` section.
 
-    - Default value: -1 (unlimited)
+    - Default value: omitted (unlimited)
     - Allowed values:
-        - ``-1`` = Unlimited (no restriction on total lending)
+        - Omitted = Unlimited (no restriction on total lending)
         - ``0`` = Disabled (skip this coin entirely, equivalent to not listing it in ``all_currencies``)
         - ``> 0`` = Limit (cap total lending to this amount in coin units)
+        - ``-1`` = Legacy unlimited value, still accepted for backward compatibility
     - This is useful when you want to maintain a reserve or limit exposure for a specific currency.
     - The limit applies to the total amount currently lent out (active loans). If you have 10000 USD and set ``max_active_amount = 5000``, the bot will only lend up to 5000 USD total.
     - Example: If you have ``max_active_amount = 1000`` for USD and currently have 800 USD lent out, the bot will only offer up to 200 USD more in new loans.
@@ -320,10 +324,11 @@ Max Offer Size (Smooth Lending Over Time)
 
 - ``max_offer_size`` limits the maximum amount of coin placed in a single loan offer. Found in the ``[coin.default]`` or specific ``[coin.SYMBOL]`` section.
 
-    - Default value: -1 (unlimited)
+    - Default value: omitted / ``0`` (unlimited)
     - Allowed values:
-        - ``-1`` = Unlimited (standard spreading applies)
+        - Omitted or ``0`` = Unlimited (standard spreading applies)
         - ``> 0`` = Limit (cap each individual offer to this amount)
+        - ``-1`` = Legacy unlimited value, still accepted for backward compatibility
     - If set to >0, no individual loan offer will exceed this amount. Unused balance remains in your wallet and will be offered in the next bot cycle (e.g. 60 seconds later). This effectively creates a Dollar Cost Averaging (DCA) effect, smoothing out your lending rates over time.
 
     Example configuration:
@@ -385,13 +390,13 @@ Advanced logging and Web Display
     [bot]
     label = "Lending Bot"
     output_currency = "BTC"
-    recent_logs_limit = 200
 
     [bot.web]
     enabled = true
     host = "127.0.0.1"
     port = 8000
     template = "www"
+    recent_logs_limit = 200
 
 
 Plugins
@@ -427,7 +432,7 @@ To enable the plugin add ``AccountStats`` to the ``plugins`` list, example:
     [bot]
     plugins = ["AccountStats"]
 
-There is an optional setting to change how frequently this plugin reports. By default, once per day. Example:
+There is an optional typed setting to change how frequently this plugin reports. By default, once per day. Example:
 
 .. code-block:: toml
 
@@ -451,7 +456,7 @@ To enable the plugin add ``Charts`` to the ``plugins`` list, example:
     [bot]
     plugins = ["AccountStats", "Charts"]
 
-There is an optional setting to change how frequently this plugin dumps data. By default, four times per day. Example:
+There is an optional typed setting to change how frequently this plugin dumps data. By default, four times per day. Example:
 
 .. code-block:: toml
 

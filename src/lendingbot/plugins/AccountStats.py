@@ -53,7 +53,7 @@ class AccountStats(Plugin):
         Path("market_data").mkdir(exist_ok=True)
         self.init_db()
         self.check_upgrade()
-        self.report_interval = int(self.config.plugins.account_stats.get("report_interval", 86400))
+        self.report_interval = int(self.config.plugins.account_stats.report_interval)
 
     def before_lending(self) -> None:
         for coin in self.earnings:

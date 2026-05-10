@@ -3,14 +3,17 @@ import unittest
 from decimal import Decimal
 from pathlib import Path
 
+from pydantic import ValidationError
+
 # Import the new Configuration module
 from lendingbot.modules import Configuration as Conf
 from lendingbot.modules.Configuration import LendingStrategy
+from lendingbot.modules.Data import get_max_duration
 
 
 class TestConfiguration(unittest.TestCase):
     def setUp(self) -> None:
-        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir = tempfile.TemporaryDirectory(dir="C:/tmp")
         self.toml_path = Path(self.test_dir.name) / "test_config.toml"
 
     def tearDown(self) -> None:
@@ -89,7 +92,17 @@ class TestConfiguration(unittest.TestCase):
         with self.toml_path.open("w", encoding="utf-8") as f:
             f.write(content)
 
-        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            Conf.load_config(self.toml_path)
+
+    def test_unknown_core_config_field_is_rejected(self) -> None:
+        content = """
+        [bot]
+        period_active = 60
+        period_activ = 30
+        """
+        with self.toml_path.open("w", encoding="utf-8") as f:
+            f.write(content)
 
         with self.assertRaises(ValidationError):
             Conf.load_config(self.toml_path)
@@ -153,3 +166,57 @@ class TestConfiguration(unittest.TestCase):
         # Accessing nested model field should work if correctly parsed
         self.assertIsInstance(cfg.xday_thresholds[0], Conf.XDayThreshold)
         self.assertEqual(cfg.xday_thresholds[0].days, 30)
+
+    def test_sample_configs_load(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+
+        basic = Conf.load_config(root / "config_sample.toml")
+        advanced = Conf.load_config(root / "config_sample_advanced.toml")
+
+        self.assertEqual(basic.api.exchange, Conf.Exchange.BITFINEX)
+        self.assertEqual(advanced.api.exchange, Conf.Exchange.BITFINEX)
+
+    def test_basic_sample_uses_defaults_for_omitted_optional_settings(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+
+        config = Conf.load_config(root / "config_sample.toml")
+
+        self.assertEqual(config.bot.period_active, 60)
+        self.assertEqual(config.bot.request_timeout, 30)
+        self.assertEqual(config.bot.web.host, "127.0.0.1")
+        self.assertEqual(config.get_coin_config("USD").max_active_amount, Decimal("-1"))
+        self.assertEqual(config.get_coin_config("USD").max_offer_size, Decimal("0"))
+
+    def test_max_active_amount_semantics(self) -> None:
+        default_cfg = Conf.CoinConfig()
+        legacy_unlimited_cfg = Conf.CoinConfig(max_active_amount=Decimal("-1"))
+        disabled_cfg = Conf.CoinConfig(max_active_amount=Decimal("0"))
+        capped_cfg = Conf.CoinConfig(max_active_amount=Decimal("5000"))
+
+        self.assertEqual(default_cfg.max_active_amount, Decimal("-1"))
+        self.assertEqual(legacy_unlimited_cfg.max_active_amount, Decimal("-1"))
+        self.assertEqual(disabled_cfg.max_active_amount, Decimal("0"))
+        self.assertEqual(capped_cfg.max_active_amount, Decimal("5000"))
+
+    def test_max_offer_size_semantics(self) -> None:
+        default_cfg = Conf.CoinConfig()
+        legacy_unlimited_cfg = Conf.CoinConfig(max_offer_size=Decimal("-1"))
+        zero_unlimited_cfg = Conf.CoinConfig(max_offer_size=Decimal("0"))
+        capped_cfg = Conf.CoinConfig(max_offer_size=Decimal("100"))
+
+        self.assertEqual(default_cfg.max_offer_size, Decimal("0"))
+        self.assertEqual(legacy_unlimited_cfg.max_offer_size, Decimal("-1"))
+        self.assertEqual(zero_unlimited_cfg.max_offer_size, Decimal("0"))
+        self.assertEqual(capped_cfg.max_offer_size, Decimal("100"))
+
+    def test_end_date_accepts_documented_dash_format(self) -> None:
+        self.assertEqual(
+            get_max_duration("2999-12-31", "order"),
+            get_max_duration("2999,12,31", "order"),
+        )
+
+    def test_typed_plugin_defaults(self) -> None:
+        config = Conf.RootConfig()
+
+        self.assertEqual(config.plugins.account_stats.report_interval, 86400)
+        self.assertEqual(config.plugins.charts.dump_interval, 21600)

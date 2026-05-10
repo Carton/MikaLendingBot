@@ -5,7 +5,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
 
 if TYPE_CHECKING:
@@ -40,15 +40,26 @@ class AnalysisMethod(str, Enum):
 
 
 class ApiConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     exchange: Exchange = Exchange.BITFINEX
     apikey: SecretStr | None = None
     secret: SecretStr | None = None
     all_currencies: list[str] = Field(default_factory=list)
 
+    @field_validator("exchange", mode="before")
+    @classmethod
+    def case_insensitive_exchange(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.capitalize()
+        return v
+
 
 class WebServerConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     enabled: bool = True
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = Field(8000, ge=1, le=65535)
     template: str = "www"
     refresh_rate: int = Field(300, ge=30, le=86400)
@@ -56,6 +67,8 @@ class WebServerConfig(BaseModel):
 
 
 class BotConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     label: str = "Lending Bot"
     period_active: float = Field(60.0, ge=1, le=3600)
     period_inactive: float = Field(300.0, ge=1, le=3600)
@@ -72,20 +85,17 @@ class BotConfig(BaseModel):
     transferable_currencies: list[str] = Field(default_factory=list)
     web: WebServerConfig = Field(default_factory=lambda: WebServerConfig())
 
-    @field_validator("exchange", mode="before", check_fields=False)
-    @classmethod
-    def case_insensitive_exchange(cls, v: Any) -> Any:
-        if isinstance(v, str):
-            return v.capitalize()
-        return v
-
 
 class XDayThreshold(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     rate: Decimal
     days: int
 
 
 class CoinConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     # Core Lending Settings
     min_daily_rate: Decimal = Field(Decimal("0.005"), ge=0, le=5)
     max_daily_rate: Decimal = Field(Decimal("5.0"), ge=0, le=5)
@@ -102,9 +112,9 @@ class CoinConfig(BaseModel):
     #   >0 = limit (cap total lending to this amount in coin units, e.g., 1000 USD)
     max_active_amount: Decimal = Decimal("-1")
     # max_offer_size: Limits the maximum amount of a *single* loan offer.
-    #   -1 = unlimited (no limit on single offer size)
+    #   0 or -1 = unlimited (no limit on single offer size)
     #   >0 = limit (cap single offer to this amount in coin units, e.g., 1000 USD)
-    max_offer_size: Decimal = Decimal("-1")
+    max_offer_size: Decimal = Decimal("0")
 
     # Strategy
     strategy: LendingStrategy = LendingStrategy.SPREAD
@@ -133,6 +143,8 @@ class CoinConfig(BaseModel):
 
 
 class MarketAnalysisConfig(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     analyse_currencies: list[str] = Field(default_factory=list)
     # Default matches original code MarketAnalysis.py L29
     update_interval: int = Field(10, ge=1, le=3600)
@@ -155,9 +167,23 @@ class MarketAnalysisConfig(BaseModel):
         return v
 
 
+class AccountStatsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    report_interval: int = Field(86400, ge=1)
+
+
+class ChartsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dump_interval: int = Field(21600, ge=1)
+
+
 class PluginsConfig(BaseModel):
-    account_stats: dict[str, Any] = Field(default_factory=dict)
-    charts: dict[str, Any] = Field(default_factory=dict)
+    model_config = ConfigDict(extra="allow")
+
+    account_stats: AccountStatsConfig = Field(default_factory=lambda: AccountStatsConfig())
+    charts: ChartsConfig = Field(default_factory=lambda: ChartsConfig())
     market_analysis: MarketAnalysisConfig = Field(default_factory=lambda: MarketAnalysisConfig())
 
 
@@ -178,6 +204,8 @@ class NotificationConfig(BaseModel):
 
 
 class RootConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     api: ApiConfig = Field(default_factory=lambda: ApiConfig())
     bot: BotConfig = Field(default_factory=lambda: BotConfig())
     notifications: NotificationConfig = Field(default_factory=lambda: NotificationConfig())

@@ -62,4 +62,4 @@ uv run lendingbot
 - **Original Documentation**: [readthedocs.io](http://poloniexlendingbot.readthedocs.io/en/latest/index.html)
 
 > [!IMPORTANT]
-> This version introduces a major configuration overhaul. The bot now uses **TOML** format. Please refer to [docs/configuration.rst](https://carton.github.io/MikaLendingBot/configuration.html) for detailed setup instructions and see `config_sample.toml` for the latest available options.
+> This version introduces a major configuration overhaul. The bot now uses **TOML** format. Start from `config_sample.toml` for normal setups, and use `config_sample_advanced.toml` as a reference for optional features. See [docs/configuration.rst](https://carton.github.io/MikaLendingBot/configuration.html) for detailed setup instructions.

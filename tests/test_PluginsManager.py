@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from lendingbot.modules.Configuration import PluginsConfig, RootConfig
+from lendingbot.modules.Configuration import RootConfig
 from lendingbot.modules.PluginsManager import PluginsManager
 
 
@@ -15,7 +15,6 @@ def mock_config():
     # Setup config to enable plugins
     return RootConfig(
         bot={"plugins": ["AccountStats", "Charts"]},
-        plugins=PluginsConfig(account_stats={"enabled": True}, charts={"enabled": True}),
     )
 
 
