@@ -63,11 +63,7 @@ def get_max_duration(end_date: str, context: str) -> int | str:
         return ""
     try:
         now_time = datetime.date.today()
-        if "-" in end_date:
-            end_time = datetime.date.fromisoformat(end_date)
-        else:
-            config_date = [int(x) for x in end_date.split(",")]
-            end_time = datetime.date(*config_date)  # legacy format: YEAR,MONTH,DAY
+        end_time = datetime.date.fromisoformat(end_date)
         diff_days = (end_time - now_time).days
         if context == "order":
             return diff_days  # Order needs int

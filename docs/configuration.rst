@@ -271,8 +271,7 @@ Very few situations require you to change these settings.
 
     - Default value: Disabled
     - Uncomment to enable.
-    - Preferred format: ``YYYY-MM-DD``.
-    - Legacy ``YYYY,M,D`` values are still accepted for existing configs.
+    - Format: ``YYYY-MM-DD``.
 
 Config per Coin
 ---------------
@@ -306,7 +305,6 @@ Max Active Amount (Limit Total Lending)
         - Omitted = Unlimited (no restriction on total lending)
         - ``0`` = Disabled (skip this coin entirely, equivalent to not listing it in ``all_currencies``)
         - ``> 0`` = Limit (cap total lending to this amount in coin units)
-        - ``-1`` = Legacy unlimited value, still accepted for backward compatibility
     - This is useful when you want to maintain a reserve or limit exposure for a specific currency.
     - The limit applies to the total amount currently lent out (active loans). If you have 10000 USD and set ``max_active_amount = 5000``, the bot will only lend up to 5000 USD total.
     - Example: If you have ``max_active_amount = 1000`` for USD and currently have 800 USD lent out, the bot will only offer up to 200 USD more in new loans.
@@ -328,7 +326,6 @@ Max Offer Size (Smooth Lending Over Time)
     - Allowed values:
         - Omitted or ``0`` = Unlimited (standard spreading applies)
         - ``> 0`` = Limit (cap each individual offer to this amount)
-        - ``-1`` = Legacy unlimited value, still accepted for backward compatibility
     - If set to >0, no individual loan offer will exceed this amount. Unused balance remains in your wallet and will be offered in the next bot cycle (e.g. 60 seconds later). This effectively creates a Dollar Cost Averaging (DCA) effect, smoothing out your lending rates over time.
 
     Example configuration:

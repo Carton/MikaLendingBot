@@ -279,7 +279,7 @@ class TestLendingEngineLogic:
 
     def test_construct_orders_max_offer_size_unlimited(self, engine):
         engine.initialize()
-        engine.coin_cfg["BTC"].max_offer_size = Decimal("-1")
+        engine.coin_cfg["BTC"].max_offer_size = Decimal("0")
         # Ensure spread allows 3 orders
         engine.spread_lend = 3
         # Mock gap rates

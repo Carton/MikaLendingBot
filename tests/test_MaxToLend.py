@@ -42,13 +42,9 @@ class TestMaxToLend:
     # --- New tests for max_active_amount limit feature ---
 
     def test_max_active_amount_unlimited(self, maxtolend_module):
-        """max_active_amount = -1 means no limit on total lending."""
+        """Omitting max_active_amount means no limit on total lending."""
         maxtolend_module.log = MagicMock()
-        maxtolend_module.coin_cfg = {
-            "USD": CoinConfig(
-                max_active_amount=Decimal("-1"),  # Unlimited
-            )
-        }
+        maxtolend_module.coin_cfg = {"USD": CoinConfig()}
         # total_lent = 5000, lending_balance = 3000. Should lend all 3000.
         res = maxtolend_module.amount_to_lend("USD", Decimal("3000"), total_lent=Decimal("5000"))
         assert res == Decimal("3000")

@@ -27,7 +27,6 @@ keep_stuck_orders = true
 hide_coins = true
 
 # Stop opening loans after this date approaches. Preferred format: YYYY-MM-DD.
-# Legacy YYYY,M,D is still accepted.
 # end_date = "2026-12-25"
 
 # Auto-transfer funds from exchange balance to lending balance.
@@ -52,12 +51,10 @@ min_loan_size = 0.01
 
 # Total active lending cap for each currency:
 # omit = unlimited, 0 = disable this currency, >0 = cap in coin units.
-# Legacy -1 is still accepted as unlimited.
 # max_active_amount = 5000
 
 # Single offer size cap:
 # omit or 0 = unlimited, >0 = cap each offer in coin units.
-# Legacy -1 is still accepted as unlimited.
 # max_offer_size = 1000
 
 # Strategy selection: "FRR" (Bitfinex only) or "Spread".

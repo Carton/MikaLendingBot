@@ -107,14 +107,14 @@ class CoinConfig(BaseModel):
 
     min_loan_size: Decimal = Field(Decimal("0.01"), ge=Decimal("0.005"))
     # max_active_amount: Limits total lending for this currency.
-    #   -1 = unlimited (no limit on total lending)
-    #    0 = disabled (skip this coin entirely, equivalent to not including in all_currencies)
-    #   >0 = limit (cap total lending to this amount in coin units, e.g., 1000 USD)
-    max_active_amount: Decimal = Decimal("-1")
+    #   None = unlimited (no limit on total lending)
+    #      0 = disabled (skip this coin entirely, equivalent to not including in all_currencies)
+    #     >0 = limit (cap total lending to this amount in coin units, e.g., 1000 USD)
+    max_active_amount: Decimal | None = Field(default=None, ge=Decimal("0"))
     # max_offer_size: Limits the maximum amount of a *single* loan offer.
-    #   0 or -1 = unlimited (no limit on single offer size)
+    #   0 = unlimited (no limit on single offer size)
     #   >0 = limit (cap single offer to this amount in coin units, e.g., 1000 USD)
-    max_offer_size: Decimal = Decimal("0")
+    max_offer_size: Decimal = Field(Decimal("0"), ge=Decimal("0"))
 
     # Strategy
     strategy: LendingStrategy = LendingStrategy.SPREAD

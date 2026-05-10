@@ -184,36 +184,35 @@ class TestConfiguration(unittest.TestCase):
         self.assertEqual(config.bot.period_active, 60)
         self.assertEqual(config.bot.request_timeout, 30)
         self.assertEqual(config.bot.web.host, "127.0.0.1")
-        self.assertEqual(config.get_coin_config("USD").max_active_amount, Decimal("-1"))
+        self.assertIsNone(config.get_coin_config("USD").max_active_amount)
         self.assertEqual(config.get_coin_config("USD").max_offer_size, Decimal("0"))
 
     def test_max_active_amount_semantics(self) -> None:
         default_cfg = Conf.CoinConfig()
-        legacy_unlimited_cfg = Conf.CoinConfig(max_active_amount=Decimal("-1"))
         disabled_cfg = Conf.CoinConfig(max_active_amount=Decimal("0"))
         capped_cfg = Conf.CoinConfig(max_active_amount=Decimal("5000"))
 
-        self.assertEqual(default_cfg.max_active_amount, Decimal("-1"))
-        self.assertEqual(legacy_unlimited_cfg.max_active_amount, Decimal("-1"))
+        self.assertIsNone(default_cfg.max_active_amount)
         self.assertEqual(disabled_cfg.max_active_amount, Decimal("0"))
         self.assertEqual(capped_cfg.max_active_amount, Decimal("5000"))
 
+        with self.assertRaises(ValidationError):
+            Conf.CoinConfig(max_active_amount=Decimal("-1"))
+
     def test_max_offer_size_semantics(self) -> None:
         default_cfg = Conf.CoinConfig()
-        legacy_unlimited_cfg = Conf.CoinConfig(max_offer_size=Decimal("-1"))
         zero_unlimited_cfg = Conf.CoinConfig(max_offer_size=Decimal("0"))
         capped_cfg = Conf.CoinConfig(max_offer_size=Decimal("100"))
 
         self.assertEqual(default_cfg.max_offer_size, Decimal("0"))
-        self.assertEqual(legacy_unlimited_cfg.max_offer_size, Decimal("-1"))
         self.assertEqual(zero_unlimited_cfg.max_offer_size, Decimal("0"))
         self.assertEqual(capped_cfg.max_offer_size, Decimal("100"))
 
+        with self.assertRaises(ValidationError):
+            Conf.CoinConfig(max_offer_size=Decimal("-1"))
+
     def test_end_date_accepts_documented_dash_format(self) -> None:
-        self.assertEqual(
-            get_max_duration("2999-12-31", "order"),
-            get_max_duration("2999,12,31", "order"),
-        )
+        assert isinstance(get_max_duration("2999-12-31", "order"), int)
 
     def test_typed_plugin_defaults(self) -> None:
         config = Conf.RootConfig()

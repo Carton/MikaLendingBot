@@ -49,14 +49,14 @@ def amount_to_lend(
     if log is None:
         return lending_balance
 
-    cur_max_active_amount = Decimal("-1")
+    cur_max_active_amount: Decimal | None = None
 
     if cfg := coin_cfg.get(active_cur):
         cur_max_active_amount = cfg.max_active_amount
 
     # Check max_active_amount limit first (absolute cap on total lending)
-    # max_active_amount: -1 = unlimited, 0 = disabled (handled elsewhere), > 0 = limit
-    if cur_max_active_amount > 0:
+    # max_active_amount: None = unlimited, 0 = disabled (handled elsewhere), > 0 = limit
+    if cur_max_active_amount is not None and cur_max_active_amount > 0:
         # Calculate how much more we can lend without exceeding max_active_amount
         # total_lent = currently lent out (active loans)
         # lending_balance = available to lend (not yet offered)

@@ -577,7 +577,7 @@ class LendingEngine:
         new_order_rates = sorted(set(order_rates))
         new_order_amounts = []
 
-        cur_max_offer_size = Decimal("-1")
+        cur_max_offer_size = Decimal("0")
         if cfg := self.coin_cfg.get(cur):
             cur_max_offer_size = cfg.max_offer_size
 

@@ -59,14 +59,14 @@ class TestGetMaxDuration:
     def test_get_max_duration_order_context(self) -> None:
         """Test get_max_duration with order context returns int"""
         # Use a date far in the future to ensure positive days
-        future_date = "2030,12,31"
+        future_date = "2030-12-31"
         result = get_max_duration(future_date, "order")
         assert isinstance(result, int)
         assert result > 0
 
     def test_get_max_duration_status_context(self) -> None:
         """Test get_max_duration with status context returns string"""
-        future_date = "2030,12,31"
+        future_date = "2030-12-31"
         result = get_max_duration(future_date, "status")
         assert isinstance(result, str)
         assert "Days Remaining" in result

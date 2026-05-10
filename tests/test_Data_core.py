@@ -43,7 +43,7 @@ class TestDataCore:
         # Use real dates to avoid mock hell
         today = datetime.date.today()
         tomorrow = today + datetime.timedelta(days=1)
-        end_date_str = f"{tomorrow.year},{tomorrow.month},{tomorrow.day}"
+        end_date_str = tomorrow.isoformat()
 
         assert data_module.get_max_duration(end_date_str, "order") == 1
         assert data_module.get_max_duration(end_date_str, "status") == " - Days Remaining: 1"
