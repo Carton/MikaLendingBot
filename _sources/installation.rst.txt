@@ -93,7 +93,7 @@ You have to configure the bot, especially choosing the exchange  and api key/sec
 To configure the bot with your settings:
 
     #. Copy ``config_sample.toml`` to ``config.toml`` (Running the bot also does this for you if config.toml doesn't already exist.)
-    #. Open ``config.toml`` and enter your desired settings `(information on settings here) <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_.
+    #. Open ``config.toml`` and enter your desired settings `(information on settings here) <http://poloniexlendingbot.readthedocs.io/en/latest/configuration.html>`_. Use ``config_sample_advanced.toml`` as a reference if you need optional features such as notifications, Market Analysis, web tuning, or exposure limits.
     #. Save ``config.toml``
 
 You are now ready to run the bot.
@@ -145,7 +145,7 @@ Creating the Web App (Optional)
 #. Set the static files to URL: ``/static/`` Directory: ``/home/<username>/poloniexlendingbot/www``
 #. Reload your website with the button at the top of the page.
 #. You will be able to access the webapp at ``http://<username>.pythonanywhere.com/static/lendingbot.html`` once it finishes setting up.
-#. To have the webserver communicate with your bot, you need to edit your settings (``config.toml``) and uncomment (remove the ``#`` in front of) the following settings: ``stats_file`` (under ``[bot]``) and ``recent_logs_limit`` (under ``[bot.web]``). Make sure that ``enabled`` (under ``[bot.web]``) REMAINS commented.
+#. To have a separate static web app consume bot status, configure ``stats_file`` under ``[bot]`` and ``recent_logs_limit`` under ``[bot.web]``. Make sure that ``enabled`` under ``[bot.web]`` remains disabled for this static-hosting setup.
 
 
 .. warning:: Do not use the built-in FastAPI Web Server on any host you do not control.
