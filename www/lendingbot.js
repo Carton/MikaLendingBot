@@ -16,6 +16,11 @@ var validOutputCurrencyDisplayModes = ['all', 'summary'];
 var effRateMode = 'lentperc';
 var validEffRateModes = ['lentperc', 'onlyfee'];
 var defaultTimespanNames = ["Year", "Month", "Week", "Day", "Hour"];
+var dataRefreshTimer = null;
+var statusRefreshTimer = null;
+var dataRequestInFlight = false;
+var statusRequestInFlight = false;
+var lastStatsData = null;
 
 // BTC DisplayUnit
 var BTC = new BTCDisplayUnit("BTC", 1);
@@ -28,10 +33,16 @@ var logSSE = null;
 var initialLogsLoaded = false;
 
 function updateJson(data) {
-    $('#status').text(data.last_status);
-    $('#updated').text(data.last_update);
-    $('#title').text(data.exchange + ' ' + data.label)
-    document.title = data.exchange + ' ' + data.label
+    data = data || {};
+    lastStatsData = data;
+
+    $('#status').text(data.last_status || 'Waiting for bot status update...');
+    $('#updated').text(data.last_update || 'Not updated');
+    if (data.exchange || data.label) {
+        var pageTitle = [data.exchange, data.label].filter(Boolean).join(' ');
+        $('#title').text(pageTitle);
+        document.title = pageTitle;
+    }
 
     // Only update the table from JSON if SSE is not active or if it's the first load
     if ((!logSSE || !initialLogsLoaded) && data.log) {
@@ -44,8 +55,8 @@ function updateJson(data) {
         initialLogsLoaded = true;
     }
 
-    updateOutputCurrency(data.outputCurrency);
-    updateRawValues(data.raw_data);
+    updateOutputCurrency(data.outputCurrency || {});
+    updateRawValues(data.raw_data || {});
     updateNavbar(data.plugins);
 }
 
@@ -84,6 +95,7 @@ function updateNavbar(plugins) {
 }
 
 function updateOutputCurrency(outputCurrency) {
+    outputCurrency = outputCurrency || {};
     var OutCurr = Object.keys(outputCurrency);
     summaryCoin = outputCurrency['currency'];
     summaryCoinRate = parseFloat(outputCurrency['highestBid']);
@@ -114,6 +126,7 @@ function printFloat(value, precision) {
 }
 
 function updateRawValues(rawData) {
+    rawData = rawData || {};
     var table = document.getElementById("detailsTable");
     table.innerHTML = "";
     var currencies = Object.keys(rawData);
@@ -267,28 +280,48 @@ function handleLocalFile(file) {
     reader.readAsText(localFile, 'utf-8');
 }
 
+function scheduleDataRefresh(delayMs) {
+    if (dataRefreshTimer) {
+        clearTimeout(dataRefreshTimer);
+    }
+    dataRefreshTimer = setTimeout(loadData, delayMs);
+}
+
+function scheduleStatusRefresh(delayMs) {
+    if (statusRefreshTimer) {
+        clearTimeout(statusRefreshTimer);
+    }
+    statusRefreshTimer = setTimeout(fetchStatus, delayMs);
+}
+
 function loadData() {
     if (localFile) {
         reader.readAsText(localFile, 'utf-8');
-        setTimeout('loadData()', refreshRate * 1000)
+        scheduleDataRefresh(refreshRate * 1000)
     } else {
+        if (dataRequestInFlight) {
+            scheduleDataRefresh(1000);
+            return;
+        }
+        dataRequestInFlight = true;
+
         // expect the bot_stats.json to be in the same folder on the webserver
         var file = 'bot_stats.json?_t=' + new Date().getTime();
-        $.getJSON(file, function (data) {
+        $.getJSON(file).done(function (data) {
             updateJson(data);
-            fetchStatus(); // Update status/strategy info along with data
-            // reload every 30sec
-            setTimeout('loadData()', refreshRate * 1000)
+            scheduleDataRefresh(refreshRate * 1000)
         }).fail(function (d, textStatus, error) {
             if (d.status === 404) {
                 $('#status').text("Waiting for bot status update...");
                 // retry faster if it's just not created yet
-                setTimeout('loadData()', 5000);
+                scheduleDataRefresh(5000);
             } else {
                 $('#status').text("getJSON failed, status: " + textStatus + ", error: " + error);
                 // retry after 60sec
-                setTimeout('loadData()', 60000);
+                scheduleDataRefresh(60000);
             }
+        }).always(function () {
+            dataRequestInFlight = false;
         });
     }
 }
@@ -481,20 +514,11 @@ function doSave() {
 
 // Helper to re-render without fetching if we have data, or fetch if needed
 function updateJsonWithCurrentData() {
-    // Since we don't store the full raw data globally in a clean way except 
-    // maybe relying on the last fetch, proper way is usually to let the next poll handle it 
-    // OR trigger a reload.
-    // Given loadData is recursive with setTimeout, we might have a race if we just call loadData().
-    // Ideally, changes to display units affect parsing/formatting.
-    // Let's just let the next auto-refresh handle the data update, 
-    // OR we can force a fetch if we suspect it's urgent.
-    // For visual feedback (e.g. BTC -> mBTC), users expect instant change.
-    // Let's trigger loadData immediately (it will clear existing timeout if we manage it, 
-    // but here we don't store the timeout ID easily).
-    // Simpler approach: do nothing, wait for next tick, or refresh page.
-    // But `applyWebSettings` updates globals that `updateJson` uses. 
-    // If we have the data...
-    // Let's just leave it to the next cycle or user forced refresh for V1.
+    if (lastStatsData) {
+        updateJson(lastStatsData);
+    } else {
+        loadData();
+    }
 }
 
 function setupSSE() {
@@ -546,6 +570,7 @@ function update() {
         } else {
             setupSSE();
             fetchRecentLogs();
+            fetchStatus();
         }
         loadData();
     });
@@ -583,25 +608,47 @@ function updateButtonStatus(isPaused) {
 }
 
 function fetchStatus() {
-    if (window.location.protocol !== "file:") {
-        $.get('/get_status', function (data) {
+    if (window.location.protocol === "file:") return;
+    if (statusRequestInFlight) return;
+
+    statusRequestInFlight = true;
+    $.getJSON('/get_status?_t=' + new Date().getTime(), function (data) {
+        if (data.last_status !== undefined) {
+            $('#status').text(data.last_status || 'Waiting for bot status update...');
+        }
+        if (data.last_update !== undefined) {
+            $('#updated').text(data.last_update || 'Not updated');
+        }
+
+        if (data.lending_paused !== undefined) {
             updateButtonStatus(data.lending_paused);
+        }
 
-            // Handle strategies
-            if (data.lending_strategies) {
-                var strategyNames = Object.values(data.lending_strategies);
-                var uniqueStrategies = [...new Set(strategyNames)];
-                var strategyText = uniqueStrategies.join(", ");
-                $('#current-strategy-name').text(strategyText);
+        // Handle strategies
+        if (data.lending_strategies) {
+            var strategyNames = Object.values(data.lending_strategies);
+            var uniqueStrategies = [...new Set(strategyNames)];
+            var strategyText = uniqueStrategies.join(", ");
+            $('#current-strategy-name').text(strategyText);
 
-                // Show/Hide FRR panel
-                if (uniqueStrategies.indexOf('FRR') !== -1) {
-                    $('#frr-strategy-panel').show();
-                } else {
-                    $('#frr-strategy-panel').hide();
-                }
+            // Show/Hide FRR panel
+            if (uniqueStrategies.indexOf('FRR') !== -1) {
+                $('#frr-strategy-panel').show();
+            } else {
+                $('#frr-strategy-panel').hide();
             }
-        });
+        }
+    }).fail(function (err) {
+        console.error("Failed to fetch status:", err);
+    }).always(function () {
+        statusRequestInFlight = false;
+        scheduleStatusRefresh(refreshRate * 1000);
+    });
+}
+
+function refreshStatusSoon() {
+    if (window.location.protocol !== "file:") {
+        scheduleStatusRefresh(1000);
     }
 }
 
@@ -614,6 +661,7 @@ function handle_pause_button() {
 
         $.get(url, function () {
             updateButtonStatus(!isPaused);
+            refreshStatusSoon();
         });
     });
 }

@@ -29,6 +29,14 @@ class MockEngine:
 class MockLogger:
     def __init__(self) -> None:
         self.callbacks: list[Callable[[str], None]] = []
+        self.status_snapshot: dict[str, Any] = {
+            "last_status": "Live status from logger",
+            "last_update": "2026-05-10 12:00:00",
+            "exchange": "Bitfinex",
+            "label": "Lending Bot",
+            "raw_data": {},
+            "outputCurrency": {},
+        }
 
     def log(self, msg: str) -> None:
         for cb in self.callbacks:
@@ -36,6 +44,9 @@ class MockLogger:
 
     def get_recent_logs(self) -> list[str]:
         return ["Mocked Log 1", "Mocked Log 2"]
+
+    def get_stats_snapshot(self) -> dict[str, Any]:
+        return dict(self.status_snapshot)
 
 
 @pytest.fixture
@@ -84,6 +95,21 @@ async def test_get_status(web_server: WebServer) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["lending_paused"] is False
+    assert data["last_status"] == "Live status from logger"
+    assert data["last_update"] == "2026-05-10 12:00:00"
+
+
+@pytest.mark.asyncio
+async def test_bot_stats_json_serves_live_logger_snapshot(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/bot_stats.json")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["last_status"] == "Live status from logger"
+    assert data["raw_data"] == {}
 
 
 @pytest.mark.asyncio

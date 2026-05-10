@@ -10,6 +10,7 @@ import shutil
 import sys
 import time
 from collections import deque
+from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -236,6 +237,11 @@ class Logger:
         if hasattr(self.output, "get_recent_logs"):
             return self.output.get_recent_logs()
         return []
+
+    def get_stats_snapshot(self) -> dict[str, Any]:
+        if hasattr(self.output, "stats_output"):
+            return deepcopy(self.output.stats_output)
+        return {}
 
     def persistStatus(self) -> None:
         if hasattr(self.output, "writeStatsFile"):

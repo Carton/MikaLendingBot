@@ -43,6 +43,16 @@ class TestLogger:
         # Test get_recent_logs
         assert "Log Line 1" in out.get_recent_logs()
 
+    def test_stats_snapshot_is_copy(self, tmp_path):
+        stats_file = tmp_path / "bot_stats.json"
+        logger = Logger(str(stats_file), 5, "BITFINEX")
+        logger.updateStatusValue("BTC", "lentSum", "1.0")
+
+        snapshot = logger.get_stats_snapshot()
+        snapshot["raw_data"]["BTC"]["lentSum"] = "2.0"
+
+        assert logger.get_stats_snapshot()["raw_data"]["BTC"]["lentSum"] == "1.0"
+
     def test_logger_lifecycle(self, tmp_path):
         stats_file = tmp_path / "bot_stats.json"
         logger = Logger(str(stats_file), 5, "BITFINEX")

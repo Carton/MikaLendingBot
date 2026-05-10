@@ -36,10 +36,18 @@ class WebServer:
         @self.app.get("/get_status", response_model=None)
         async def get_status() -> dict[str, Any]:
             strategies = {cur: cfg.strategy for cur, cfg in self.lending_engine.coin_cfg.items()}
-            return {
+            status = self._get_live_stats_snapshot()
+            return status | {
                 "lending_paused": self.lending_engine.lending_paused,
                 "lending_strategies": strategies,
             }
+
+        @self.app.get("/bot_stats.json", response_model=None)
+        async def bot_stats() -> JSONResponse:
+            return JSONResponse(
+                content=self._get_live_stats_snapshot(),
+                headers={"Cache-Control": "no-store"},
+            )
 
         @self.app.get("/get_settings", response_model=None)
         async def get_settings() -> dict[str, Any]:
@@ -172,6 +180,24 @@ class WebServer:
         print("Stopping WebServer")
         if self.server:
             self.server.should_exit = True
+
+    def _get_live_stats_snapshot(self) -> dict[str, Any]:
+        get_snapshot = getattr(self.log, "get_stats_snapshot", None)
+        if callable(get_snapshot):
+            snapshot = get_snapshot()
+            if isinstance(snapshot, dict) and snapshot:
+                return snapshot
+
+        stats_file = Path(self.config.bot.stats_file)
+        if stats_file.exists():
+            try:
+                with stats_file.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+            except Exception:
+                pass
+        return {}
 
     # Web Settings methods
     def get_web_settings(self) -> dict[str, Any]:
