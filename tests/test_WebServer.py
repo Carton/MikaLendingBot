@@ -57,6 +57,7 @@ async def web_server(tmp_path: Path) -> WebServer:
     logger = MockLogger()
     logger.callbacks = []
     ws = WebServer(cfg, engine, logger)  # type: ignore[arg-type]
+    ws.web_settings_file = str(tmp_path / "web_settings.json")
     ws.loop = asyncio.get_running_loop()
     return ws
 
@@ -141,7 +142,7 @@ async def test_get_settings(web_server: WebServer) -> None:
         response = await ac.get("/get_settings")
     assert response.status_code == 200
     data = response.json()
-    assert data["refreshRate"] == 30
+    assert data["refreshRate"] == web_server.config.bot.web.refresh_rate
 
 
 @pytest.mark.asyncio

@@ -176,19 +176,20 @@ function updateRawValues(rawData) {
 
             var earnings = '';
             var earningsSummaryCoin = '';
+            var hasLendingEarnings = !isNaN(averageLendingRate) && !isNaN(lentSum) && lentSum > 0;
             timespans.forEach(function (timespan) {
-                // init totalBTCEarnings
-                if (isNaN(totalBTCEarnings[timespan.name])) {
-                    totalBTCEarnings[timespan.name] = 0;
+                if (hasLendingEarnings) {
+                    // calculate coin earnings
+                    var timespanEarning = timespan.calcEarnings(lentSum, rate);
+                    earnings += timespan.formatEarnings(currency, timespanEarning, true);
                 }
 
-                // calculate coin earnings
-                timespanEarning = timespan.calcEarnings(lentSum, rate);
-                earnings += timespan.formatEarnings(currency, timespanEarning, true);
-
-                // sum BTC earnings for all coins
-                if (!isNaN(highestBidBTC)) {
-                    timespanEarningBTC = timespan.calcEarnings(lentSum * highestBidBTC, rate);
+                // sum BTC earnings for all coins with enough data to calculate earnings
+                if (hasLendingEarnings && !isNaN(highestBidBTC)) {
+                    if (isNaN(totalBTCEarnings[timespan.name])) {
+                        totalBTCEarnings[timespan.name] = 0;
+                    }
+                    var timespanEarningBTC = timespan.calcEarnings(lentSum * highestBidBTC, rate);
                     totalBTCEarnings[timespan.name] += timespanEarningBTC;
                     if (currency != earningsOutputCoin) {
                         earningsSummaryCoin += timespan.formatEarnings(earningsOutputCoin, timespanEarningBTC * earningsOutputCoinRate);

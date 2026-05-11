@@ -45,7 +45,7 @@ class TestLogger:
 
     def test_stats_snapshot_is_copy(self, tmp_path):
         stats_file = tmp_path / "bot_stats.json"
-        logger = Logger(str(stats_file), 5, "BITFINEX")
+        logger = Logger(str(stats_file), 5, exchange="BITFINEX")
         logger.updateStatusValue("BTC", "lentSum", "1.0")
 
         snapshot = logger.get_stats_snapshot()
@@ -55,7 +55,7 @@ class TestLogger:
 
     def test_write_status_snapshot_does_not_clear_values(self, tmp_path):
         stats_file = tmp_path / "bot_stats.json"
-        logger = Logger(str(stats_file), 5, "BITFINEX")
+        logger = Logger(str(stats_file), 5, exchange="BITFINEX")
         logger.updateStatusValue("BTC", "lentSum", "1.0")
 
         logger.writeStatusSnapshot()
@@ -67,7 +67,7 @@ class TestLogger:
 
     def test_logger_lifecycle(self, tmp_path):
         stats_file = tmp_path / "bot_stats.json"
-        logger = Logger(str(stats_file), 5, "BITFINEX")
+        logger = Logger(str(stats_file), 5, exchange="BITFINEX")
 
         logger.log("Info Message")
         logger.log_error("Error Message")

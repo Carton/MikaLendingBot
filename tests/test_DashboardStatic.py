@@ -85,3 +85,105 @@ if (captured['#status'] === 'Waiting for bot status update...') {
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_summary_mode_does_not_render_empty_account_earnings() -> None:
+    script = r"""
+const fs = require('fs');
+const vm = require('vm');
+
+function makeCell() {
+  return {
+    innerHTML: '',
+    style: {},
+    setAttribute: function () {}
+  };
+}
+
+function makeRow() {
+  return {
+    cells: [],
+    appendChild: function () {
+      const cell = makeCell();
+      this.cells.push(cell);
+      return cell;
+    }
+  };
+}
+
+const table = {
+  innerHTML: '',
+  bodyRows: [],
+  headRows: [],
+  insertRow: function () {
+    const row = makeRow();
+    this.bodyRows.push(row);
+    return row;
+  },
+  createTHead: function () {
+    return {
+      insertRow: function () {
+        const row = makeRow();
+        table.headRows.push(row);
+        return row;
+      }
+    };
+  }
+};
+
+function jquery() {
+  return {
+    text: function () { return this; },
+    empty: function () { return this; },
+    append: function () { return this; },
+    find: function () { return { tooltip: function () { return this; } }; },
+    ready: function () { return this; }
+  };
+}
+jquery.each = function () {};
+
+const context = {
+  console: console,
+  $: jquery,
+  document: {
+    title: '',
+    getElementById: function (id) {
+      if (id === 'detailsTable') return table;
+      return {};
+    },
+    createElement: function () {
+      return makeCell();
+    }
+  }
+};
+
+vm.createContext(context);
+vm.runInContext(fs.readFileSync('www/lendingbot.js', 'utf8'), context);
+context.outputCurrencyDisplayMode = 'summary';
+context.timespans = [context.Year, context.Month, context.Week, context.Day, context.Hour];
+context.updateOutputCurrency({ currency: 'USD', highestBid: '80000' });
+context.updateRawValues({
+  USD: { totalCoins: '139176.70496700' }
+});
+
+const rendered = table.headRows.concat(table.bodyRows)
+  .flatMap(row => row.cells)
+  .map(cell => cell.innerHTML)
+  .join('\n');
+
+if (rendered.includes('Account<br/>Estimated<br/>Earnings')) {
+  throw new Error('empty account summary was rendered');
+}
+if (rendered.includes('0 USD / Year')) {
+  throw new Error('zero-only account summary earnings were rendered');
+}
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
