@@ -143,6 +143,7 @@ async def test_get_settings(web_server: WebServer) -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["refreshRate"] == web_server.config.bot.web.refresh_rate
+    assert "effRateMode" not in data
 
 
 @pytest.mark.asyncio
@@ -176,6 +177,26 @@ async def test_get_settings_restores_default_timespans(
     data = response.json()
     assert data["refreshRate"] == 15
     assert data["timespanNames"] == ["Year", "Month", "Week", "Day", "Hour"]
+
+
+@pytest.mark.asyncio
+async def test_get_settings_ignores_legacy_effective_rate_mode(
+    web_server: WebServer, tmp_path: Path
+) -> None:
+    settings_file = tmp_path / "web_settings.json"
+    settings_file.write_text(
+        json.dumps({"refreshRate": 60, "effRateMode": "onlyfee"}),
+        encoding="utf-8",
+    )
+    web_server.web_settings_file = str(settings_file)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/get_settings")
+
+    assert response.status_code == 200
+    assert "effRateMode" not in response.json()
 
 
 @pytest.mark.asyncio

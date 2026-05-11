@@ -19,6 +19,110 @@ def test_status_fetch_does_not_render_full_stats_table() -> None:
     assert "updateRawValues(" not in fetch_status
 
 
+def test_effective_rate_mode_setting_is_removed() -> None:
+    script = Path("www/lendingbot.js").read_text(encoding="utf-8")
+    html = Path("www/lendingbot.html").read_text(encoding="utf-8")
+
+    assert "name=\"effRateMode\"" not in html
+    assert "Effective loan rates calculation" not in html
+    assert "Fee Only" not in html
+    assert "onlyfee" not in script
+    assert "newSettings.effRateMode" not in script
+    assert "considering lent percentage and exchange 15% fee" in script
+
+
+def test_effective_rate_always_uses_lent_percentage() -> None:
+    script = r"""
+const fs = require('fs');
+const vm = require('vm');
+
+function makeCell() {
+  return {
+    innerHTML: '',
+    style: {},
+    setAttribute: function () {}
+  };
+}
+
+function makeRow() {
+  return {
+    cells: [],
+    appendChild: function () {
+      const cell = makeCell();
+      this.cells.push(cell);
+      return cell;
+    }
+  };
+}
+
+const table = {
+  innerHTML: '',
+  bodyRows: [],
+  insertRow: function () {
+    const row = makeRow();
+    this.bodyRows.push(row);
+    return row;
+  },
+  createTHead: function () {
+    return { insertRow: function () { return makeRow(); } };
+  }
+};
+
+function jquery() {
+  return {
+    text: function () { return this; },
+    empty: function () { return this; },
+    append: function () { return this; },
+    find: function () { return { tooltip: function () { return this; } }; },
+    ready: function () { return this; }
+  };
+}
+jquery.each = function () {};
+
+const context = {
+  console: console,
+  $: jquery,
+  document: {
+    title: '',
+    getElementById: function (id) {
+      if (id === 'detailsTable') return table;
+      return {};
+    },
+    createElement: function () {
+      return makeCell();
+    }
+  }
+};
+
+vm.createContext(context);
+vm.runInContext(fs.readFileSync('www/lendingbot.js', 'utf8'), context);
+context.timespans = [context.Day];
+context.updateRawValues({
+  USD: {
+    averageLendingRate: '0.04',
+    lentSum: '50',
+    totalCoins: '100',
+    maxToLend: '100',
+    highestBid: '1'
+  }
+});
+
+const rateCell = table.bodyRows[0].cells[2].innerHTML;
+if (!rateCell.includes('0.01700% Day')) {
+  throw new Error('effective rate did not use lent percentage: ' + rateCell);
+}
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_update_json_does_not_show_waiting_when_stats_are_present() -> None:
     script = r"""
 const fs = require('fs');

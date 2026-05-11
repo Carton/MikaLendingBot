@@ -13,8 +13,6 @@ var summaryCoinRate, summaryCoin;
 var earningsOutputCoinRate, earningsOutputCoin;
 var outputCurrencyDisplayMode = 'all'
 var validOutputCurrencyDisplayModes = ['all', 'summary'];
-var effRateMode = 'lentperc';
-var validEffRateModes = ['lentperc', 'onlyfee'];
 var defaultTimespanNames = ["Year", "Month", "Week", "Day", "Hour"];
 var dataRefreshTimer = null;
 var statusRefreshTimer = null;
@@ -198,9 +196,7 @@ function updateRawValues(rawData) {
 
             });
 
-            var effRateModePerc = 1;
-            if (effRateMode == 'lentperc')
-                effRateModePerc = lentSum / totalCoins;
+            var effRateModePerc = lentSum / totalCoins;
             var effectiveRate = rate * 100 * effRateModePerc;
             var yearlyRate = rate * 100 * 365 * effRateModePerc; // no reinvestment
             var yearlyRateComp = (Math.pow(rate + 1, 365) - 1) * 100 * effRateModePerc; // with daily reinvestment
@@ -211,11 +207,7 @@ function updateRawValues(rawData) {
                 return '&nbsp;<a data-toggle="tooltip" class="plb-tooltip" title="' + title + '">' + text + '</a>';
             }
             var avgRateText = makeTooltip("Average loan rate, simple average calculation of active loans rates.", "Avg.");
-            var effRateText;
-            if (effRateMode == 'lentperc')
-                effRateText = makeTooltip("Effective loan rate, considering lent precentage and exchange 15% fee.", "Eff.");
-            else
-                effRateText = makeTooltip("Effective loan rate, considering exchange 15% fee.", "Eff.");
+            var effRateText = makeTooltip("Effective loan rate, considering lent percentage and exchange 15% fee.", "Eff.");
             var compoundRateText = makeTooltip("Compound rate, the result of reinvesting the interest.", "Comp.");
             var lentStr = 'Lent ' + printFloat(lentSum * btcMultiplier, 4) + ' of ' + printFloat(totalCoins * btcMultiplier, 4) + ' (' + printFloat(lentPerc, 2) + '%)';
 
@@ -412,13 +404,6 @@ function applyWebSettings(settings) {
     }
     $("input[name='outputCurrencyDisplayMode'][value='" + outputCurrencyDisplayMode + "']").prop('checked', true);
 
-    // 5. Effective Rate Mode
-    var effMode = settings.effRateMode || 'lentperc';
-    if (validEffRateModes.indexOf(effMode) !== -1) {
-        effRateMode = effMode;
-    }
-    $("input[name='effRateMode'][value='" + effRateMode + "']").prop('checked', true);
-
     // 5.1 Lending Paused State
     if (settings.lending_paused !== undefined) {
         updateButtonStatus(settings.lending_paused);
@@ -509,7 +494,6 @@ function doSave() {
 
     newSettings.btcDisplayUnit = $('input[name="btcDisplayUnit"]:checked').val();
     newSettings.outputCurrencyDisplayMode = $('input[name="outputCurrencyDisplayMode"]:checked').val();
-    newSettings.effRateMode = $('input[name="effRateMode"]:checked').val();
 
     newSettings.frrdelta_min = parseFloat($('#frrdelta_min').val());
     newSettings.frrdelta_max = parseFloat($('#frrdelta_max').val());

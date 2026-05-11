@@ -230,7 +230,6 @@ class WebServer:
             "timespanNames": ["Year", "Month", "Week", "Day", "Hour"],
             "btcDisplayUnit": "BTC",
             "outputCurrencyDisplayMode": "all",
-            "effRateMode": "lentperc",
             "frrdelta_min": float(default_coin_cfg.frr_delta_min),
             "frrdelta_max": float(default_coin_cfg.frr_delta_max),
         }
@@ -242,6 +241,7 @@ class WebServer:
                 data = json.load(f)
                 if isinstance(data, dict):
                     settings = default_settings | data
+                    settings.pop("effRateMode", None)
                     if not settings.get("timespanNames"):
                         settings["timespanNames"] = default_settings["timespanNames"]
                     return settings
@@ -252,6 +252,7 @@ class WebServer:
     def save_web_settings(self, settings: dict[str, Any]) -> None:
         current = self.get_web_settings()
         current.update(settings)
+        current.pop("effRateMode", None)
         try:
             with Path(self.web_settings_file).open("w", encoding="utf-8") as f:
                 json.dump(current, f, indent=4)
