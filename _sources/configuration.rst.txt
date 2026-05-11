@@ -470,12 +470,6 @@ lendingbot.html options
 
 You can pass options to statistics page by adding them to URL. Eg, ``http://localhost:8000/lendingbot.html?option1=value&option2=0``
 
-- ``effrate`` controls how effective loan rate is calculated. Yearly rates are calculated based on effective rate, so this option affects them as well. Last used mode remembered by browser, so you do not have to specify this option every time. By default, effective loan rate is calculated considering lent precentage (from total available coins) and exchange fee.
-
-    - Allowed values: ``lentperc``, ``onlyfee``.
-    - Default value: ``lentperc``.
-    - ``onlyfee`` calculates effective rate without considering lent coin percentage.
-
 - ``displayUnit`` controls BTC's unit output.
 
     - Allowed values: ``BTC``, ``mBTC``, ``Bits``, ``Satoshi``

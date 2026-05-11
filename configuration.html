@@ -667,15 +667,6 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 <h2><span class="section-number">2.13. </span>lendingbot.html options<a class="headerlink" href="#lendingbot-html-options" title="Link to this heading"></a></h2>
 <p>You can pass options to statistics page by adding them to URL. Eg, <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/lendingbot.html?option1=value&amp;option2=0</span></code></p>
 <ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">effrate</span></code> controls how effective loan rate is calculated. Yearly rates are calculated based on effective rate, so this option affects them as well. Last used mode remembered by browser, so you do not have to specify this option every time. By default, effective loan rate is calculated considering lent precentage (from total available coins) and exchange fee.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">lentperc</span></code>, <code class="docutils literal notranslate"><span class="pre">onlyfee</span></code>.</p></li>
-<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">lentperc</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">onlyfee</span></code> calculates effective rate without considering lent coin percentage.</p></li>
-</ul>
-</div></blockquote>
-</li>
 <li><p><code class="docutils literal notranslate"><span class="pre">displayUnit</span></code> controls BTC’s unit output.</p>
 <blockquote>
 <div><ul class="simple">
