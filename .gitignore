@@ -28,6 +28,9 @@ venv/
 ENV/
 env/
 .virtualenv/
+node_modules/
+.playwright-mcp/
+lendingbot-*.png
 
 # ───────────────────────────────────────────────────────────────────────────────
 # IDEs
@@ -81,6 +84,9 @@ config.toml
 *.csv
 *.json
 !www/manifest.json
+!package.json
+!package-lock.json
+!tsconfig.json
 nohup.out
 error.log
 config/

@@ -33,6 +33,45 @@ class WebServer:
         self.loop: asyncio.AbstractEventLoop | None = None
 
     def _setup_routes(self) -> None:
+        @self.app.get("/api/dashboard/state", response_model=None)
+        async def dashboard_state() -> dict[str, Any]:
+            return self._get_dashboard_state()
+
+        @self.app.get("/api/settings", response_model=None)
+        async def api_get_settings() -> dict[str, Any]:
+            return self.get_web_settings()
+
+        @self.app.post("/api/settings", response_model=None)
+        async def api_set_settings(request: Request) -> dict[str, Any] | JSONResponse:
+            config_data = await request.json()
+            return self._apply_web_settings(config_data)
+
+        @self.app.post("/api/lending/pause", response_model=None)
+        async def api_pause_lending() -> dict[str, Any]:
+            self.lending_engine.lending_paused = True
+            self.save_web_settings({"lending_paused": True})
+            return {"success": True, "lending_paused": True}
+
+        @self.app.post("/api/lending/resume", response_model=None)
+        async def api_resume_lending() -> dict[str, Any]:
+            self.lending_engine.lending_paused = False
+            self.save_web_settings({"lending_paused": False})
+            return {"success": True, "lending_paused": False}
+
+        @self.app.get("/api/charts/history", response_model=None)
+        async def api_chart_history() -> dict[str, Any] | JSONResponse:
+            history_file = Path(self.web_server_template) / "history.json"
+            if not history_file.exists():
+                return {}
+            try:
+                with history_file.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+            except Exception as e:
+                return JSONResponse(status_code=500, content={"error": str(e)})
+            return {}
+
         @self.app.get("/get_status", response_model=None)
         async def get_status() -> dict[str, Any]:
             strategies = {cur: cfg.strategy for cur, cfg in self.lending_engine.coin_cfg.items()}
@@ -55,32 +94,7 @@ class WebServer:
         @self.app.post("/set_config", response_model=None)
         async def set_config(request: Request) -> dict[str, Any] | JSONResponse:
             config_data = await request.json()
-            if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
-                try:
-                    self.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
-                    self.lending_engine.frrdelta_max = Decimal(str(config_data["frrdelta_max"]))
-                    self.lending_engine.has_web_frr_override = True
-                    self.log.log(
-                        f"Settings updated by user: FRR Delta Min={self.lending_engine.frrdelta_min}%, Max={self.lending_engine.frrdelta_max}%"
-                    )
-                    self.save_web_settings(config_data)
-                    return {
-                        "success": True,
-                        "frrdelta_min": str(self.lending_engine.frrdelta_min),
-                        "frrdelta_max": str(self.lending_engine.frrdelta_max),
-                    }
-                except (ValueError, TypeError, InvalidOperation) as e:
-                    return JSONResponse(
-                        status_code=400, content={"success": False, "error": str(e)}
-                    )
-            else:
-                try:
-                    self.save_web_settings(config_data)
-                    return {"success": True}
-                except Exception as e:
-                    return JSONResponse(
-                        status_code=400, content={"success": False, "error": str(e)}
-                    )
+            return self._apply_web_settings(config_data)
 
         @self.app.get("/pause_lending", response_model=None)
         async def pause_lending() -> Response:
@@ -222,6 +236,25 @@ class WebServer:
                 pass
         return {}
 
+    def _get_lending_strategies(self) -> dict[str, str]:
+        strategies = {}
+        for cur, cfg in self.lending_engine.coin_cfg.items():
+            strategy = getattr(cfg, "strategy", "")
+            strategies[cur] = str(getattr(strategy, "value", strategy))
+        return strategies
+
+    def _get_dashboard_state(self) -> dict[str, Any]:
+        stats = self._get_persisted_stats_snapshot()
+        return {
+            "settings": self.get_web_settings(),
+            "status": self._get_live_status_snapshot(),
+            "stats": stats,
+            "recent_logs": self.log.get_recent_logs(),
+            "lending_paused": self.lending_engine.lending_paused,
+            "lending_strategies": self._get_lending_strategies(),
+            "plugins": stats.get("plugins", {}),
+        }
+
     # Web Settings methods
     def get_web_settings(self) -> dict[str, Any]:
         default_coin_cfg = self.config.get_coin_config("default")
@@ -258,6 +291,30 @@ class WebServer:
                 json.dump(current, f, indent=4)
         except Exception as e:
             print(f"Error saving web settings: {e}")
+
+    def _apply_web_settings(self, config_data: dict[str, Any]) -> dict[str, Any] | JSONResponse:
+        if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
+            try:
+                self.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
+                self.lending_engine.frrdelta_max = Decimal(str(config_data["frrdelta_max"]))
+                self.lending_engine.has_web_frr_override = True
+                self.log.log(
+                    f"Settings updated by user: FRR Delta Min={self.lending_engine.frrdelta_min}%, Max={self.lending_engine.frrdelta_max}%"
+                )
+                self.save_web_settings(config_data)
+                return {
+                    "success": True,
+                    "frrdelta_min": str(self.lending_engine.frrdelta_min),
+                    "frrdelta_max": str(self.lending_engine.frrdelta_max),
+                }
+            except (ValueError, TypeError, InvalidOperation) as e:
+                return JSONResponse(status_code=400, content={"success": False, "error": str(e)})
+
+        try:
+            self.save_web_settings(config_data)
+            return {"success": True}
+        except Exception as e:
+            return JSONResponse(status_code=400, content={"success": False, "error": str(e)})
 
 
 _web_server: WebServer | None = None

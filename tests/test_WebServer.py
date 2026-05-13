@@ -158,6 +158,59 @@ async def test_recent_logs(web_server: WebServer) -> None:
 
 
 @pytest.mark.asyncio
+async def test_dashboard_state_returns_live_status_when_stats_file_missing(
+    web_server: WebServer,
+) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/dashboard/state")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"]["last_status"] == "Live status from logger"
+    assert data["status"]["last_update"] == "2026-05-10 12:00:00"
+    assert data["stats"]["raw_data"] == {}
+    assert data["recent_logs"] == ["Mocked Log 1", "Mocked Log 2"]
+    assert data["lending_paused"] is False
+    assert data["settings"]["refreshRate"] == web_server.config.bot.web.refresh_rate
+
+
+@pytest.mark.asyncio
+async def test_dashboard_state_prefers_persisted_full_stats(
+    web_server: WebServer,
+) -> None:
+    stats_file = Path(web_server.config.bot.stats_file)
+    stats_file.write_text(
+        json.dumps(
+            {
+                "last_status": "Persisted complete status",
+                "last_update": "2026-05-10 13:00:00",
+                "raw_data": {"USD": {"totalCoins": "139176.70496700"}},
+                "outputCurrency": {
+                    "currency": "USD",
+                    "highestBid": "80775.44426494346",
+                },
+                "plugins": {"charts": {"navbar": True}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/dashboard/state")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"]["last_status"] == "Live status from logger"
+    assert data["stats"]["last_status"] == "Persisted complete status"
+    assert data["stats"]["raw_data"]["USD"]["totalCoins"] == "139176.70496700"
+    assert data["plugins"]["charts"]["navbar"] is True
+
+
+@pytest.mark.asyncio
 async def test_get_settings_restores_default_timespans(
     web_server: WebServer, tmp_path: Path
 ) -> None:
@@ -208,6 +261,56 @@ async def test_pause_resume(web_server: WebServer) -> None:
         assert web_server.lending_engine.lending_paused is True
         await ac.get("/resume_lending")
         assert web_server.lending_engine.lending_paused is False
+
+
+@pytest.mark.asyncio
+async def test_api_pause_resume(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        pause_response = await ac.post("/api/lending/pause")
+        assert pause_response.status_code == 200
+        assert pause_response.json()["lending_paused"] is True
+        assert web_server.lending_engine.lending_paused is True
+
+        resume_response = await ac.post("/api/lending/resume")
+        assert resume_response.status_code == 200
+        assert resume_response.json()["lending_paused"] is False
+        assert web_server.lending_engine.lending_paused is False
+
+
+@pytest.mark.asyncio
+async def test_api_settings_round_trip(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        save_response = await ac.post("/api/settings", json={"refreshRate": 45})
+        assert save_response.status_code == 200
+
+        get_response = await ac.get("/api/settings")
+        assert get_response.status_code == 200
+        assert get_response.json()["refreshRate"] == 45
+
+
+@pytest.mark.asyncio
+async def test_api_charts_history_reads_history_file(
+    web_server: WebServer, tmp_path: Path
+) -> None:
+    history_dir = tmp_path / "www"
+    history_dir.mkdir()
+    (history_dir / "history.json").write_text(
+        json.dumps({"USD": [[100, "1.5", "10.5"]]}),
+        encoding="utf-8",
+    )
+    web_server.web_server_template = str(history_dir)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/charts/history")
+
+    assert response.status_code == 200
+    assert response.json()["USD"] == [[100, "1.5", "10.5"]]
 
 
 @pytest.mark.asyncio

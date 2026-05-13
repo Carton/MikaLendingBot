@@ -11,8 +11,8 @@
 			"type" : "image/png"
 		}
 	],
-    "background_color": "#FAFAFA",
-    "theme_color": "#e7e7e7",
+    "background_color": "#f4f7fb",
+    "theme_color": "#0f172a",
 	"start_url" : "lendingbot.html",
 	"display" : "standalone",
 	"orientation" : "portrait"
