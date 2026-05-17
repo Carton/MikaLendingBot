@@ -56,19 +56,22 @@ export function DashboardPage({
   return (
     <div className="app-shell">
       <header className="topbar">
-        <Flex align="center" justify="space-between" gap="middle" wrap="wrap">
+        <Flex className="topbar-inner" align="center" justify="space-between" gap="middle" wrap="wrap">
           <Space>
-            <img className="brand-icon" src="/images/icon192.png" alt="" />
+            <img className="brand-icon" src="/images/icon192.png" alt="" width={40} height={40} />
             <div>
               <Typography.Title level={3} className="page-title">
                 {view.title}
               </Typography.Title>
-              <Typography.Text type="secondary">{view.lastUpdate}</Typography.Text>
+              <Space size="small" className="topbar-meta" wrap>
+                <Tag color={view.paused ? "gold" : "green"}>{view.paused ? "Paused" : "Running"}</Tag>
+                <Typography.Text type="secondary">{view.lastUpdate}</Typography.Text>
+              </Space>
             </div>
           </Space>
           <Space wrap>
-            <Tag color={view.paused ? "gold" : "green"}>{view.paused ? "Paused" : "Running"}</Tag>
-            <Button icon={<ReloadOutlined />} loading={loading} onClick={onRefresh} />
+            <Button href="/charts.html">Charts</Button>
+            <Button aria-label="Refresh Dashboard" icon={<ReloadOutlined />} loading={loading} onClick={onRefresh} />
             <Button icon={<SettingOutlined />} onClick={() => setSettingsOpen(true)}>
               Settings
             </Button>
@@ -80,7 +83,6 @@ export function DashboardPage({
             >
               {view.paused ? "Resume" : "Pause"}
             </Button>
-            <Button href="/charts.html">Charts</Button>
           </Space>
         </Flex>
       </header>
@@ -127,16 +129,7 @@ export function DashboardPage({
         </Card>
 
         <Row gutter={[16, 16]} className="section-card">
-          <Col xs={24} lg={10}>
-            <Card title="Snapshot">
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label="Exchange">{state.stats.exchange || "N/A"}</Descriptions.Item>
-                <Descriptions.Item label="Label">{state.stats.label || "Lending Bot"}</Descriptions.Item>
-                <Descriptions.Item label="Output Currency">{state.stats.outputCurrency?.currency || "N/A"}</Descriptions.Item>
-              </Descriptions>
-            </Card>
-          </Col>
-          <Col xs={24} lg={14}>
+          <Col xs={24}>
             <Card title="Recent Logs">
               <div className="log-list">
                 {view.logs.length === 0 ? (

@@ -79,6 +79,27 @@ describe("DashboardPage", () => {
     expect(screen.queryByTestId("desktop-coin-table")).not.toBeInTheDocument();
   });
 
+  it("omits the low-value snapshot metadata card", () => {
+    render(<DashboardPage state={baseState} loading={false} onRefresh={() => undefined} />);
+
+    expect(screen.queryByText("Snapshot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Exchange")).not.toBeInTheDocument();
+    expect(screen.getByText("Recent Logs")).toBeInTheDocument();
+  });
+
+  it("orders header actions from navigation to utilities to state change", () => {
+    render(<DashboardPage state={baseState} loading={false} onRefresh={() => undefined} />);
+
+    const charts = screen.getByRole("link", { name: "Charts" });
+    const refresh = screen.getByRole("button", { name: "Refresh Dashboard" });
+    const settings = screen.getByRole("button", { name: /settings/i });
+    const pause = screen.getByRole("button", { name: /pause/i });
+
+    expect(charts.compareDocumentPosition(refresh)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(refresh.compareDocumentPosition(settings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(settings.compareDocumentPosition(pause)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it("opens the settings modal and saves edited values", async () => {
     const onSaveSettings = vi.fn();
     render(

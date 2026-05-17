@@ -18,10 +18,16 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
-  padding: 14px 24px;
+  width: min(1280px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 14px 0;
   border-bottom: 1px solid #dce3ee;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(10px);
+}
+
+.topbar-inner {
+  width: 100%;
 }
 
 .brand-icon {
@@ -31,6 +37,10 @@ body {
 
 .page-title {
   margin: 0 !important;
+}
+
+.topbar-meta .ant-tag {
+  margin-inline-end: 0;
 }
 
 .content {
@@ -91,7 +101,12 @@ body {
 
 @media (max-width: 640px) {
   .topbar {
-    padding: 12px;
+    width: calc(100% - 20px);
+    padding: 12px 0;
+  }
+
+  .topbar-inner {
+    width: 100%;
   }
 
   .content {

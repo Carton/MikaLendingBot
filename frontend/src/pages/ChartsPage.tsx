@@ -31,13 +31,13 @@ export function ChartsPage() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <Flex align="center" justify="space-between" gap="middle" wrap="wrap">
+        <Flex className="topbar-inner" align="center" justify="space-between" gap="middle" wrap="wrap">
           <Typography.Title level={3} className="page-title">
             Lending Bot - Profit Charts
           </Typography.Title>
           <Flex gap="small">
             <Button href="/lendingbot.html">Dashboard</Button>
-            <Button icon={<ReloadOutlined />} loading={loading} onClick={() => void load()} />
+            <Button aria-label="Refresh Charts" icon={<ReloadOutlined />} loading={loading} onClick={() => void load()} />
           </Flex>
         </Flex>
       </header>
