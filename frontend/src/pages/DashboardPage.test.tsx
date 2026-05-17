@@ -150,6 +150,8 @@ describe("DashboardPage", () => {
     const rangeHandles = screen.getAllByRole("slider");
     expect(rangeHandles).toHaveLength(2);
     expect(rangeHandles[0]).toHaveAttribute("aria-valuemin", "-30");
+    expect(screen.getByRole("slider", { name: "Minimum FRR adjustment" })).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Maximum FRR adjustment" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
 

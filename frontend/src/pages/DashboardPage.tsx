@@ -70,7 +70,7 @@ export function DashboardPage({
             <img className="brand-icon" src="/images/icon192.png" alt="" width={40} height={40} />
             <div>
               <Typography.Title level={3} className="page-title">
-                {view.title}
+                <span translate="no">{view.title}</span>
               </Typography.Title>
               <Space size="small" className="topbar-meta" wrap>
                 <Tag color={view.paused ? "gold" : "green"}>{view.paused ? t("status.paused") : t("status.running")}</Tag>
@@ -268,7 +268,7 @@ function SettingsModal({
           rules={[{ type: "number", min: 30, max: 600 }]}
         >
           <Space.Compact className="settings-number-control" data-testid="refresh-interval-control">
-            <InputNumber aria-label={t("settings.refreshInterval")} min={30} max={600} />
+            <InputNumber aria-label={t("settings.refreshInterval")} name="refreshRate" autoComplete="off" min={30} max={600} />
             <span className="input-addon">{t("settings.seconds")}</span>
           </Space.Compact>
         </Form.Item>
@@ -307,6 +307,8 @@ function SettingsModal({
             min={FRR_DELTA_MIN_LIMIT}
             max={FRR_DELTA_MAX_LIMIT}
             marks={{ [FRR_DELTA_MIN_LIMIT]: `${FRR_DELTA_MIN_LIMIT}%`, 0: "0%", [FRR_DELTA_MAX_LIMIT]: `${FRR_DELTA_MAX_LIMIT}%` }}
+            ariaLabelForHandle={[t("settings.frrMinHandle"), t("settings.frrMaxHandle")]}
+            ariaValueTextFormatterForHandle={(value) => `${value}%`}
             tooltip={{ formatter: (value) => `${value}%` }}
             value={[frrMin, frrMax]}
             onChange={updateFrrRange}
