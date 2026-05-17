@@ -14,9 +14,11 @@ This project has been extensively refactored and improved from the original code
     -   **Advanced XDay Thresholds**: Granular control over lending duration based on rates. Using the TOML array format, you can define sophisticated mappings (e.g., `[{ rate = 0.05, days = 20 }, { rate = 0.058, days = 30 }]`).
     -   **Smart Competitor Analysis**: The bot checks the demand book to intelligently place offers just below competing rates.
 -   **Web UI Upgrades**:
-    -   **Real-time Log Pushing**: Powered by FastAPI and SSE (Server-Sent Events), logs are now streamed instantly to the dashboard.
+    -   **Modern React Dashboard**: The web UI is now built with React, TypeScript, Vite, Ant Design, and ECharts, with compiled assets served from `www/`.
+    -   **FastAPI Web Server**: Dashboard state, settings, charts, pause/resume actions, and static assets are served by the built-in FastAPI/Uvicorn server.
+    -   **Real-time Log Pushing**: Logs are streamed instantly to the dashboard using SSE (Server-Sent Events), while regular state polling avoids re-sending the same recent log snapshot.
     -   **Pause/Resume Control**: A new button allows you to safely pause lending operations without shutting down the bot.
-    -   **Live Configuration**: Update critical settings like FRR Delta ranges directly from the web interface.
+    -   **Live Configuration**: Update critical settings like refresh interval, output display mode, language, and FRR Delta ranges directly from the web interface.
 -   **Quality Assurance**: Significantly increased unit test coverage for core lending logic and API interactions.
 
 ## Original Introduction
@@ -47,6 +49,17 @@ uv sync
 # Run the bot
 uv run lendingbot
 ```
+
+For frontend development, edit files under `frontend/` and rebuild the runtime
+assets with:
+
+```bash
+npm run build
+```
+
+The bot serves the generated files under `www/`. Backend web-route changes
+require restarting `uv run lendingbot`; rebuilt frontend assets are picked up by
+browser refresh.
 
 ## Community (Original)
 
