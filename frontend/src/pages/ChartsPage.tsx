@@ -61,25 +61,31 @@ export function ChartsPage() {
 }
 
 function CoinChart({ series }: { series: ChartSeries }) {
+  const dailySeriesName = "Daily Earnings";
+  const totalSeriesName = "Total Earnings";
   const option = {
     title: { text: `${series.coin} Daily Lending Earnings` },
     tooltip: { trigger: "axis" },
-    legend: { data: ["Daily", "Total"] },
-    grid: { left: 48, right: 48, bottom: 48, containLabel: true },
+    legend: { data: [dailySeriesName, totalSeriesName] },
+    grid: { left: 48, right: 48, bottom: 76, containLabel: true },
     xAxis: { type: "time" },
     yAxis: [
-      { type: "value", name: "Daily" },
-      { type: "value", name: "Total" }
+      { type: "value", name: dailySeriesName },
+      { type: "value", name: totalSeriesName }
+    ],
+    dataZoom: [
+      { type: "inside", xAxisIndex: 0 },
+      { type: "slider", xAxisIndex: 0, bottom: 24 }
     ],
     series: [
       {
-        name: "Daily",
+        name: dailySeriesName,
         type: "line",
         yAxisIndex: 0,
         data: series.points.map((point) => [point.timestamp * 1000, point.daily])
       },
       {
-        name: "Total",
+        name: totalSeriesName,
         type: "line",
         yAxisIndex: 1,
         data: series.points.map((point) => [point.timestamp * 1000, point.total])

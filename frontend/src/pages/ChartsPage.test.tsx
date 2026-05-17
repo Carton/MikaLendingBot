@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChartsPage } from "./ChartsPage";
 
 vi.mock("echarts-for-react", () => ({
-  default: () => <div data-testid="echarts" />
+  default: ({ option }: { option: unknown }) => (
+    <div data-option={JSON.stringify(option)} data-testid="echarts" />
+  )
 }));
 
 describe("ChartsPage", () => {
@@ -25,6 +27,30 @@ describe("ChartsPage", () => {
     render(<ChartsPage />);
 
     await waitFor(() => expect(screen.getByTestId("echarts")).toBeInTheDocument());
+  });
+
+  it("labels earnings series clearly and enables chart zooming", async () => {
+    stubFetch({ "/api/charts/history": { USD: [[100, "1", "10"]] } });
+
+    render(<ChartsPage />);
+
+    const option = JSON.parse((await screen.findByTestId("echarts")).dataset.option ?? "{}");
+
+    expect(option.legend.data).toEqual(["Daily Earnings", "Total Earnings"]);
+    expect(option.series.map((series: { name: string }) => series.name)).toEqual([
+      "Daily Earnings",
+      "Total Earnings"
+    ]);
+    expect(option.yAxis.map((axis: { name: string }) => axis.name)).toEqual([
+      "Daily Earnings",
+      "Total Earnings"
+    ]);
+    expect(option.dataZoom).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "inside", xAxisIndex: 0 }),
+        expect.objectContaining({ type: "slider", xAxisIndex: 0 })
+      ])
+    );
   });
 
   it("uses the dashboard exchange and label in the page title", async () => {
