@@ -42,7 +42,7 @@ export function useDashboardState() {
     source.onmessage = (event) => {
       setState((current) => {
         if (!current) return current;
-        const recent_logs = [event.data, ...current.recent_logs].slice(0, 500);
+        const recent_logs = [...current.recent_logs, event.data].slice(-500);
         const next = { ...current, recent_logs };
         stateRef.current = next;
         return next;

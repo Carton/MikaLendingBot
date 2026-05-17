@@ -129,6 +129,16 @@ describe("DashboardPage", () => {
     await waitFor(() => expect(onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({ refreshRate: 45 })));
   });
 
+  it("places language at the top of the settings modal", () => {
+    render(<DashboardPage state={baseState} loading={false} onRefresh={() => undefined} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+
+    const languageLabel = screen.getByText("Language");
+    const refreshLabel = screen.getByText("Refresh interval");
+    expect(languageLabel.compareDocumentPosition(refreshLabel)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it("uses a compact settings layout with one FRR range slider", async () => {
     const onSaveSettings = vi.fn();
     render(
@@ -175,6 +185,45 @@ describe("DashboardPage", () => {
     expect(screen.getByText("借出仓位")).toBeInTheDocument();
     expect(screen.getByText("最近日志")).toBeInTheDocument();
     expect(screen.getByText("startup log")).toBeInTheDocument();
+  });
+
+  it("keeps recent logs pinned to the newest entry until the user scrolls up", async () => {
+    const scrolledState = {
+      ...baseState,
+      recent_logs: ["first log", "second log", "third log"]
+    };
+    const { rerender } = render(
+      <DashboardPage
+        state={{ ...scrolledState, recent_logs: ["first log", "second log"] }}
+        loading={false}
+        onRefresh={() => undefined}
+      />
+    );
+    const logList = screen.getByTestId("recent-log-list");
+    setScrollMetrics(logList, { scrollHeight: 1000, clientHeight: 100, scrollTop: 900 });
+
+    rerender(<DashboardPage state={scrolledState} loading={false} onRefresh={() => undefined} />);
+
+    await waitFor(() => expect(logList.scrollTop).toBe(1000));
+
+    logList.scrollTop = 200;
+    fireEvent.scroll(logList);
+
+    rerender(
+      <DashboardPage
+        state={{ ...scrolledState, recent_logs: [...scrolledState.recent_logs, "newest log"] }}
+        loading={false}
+        onRefresh={() => undefined}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "New Logs" })).toBeInTheDocument());
+    expect(logList.scrollTop).toBe(200);
+
+    logList.scrollTop = 900;
+    fireEvent.scroll(logList);
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "New Logs" })).not.toBeInTheDocument());
   });
 
   it("uses simplified Chinese when the browser default language is supported", () => {
@@ -236,3 +285,14 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Lending running")).toBeInTheDocument();
   });
 });
+
+function setScrollMetrics(
+  element: HTMLElement,
+  metrics: { clientHeight: number; scrollHeight: number; scrollTop: number }
+) {
+  Object.defineProperties(element, {
+    clientHeight: { configurable: true, value: metrics.clientHeight },
+    scrollHeight: { configurable: true, value: metrics.scrollHeight },
+    scrollTop: { configurable: true, value: metrics.scrollTop, writable: true }
+  });
+}

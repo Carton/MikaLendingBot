@@ -1,7 +1,7 @@
 import { PauseCircleOutlined, PlayCircleOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Col, Descriptions, Empty, Flex, Modal, Row, Space, Statistic, Table, Tag, Typography, Form, InputNumber, Slider, Radio, Grid } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildDashboardView, formatNumber } from "../domain/dashboard";
 import { LANGUAGE_OPTIONS, useLanguage } from "../i18n";
 import type { CoinRow, DashboardSettings, DashboardStateResponse } from "../domain/types";
@@ -11,6 +11,7 @@ type SetLanguageFn = ReturnType<typeof useLanguage>["setLanguage"];
 
 const FRR_DELTA_MIN_LIMIT = -30;
 const FRR_DELTA_MAX_LIMIT = 50;
+const LOG_FOLLOW_THRESHOLD_PX = 32;
 
 interface DashboardPageProps {
   state: DashboardStateResponse;
@@ -139,19 +140,7 @@ export function DashboardPage({
 
         <Row gutter={[16, 16]} className="section-card">
           <Col xs={24}>
-            <Card title={t("dashboard.recentLogs")}>
-              <div className="log-list">
-                {view.logs.length === 0 ? (
-                  <Empty description={t("dashboard.noLogs")} />
-                ) : (
-                  view.logs.map((item, index) => (
-                    <div className="log-line" key={`${index}-${item}`}>
-                      {item}
-                    </div>
-                  ))
-                )}
-              </div>
-            </Card>
+            <RecentLogsCard logs={view.logs} t={t} />
           </Col>
         </Row>
       </main>
@@ -214,6 +203,78 @@ function CoinCardList({ rows, t }: { rows: CoinRow[]; t: TranslateFn }) {
   );
 }
 
+function RecentLogsCard({ logs, t }: { logs: string[]; t: TranslateFn }) {
+  const logListRef = useRef<HTMLDivElement>(null);
+  const previousLogCountRef = useRef(0);
+  const [isFollowingTail, setIsFollowingTail] = useState(true);
+  const [hasUnreadLogs, setHasUnreadLogs] = useState(false);
+
+  const scrollToTail = useCallback(() => {
+    const element = logListRef.current;
+    if (!element) return;
+    element.scrollTop = element.scrollHeight;
+  }, []);
+
+  const followTail = useCallback(() => {
+    setIsFollowingTail(true);
+    setHasUnreadLogs(false);
+    scrollToTail();
+  }, [scrollToTail]);
+
+  useEffect(() => {
+    const nextLogCount = logs.length;
+    if (isFollowingTail) {
+      scrollToTail();
+      setHasUnreadLogs(false);
+    } else if (nextLogCount > previousLogCountRef.current) {
+      setHasUnreadLogs(true);
+    }
+    previousLogCountRef.current = nextLogCount;
+  }, [isFollowingTail, logs, scrollToTail]);
+
+  function handleLogScroll() {
+    const element = logListRef.current;
+    if (!element) return;
+    const distanceFromBottom = element.scrollHeight - element.scrollTop - element.clientHeight;
+    const isNearBottom = distanceFromBottom <= LOG_FOLLOW_THRESHOLD_PX;
+    setIsFollowingTail(isNearBottom);
+    if (isNearBottom) {
+      setHasUnreadLogs(false);
+    }
+  }
+
+  return (
+    <Card
+      title={t("dashboard.recentLogs")}
+      extra={
+        hasUnreadLogs ? (
+          <Button size="small" onClick={followTail}>
+            {t("dashboard.newLogs")}
+          </Button>
+        ) : null
+      }
+    >
+      <div
+        aria-live={isFollowingTail ? "polite" : "off"}
+        className="log-list"
+        data-testid="recent-log-list"
+        onScroll={handleLogScroll}
+        ref={logListRef}
+      >
+        {logs.length === 0 ? (
+          <Empty description={t("dashboard.noLogs")} />
+        ) : (
+          logs.map((item, index) => (
+            <div className="log-line" key={`${index}-${item}`}>
+              {item}
+            </div>
+          ))
+        )}
+      </div>
+    </Card>
+  );
+}
+
 function SettingsModal({
   open,
   language,
@@ -261,6 +322,15 @@ function SettingsModal({
       destroyOnHidden
     >
       <Form className="settings-form" form={form} layout="vertical" initialValues={initialSettings}>
+        <Form.Item label={t("settings.language")}>
+          <Radio.Group
+            aria-label={t("language.label")}
+            optionType="button"
+            options={LANGUAGE_OPTIONS}
+            value={language}
+            onChange={(event) => setLanguage(event.target.value)}
+          />
+        </Form.Item>
         <Form.Item
           name="refreshRate"
           label={t("settings.refreshInterval")}
@@ -280,15 +350,6 @@ function SettingsModal({
               { label: t("settings.allCoins"), value: "all" },
               { label: t("settings.onlySummary"), value: "summary" }
             ]}
-          />
-        </Form.Item>
-        <Form.Item label={t("settings.language")}>
-          <Radio.Group
-            aria-label={t("language.label")}
-            optionType="button"
-            options={LANGUAGE_OPTIONS}
-            value={language}
-            onChange={(event) => setLanguage(event.target.value)}
           />
         </Form.Item>
         <Form.Item label={t("settings.frrAdjustment")}>

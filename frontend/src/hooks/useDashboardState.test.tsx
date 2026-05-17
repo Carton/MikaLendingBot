@@ -50,7 +50,7 @@ describe("useDashboardState", () => {
       EventSourceMock.instances[0].onmessage?.({ data: "new log" } as MessageEvent<string>);
     });
 
-    expect(result.current.state?.recent_logs[0]).toBe("new log");
+    expect(result.current.state?.recent_logs).toEqual(["startup", "new log"]);
   });
 
   it("optimistically pauses lending then refreshes state", async () => {
