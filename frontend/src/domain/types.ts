@@ -48,7 +48,7 @@ export interface DashboardStateResponse {
   settings: DashboardSettings;
   status: DashboardStatus;
   stats: StatsSnapshot;
-  recent_logs: string[];
+  recent_logs?: string[];
   lending_paused: boolean;
   lending_strategies: Record<string, string>;
   plugins: PluginMetadata;

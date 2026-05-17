@@ -90,4 +90,40 @@ describe("useDashboardState", () => {
     expect(result.current.error).toBe("503 Unavailable");
     expect(result.current.state?.status.last_status).toBe("Lending running");
   });
+
+  it("omits logs from scheduled refreshes and preserves streamed logs", async () => {
+    vi.useFakeTimers();
+    try {
+      const refreshedState = {
+        ...state,
+        stats: { raw_data: { USD: { totalCoins: "1" } } },
+        recent_logs: undefined
+      };
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(new Response(JSON.stringify({ ...state, stats: refreshedState.stats }), { status: 200 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(refreshedState), { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const { result } = renderHook(() => useDashboardState());
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(result.current.state?.recent_logs).toEqual(["startup"]);
+
+      act(() => {
+        EventSourceMock.instances[0].onmessage?.({ data: "streamed log" } as MessageEvent<string>);
+      });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+
+      expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/dashboard/state?include_logs=false", undefined);
+      expect(result.current.state?.recent_logs).toEqual(["startup", "streamed log"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

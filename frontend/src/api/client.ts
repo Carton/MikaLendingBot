@@ -1,7 +1,12 @@
 import type { DashboardSettings, DashboardStateResponse, RawChartPoint } from "../domain/types";
 
-export async function fetchDashboardState(): Promise<DashboardStateResponse> {
-  return requestJson<DashboardStateResponse>("/api/dashboard/state");
+interface FetchDashboardStateOptions {
+  includeLogs?: boolean;
+}
+
+export async function fetchDashboardState(options: FetchDashboardStateOptions = {}): Promise<DashboardStateResponse> {
+  const url = options.includeLogs === false ? "/api/dashboard/state?include_logs=false" : "/api/dashboard/state";
+  return requestJson<DashboardStateResponse>(url);
 }
 
 export async function saveSettings(settings: DashboardSettings): Promise<void> {

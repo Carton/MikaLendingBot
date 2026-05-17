@@ -177,6 +177,17 @@ async def test_dashboard_state_returns_live_status_when_stats_file_missing(
 
 
 @pytest.mark.asyncio
+async def test_dashboard_state_can_omit_recent_logs(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/dashboard/state?include_logs=false")
+
+    assert response.status_code == 200
+    assert "recent_logs" not in response.json()
+
+
+@pytest.mark.asyncio
 async def test_dashboard_state_prefers_persisted_full_stats(
     web_server: WebServer,
 ) -> None:

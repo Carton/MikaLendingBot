@@ -37,8 +37,8 @@ class WebServer:
 
     def _setup_routes(self) -> None:
         @self.app.get("/api/dashboard/state", response_model=None)
-        async def dashboard_state() -> dict[str, Any]:
-            return self._get_dashboard_state()
+        async def dashboard_state(include_logs: bool = True) -> dict[str, Any]:
+            return self._get_dashboard_state(include_logs=include_logs)
 
         @self.app.get("/api/settings", response_model=None)
         async def api_get_settings() -> dict[str, Any]:
@@ -246,17 +246,19 @@ class WebServer:
             strategies[cur] = str(getattr(strategy, "value", strategy))
         return strategies
 
-    def _get_dashboard_state(self) -> dict[str, Any]:
+    def _get_dashboard_state(self, include_logs: bool = True) -> dict[str, Any]:
         stats = self._get_persisted_stats_snapshot()
-        return {
+        state = {
             "settings": self.get_web_settings(),
             "status": self._get_live_status_snapshot(),
             "stats": stats,
-            "recent_logs": self.log.get_recent_logs(),
             "lending_paused": self.lending_engine.lending_paused,
             "lending_strategies": self._get_lending_strategies(),
             "plugins": stats.get("plugins", {}),
         }
+        if include_logs:
+            state["recent_logs"] = self.log.get_recent_logs()
+        return state
 
     # Web Settings methods
     def get_web_settings(self) -> dict[str, Any]:

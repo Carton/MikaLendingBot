@@ -4,16 +4,18 @@ import { fetchDashboardState, pauseLending, resumeLending, saveSettings } from "
 import type { DashboardSettings, DashboardStateResponse } from "../domain/types";
 
 const INITIAL_RETRY_MS = 5000;
+type DashboardState = DashboardStateResponse & { recent_logs: string[] };
 
 export function useDashboardState() {
-  const [state, setState] = useState<DashboardStateResponse | null>(null);
+  const [state, setState] = useState<DashboardState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const stateRef = useRef<DashboardStateResponse | null>(null);
+  const stateRef = useRef<DashboardState | null>(null);
 
-  const refresh = useCallback(async () => {
+  const loadState = useCallback(async (includeLogs: boolean) => {
     try {
-      const next = await fetchDashboardState();
+      const response = await fetchDashboardState({ includeLogs });
+      const next = normalizeDashboardState(response, stateRef.current);
       stateRef.current = next;
       setState(next);
       setError(null);
@@ -25,6 +27,10 @@ export function useDashboardState() {
     }
   }, []);
 
+  const refresh = useCallback(async () => {
+    await loadState(true);
+  }, [loadState]);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -33,9 +39,9 @@ export function useDashboardState() {
     const refreshMs = Math.max((state?.settings.refreshRate ?? 30) * 1000, 30000);
     const statsReady = Boolean(state?.stats.raw_data && Object.keys(state.stats.raw_data).length > 0);
     const interval = statsReady ? refreshMs : INITIAL_RETRY_MS;
-    const timer = window.setTimeout(() => void refresh(), interval);
+    const timer = window.setTimeout(() => void loadState(false), interval);
     return () => window.clearTimeout(timer);
-  }, [refresh, state]);
+  }, [loadState, state]);
 
   useEffect(() => {
     const source = new EventSource("/stream-logs");
@@ -65,13 +71,13 @@ export function useDashboardState() {
       try {
         await saveSettings(settings);
         notification.success({ title: "Settings saved" });
-        await refresh();
+        await loadState(false);
       } catch (err) {
         if (previous) setState(previous);
         notification.error({ title: "Failed to save settings", description: getErrorMessage(err) });
       }
     },
-    [refresh]
+    [loadState]
   );
 
   const setPaused = useCallback(
@@ -88,16 +94,26 @@ export function useDashboardState() {
         } else {
           await resumeLending();
         }
-        await refresh();
+        await loadState(false);
       } catch (err) {
         if (previous) setState(previous);
         notification.error({ title: "Failed to update lending state", description: getErrorMessage(err) });
       }
     },
-    [refresh]
+    [loadState]
   );
 
   return { state, loading, error, refresh, updateSettings, setPaused };
+}
+
+function normalizeDashboardState(
+  response: DashboardStateResponse,
+  previous: DashboardState | null
+): DashboardState {
+  return {
+    ...response,
+    recent_logs: response.recent_logs ?? previous?.recent_logs ?? []
+  };
 }
 
 function getErrorMessage(err: unknown): string {

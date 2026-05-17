@@ -15,6 +15,15 @@ describe("api client", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/dashboard/state", undefined);
   });
 
+  it("can request dashboard state without recent logs", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchDashboardState({ includeLogs: false });
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/dashboard/state?include_logs=false", undefined);
+  });
+
   it("posts settings as JSON", async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: true }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);

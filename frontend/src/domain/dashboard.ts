@@ -36,7 +36,7 @@ export function buildDashboardView(state: DashboardStateResponse): DashboardView
     lastUpdate: state.status.last_update || state.stats.last_update || "Not updated",
     statsReady,
     emptyStatsMessage: statsReady ? "" : "Waiting for the first statistics snapshot",
-    logs: state.recent_logs,
+    logs: state.recent_logs ?? [],
     coinRows: calculateCoinRows(rawData, state.stats.outputCurrency ?? {}, timespans),
     strategies: uniqueValues(Object.values(state.lending_strategies)),
     paused: state.lending_paused
