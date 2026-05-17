@@ -147,6 +147,7 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
 
     const refreshInput = screen.getByLabelText("Refresh interval");
+    await waitFor(() => expect(refreshInput).toHaveValue("30"));
     fireEvent.change(refreshInput, { target: { value: "45" } });
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
 

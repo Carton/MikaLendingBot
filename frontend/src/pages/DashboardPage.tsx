@@ -293,15 +293,24 @@ function SettingsModal({
   onSave: (settings: DashboardSettings) => Promise<void>;
 }) {
   const [form] = Form.useForm<DashboardSettings>();
-  const initialSettings = {
-    ...settings,
-    frrdelta_min: Math.max(settings.frrdelta_min ?? -10, FRR_DELTA_MIN_LIMIT),
-    frrdelta_max: Math.min(settings.frrdelta_max ?? 10, FRR_DELTA_MAX_LIMIT)
-  };
+  const initialSettings = useMemo(
+    () => ({
+      ...settings,
+      frrdelta_min: Math.max(settings.frrdelta_min ?? -10, FRR_DELTA_MIN_LIMIT),
+      frrdelta_max: Math.min(settings.frrdelta_max ?? 10, FRR_DELTA_MAX_LIMIT)
+    }),
+    [settings]
+  );
   const watchedFrrMin = Form.useWatch("frrdelta_min", form);
   const watchedFrrMax = Form.useWatch("frrdelta_max", form);
   const frrMin = typeof watchedFrrMin === "number" ? watchedFrrMin : initialSettings.frrdelta_min;
   const frrMax = typeof watchedFrrMax === "number" ? watchedFrrMax : initialSettings.frrdelta_max;
+
+  useEffect(() => {
+    if (open) {
+      form.setFieldsValue(initialSettings);
+    }
+  }, [form, initialSettings, open]);
 
   function updateFrrRange(value: number | number[]) {
     if (!Array.isArray(value)) return;
@@ -332,13 +341,12 @@ function SettingsModal({
           />
         </Form.Item>
         <Form.Item
-          name="refreshRate"
           label={t("settings.refreshInterval")}
-          normalize={normalizeOptionalNumber}
-          rules={[{ type: "number", min: 30, max: 600 }]}
         >
           <Space.Compact className="settings-number-control" data-testid="refresh-interval-control">
-            <InputNumber aria-label={t("settings.refreshInterval")} name="refreshRate" autoComplete="off" min={30} max={600} />
+            <Form.Item name="refreshRate" noStyle normalize={normalizeOptionalNumber} rules={[{ type: "number", min: 30, max: 600 }]}>
+              <InputNumber aria-label={t("settings.refreshInterval")} name="refreshRate" autoComplete="off" min={30} max={600} />
+            </Form.Item>
             <span className="input-addon">{t("settings.seconds")}</span>
           </Space.Compact>
         </Form.Item>
