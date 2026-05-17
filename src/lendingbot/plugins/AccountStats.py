@@ -1,5 +1,6 @@
 import datetime
 import sqlite3
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,8 @@ class AccountStats(Plugin):
         self.earnings: dict[str, dict[str, float]] = {}
         self.report_interval: int = 86400
         self.db: sqlite3.Connection | None = None
+        self._history_lock = threading.RLock()
+        self._initial_refresh_thread: threading.Thread | None = None
 
     def on_bot_init(self) -> None:
         super().on_bot_init()
@@ -54,6 +57,7 @@ class AccountStats(Plugin):
         self.init_db()
         self.check_upgrade()
         self.report_interval = int(self.config.plugins.account_stats.report_interval)
+        self._start_initial_history_refresh()
 
     def before_lending(self) -> None:
         for coin in self.earnings:
@@ -61,6 +65,8 @@ class AccountStats(Plugin):
                 self.log.updateStatusValue(coin, key, self.earnings[coin][key])
 
     def after_lending(self) -> None:
+        if self._is_initial_history_refresh_running():
+            return
         if self.get_db_version() > 0 and self.last_notification != 0:
             next_update = self.last_notification + self.report_interval
             if next_update > time.time():
@@ -68,9 +74,30 @@ class AccountStats(Plugin):
                 # However, since the user is debugging, I'll add it.
                 # self.log.log(f"AccountStats: Next update at {datetime.datetime.fromtimestamp(next_update)}")
                 return
-        self.log.log("AccountStats: Updating lending history from exchange...")
-        self.update_history()
-        self.notify_stats()
+        self._run_history_update()
+
+    def _start_initial_history_refresh(self) -> None:
+        self._initial_refresh_thread = threading.Thread(
+            target=self._run_initial_history_refresh,
+            name="AccountStatsInitialHistoryRefresh",
+            daemon=True,
+        )
+        self._initial_refresh_thread.start()
+
+    def _is_initial_history_refresh_running(self) -> bool:
+        return self._initial_refresh_thread is not None and self._initial_refresh_thread.is_alive()
+
+    def _run_initial_history_refresh(self) -> None:
+        try:
+            self._run_history_update()
+        except Exception as ex:
+            self.log.log_error(f"Error during AccountStats initial history update: {ex}")
+
+    def _run_history_update(self) -> None:
+        with self._history_lock:
+            self.log.log("AccountStats: Updating lending history from exchange...")
+            self.update_history()
+            self.notify_stats()
 
     def init_db(self) -> None:
         self.db = sqlite3.connect("market_data/loan_history.sqlite3", check_same_thread=False)

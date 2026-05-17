@@ -88,3 +88,42 @@ class TestAccountStats:
         with patch.object(account_stats, "fetch_history", return_value=0) as mock_fetch:
             account_stats.update_history()
             mock_fetch.assert_called()
+
+    def test_on_bot_init_starts_initial_refresh_in_background(self):
+        mock_cfg = Mock()
+        mock_cfg.plugins.account_stats.report_interval = 86400
+        mock_api = Mock()
+        mock_log = MagicMock()
+        db = sqlite3.connect(":memory:", check_same_thread=False)
+
+        with (
+            patch("sqlite3.connect", return_value=db),
+            patch.object(AccountStats, "_run_initial_history_refresh", create=True) as mock_refresh,
+        ):
+            stats = AccountStats(mock_cfg, mock_api, mock_log, {})
+            stats.on_bot_init()
+
+            assert stats._initial_refresh_thread is not None
+            assert stats._initial_refresh_thread.daemon
+            stats._initial_refresh_thread.join(timeout=1)
+            mock_refresh.assert_called_once_with()
+
+        db.close()
+
+    def test_after_lending_skips_while_initial_refresh_is_running(self):
+        mock_cfg = Mock()
+        mock_api = Mock()
+        mock_log = MagicMock()
+        stats = AccountStats(mock_cfg, mock_api, mock_log, {})
+        stats._initial_refresh_thread = Mock()
+        stats._initial_refresh_thread.is_alive.return_value = True
+
+        with (
+            patch.object(stats, "get_db_version", return_value=0),
+            patch.object(stats, "update_history") as mock_update_history,
+            patch.object(stats, "notify_stats") as mock_notify_stats,
+        ):
+            stats.after_lending()
+
+        mock_update_history.assert_not_called()
+        mock_notify_stats.assert_not_called()
