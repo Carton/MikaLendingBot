@@ -2,12 +2,13 @@ import { ReloadOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Empty, Flex, Spin, Typography } from "antd";
 import ReactECharts from "echarts-for-react";
 import { useEffect, useMemo, useState } from "react";
-import { fetchChartHistory } from "../api/client";
-import { normalizeChartHistory } from "../domain/dashboard";
+import { fetchChartHistory, fetchDashboardState } from "../api/client";
+import { buildDashboardView, normalizeChartHistory } from "../domain/dashboard";
 import type { ChartSeries, RawChartPoint } from "../domain/types";
 
 export function ChartsPage() {
   const [history, setHistory] = useState<Record<string, RawChartPoint[]> | null>(null);
+  const [title, setTitle] = useState("Lending Bot - Profit Charts");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const series = useMemo(() => normalizeChartHistory(history), [history]);
@@ -15,7 +16,9 @@ export function ChartsPage() {
   async function load() {
     setLoading(true);
     try {
-      setHistory(await fetchChartHistory());
+      const [nextState, nextHistory] = await Promise.all([fetchDashboardState(), fetchChartHistory()]);
+      setTitle(`${buildDashboardView(nextState).title} - Profit Charts`);
+      setHistory(nextHistory);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -33,7 +36,7 @@ export function ChartsPage() {
       <header className="topbar">
         <Flex className="topbar-inner" align="center" justify="space-between" gap="middle" wrap="wrap">
           <Typography.Title level={3} className="page-title">
-            Lending Bot - Profit Charts
+            {title}
           </Typography.Title>
           <Flex gap="small">
             <Button href="/lendingbot.html">Dashboard</Button>

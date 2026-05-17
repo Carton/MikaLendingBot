@@ -12,10 +12,7 @@ describe("ChartsPage", () => {
   });
 
   it("shows an empty state when no history exists", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(JSON.stringify({}), { status: 200 }))
-    );
+    stubFetch({ "/api/charts/history": {} });
 
     render(<ChartsPage />);
 
@@ -23,13 +20,48 @@ describe("ChartsPage", () => {
   });
 
   it("renders chart panels for available history", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(JSON.stringify({ USD: [[100, "1", "10"]] }), { status: 200 }))
-    );
+    stubFetch({ "/api/charts/history": { USD: [[100, "1", "10"]] } });
 
     render(<ChartsPage />);
 
     await waitFor(() => expect(screen.getByTestId("echarts")).toBeInTheDocument());
   });
+
+  it("uses the dashboard exchange and label in the page title", async () => {
+    stubFetch({
+      "/api/dashboard/state": {
+        settings: {},
+        status: {},
+        stats: { exchange: "Bitfinex", label: "Lending Bot", raw_data: {} },
+        recent_logs: [],
+        lending_paused: false,
+        lending_strategies: {},
+        plugins: {}
+      },
+      "/api/charts/history": {}
+    });
+
+    render(<ChartsPage />);
+
+    await screen.findByRole("heading", { name: "Bitfinex Lending Bot - Profit Charts" });
+  });
 });
+
+function stubFetch(responses: Record<string, unknown>) {
+  const defaultDashboardState = {
+    settings: {},
+    status: {},
+    stats: { raw_data: {} },
+    recent_logs: [],
+    lending_paused: false,
+    lending_strategies: {},
+    plugins: {}
+  };
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.pathname : input.url;
+      return new Response(JSON.stringify(responses[url] ?? defaultDashboardState), { status: 200 });
+    })
+  );
+}
