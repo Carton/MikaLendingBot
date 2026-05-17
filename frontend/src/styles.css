@@ -60,6 +60,12 @@ body {
   margin-top: 16px;
 }
 
+.empty-state {
+  padding: 32px 16px;
+  color: #536173;
+  text-align: center;
+}
+
 .coin-card-list {
   display: grid;
   gap: 12px;

@@ -119,7 +119,7 @@ export function DashboardPage({
         </Row>
 
         <Card title={t("dashboard.lendingPositions")} className="section-card">
-          {view.statsReady ? (
+          {view.coinRows.length > 0 ? (
             useCompactLayout ? (
               <CoinCardList rows={view.coinRows} t={t} />
             ) : (
@@ -134,7 +134,7 @@ export function DashboardPage({
               />
             )
           ) : (
-            <Empty description={t("dashboard.emptyStats")} />
+            <div className="empty-state">{t("dashboard.emptyPositions")}</div>
           )}
         </Card>
 

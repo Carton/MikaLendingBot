@@ -26,8 +26,32 @@ describe("DashboardPage", () => {
     render(<DashboardPage state={baseState} loading={false} onRefresh={() => undefined} />);
 
     expect(screen.getByText("Lending running")).toBeInTheDocument();
-    expect(screen.getByText("Waiting for the first statistics snapshot")).toBeInTheDocument();
+    expect(screen.getByText("Waiting for lending position data")).toBeInTheDocument();
     expect(screen.getByText("startup log")).toBeInTheDocument();
+  });
+
+  it("shows a clear empty position message when raw stats cannot produce coin rows", () => {
+    render(
+      <DashboardPage
+        loading={false}
+        onRefresh={() => undefined}
+        state={{
+          ...baseState,
+          stats: {
+            ...baseState.stats,
+            raw_data: {
+              USD: {
+                averageLendingRate: "0.04",
+                totalCoins: "0"
+              }
+            }
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByText("Waiting for lending position data")).toBeInTheDocument();
+    expect(screen.queryByText("No data")).not.toBeInTheDocument();
   });
 
   it("renders coin lending rows when stats are present", () => {
