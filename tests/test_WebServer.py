@@ -293,6 +293,45 @@ async def test_api_settings_round_trip(web_server: WebServer) -> None:
 
 
 @pytest.mark.asyncio
+async def test_api_settings_clamps_frr_minimum(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        save_response = await ac.post(
+            "/api/settings", json={"frrdelta_min": -80, "frrdelta_max": 9}
+        )
+        assert save_response.status_code == 200
+
+        data = save_response.json()
+        assert data["frrdelta_min"] == "-30.0"
+        assert web_server.lending_engine.frrdelta_min == -30
+
+        get_response = await ac.get("/api/settings")
+        assert get_response.status_code == 200
+        assert get_response.json()["frrdelta_min"] == -30.0
+
+
+@pytest.mark.asyncio
+async def test_get_settings_clamps_persisted_frr_minimum(
+    web_server: WebServer, tmp_path: Path
+) -> None:
+    settings_file = tmp_path / "web_settings.json"
+    settings_file.write_text(
+        json.dumps({"frrdelta_min": -80, "frrdelta_max": 9}),
+        encoding="utf-8",
+    )
+    web_server.web_settings_file = str(settings_file)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/settings")
+
+    assert response.status_code == 200
+    assert response.json()["frrdelta_min"] == -30.0
+
+
+@pytest.mark.asyncio
 async def test_api_charts_history_reads_history_file(
     web_server: WebServer, tmp_path: Path
 ) -> None:

@@ -11,6 +11,7 @@ vi.mock("echarts-for-react", () => ({
 describe("ChartsPage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    window.localStorage.clear();
   });
 
   it("shows an empty state when no history exists", async () => {
@@ -70,6 +71,31 @@ describe("ChartsPage", () => {
     render(<ChartsPage />);
 
     await screen.findByRole("heading", { name: "Bitfinex Lending Bot - Profit Charts" });
+  });
+
+  it("switches chart UI labels to simplified Chinese", async () => {
+    window.localStorage.setItem("lendingbot-language", "zh-CN");
+    stubFetch({
+      "/api/dashboard/state": {
+        settings: {},
+        status: {},
+        stats: { exchange: "Bitfinex", label: "Lending Bot", raw_data: {} },
+        recent_logs: [],
+        lending_paused: false,
+        lending_strategies: {},
+        plugins: {}
+      },
+      "/api/charts/history": { USD: [[100, "1", "10"]] }
+    });
+
+    render(<ChartsPage />);
+
+    await screen.findByRole("heading", { name: "Bitfinex Lending Bot - 收益图表" });
+    expect(screen.getByRole("link", { name: "仪表盘" })).toBeInTheDocument();
+
+    const option = JSON.parse((await screen.findByTestId("echarts")).dataset.option ?? "{}");
+    expect(option.legend.data).toEqual(["每日收益", "累计收益"]);
+    expect(option.title.text).toBe("USD 每日借贷收益");
   });
 });
 

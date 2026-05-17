@@ -15,6 +15,9 @@ from . import Configuration
 from .Logger import Logger
 
 
+FRR_DELTA_MIN_LIMIT = Decimal("-30")
+
+
 class WebServer:
     def __init__(self, config: Configuration.RootConfig, lending_engine: Any, log: Logger):
         self.config = config
@@ -266,6 +269,7 @@ class WebServer:
             "frrdelta_min": float(default_coin_cfg.frr_delta_min),
             "frrdelta_max": float(default_coin_cfg.frr_delta_max),
         }
+        default_settings = sanitize_web_settings(default_settings)
         if not Path(self.web_settings_file).exists():
             return default_settings
 
@@ -277,7 +281,7 @@ class WebServer:
                     settings.pop("effRateMode", None)
                     if not settings.get("timespanNames"):
                         settings["timespanNames"] = default_settings["timespanNames"]
-                    return settings
+                    return sanitize_web_settings(settings)
                 return default_settings
         except Exception:
             return default_settings
@@ -286,6 +290,7 @@ class WebServer:
         current = self.get_web_settings()
         current.update(settings)
         current.pop("effRateMode", None)
+        current = sanitize_web_settings(current)
         try:
             with Path(self.web_settings_file).open("w", encoding="utf-8") as f:
                 json.dump(current, f, indent=4)
@@ -293,6 +298,7 @@ class WebServer:
             print(f"Error saving web settings: {e}")
 
     def _apply_web_settings(self, config_data: dict[str, Any]) -> dict[str, Any] | JSONResponse:
+        config_data = sanitize_web_settings(config_data)
         if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
             try:
                 self.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
@@ -320,6 +326,21 @@ class WebServer:
 _web_server: WebServer | None = None
 
 
+def sanitize_web_settings(settings: dict[str, Any]) -> dict[str, Any]:
+    sanitized = dict(settings)
+    if "frrdelta_min" not in sanitized:
+        return sanitized
+
+    try:
+        frrdelta_min = Decimal(str(sanitized["frrdelta_min"]))
+    except (ValueError, TypeError, InvalidOperation):
+        return sanitized
+
+    if frrdelta_min < FRR_DELTA_MIN_LIMIT:
+        sanitized["frrdelta_min"] = float(FRR_DELTA_MIN_LIMIT)
+    return sanitized
+
+
 def read_web_settings() -> dict[str, Any]:
     """Statically read web settings from file without needing WebServer instance."""
     web_settings_file = Path("web_settings.json")
@@ -328,7 +349,7 @@ def read_web_settings() -> dict[str, Any]:
             with web_settings_file.open("r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
-                    return data
+                    return sanitize_web_settings(data)
         except Exception:
             pass
     return {}

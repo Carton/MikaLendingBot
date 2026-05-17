@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
 import type { DashboardStateResponse } from "../domain/types";
 
@@ -14,6 +14,14 @@ const baseState: DashboardStateResponse = {
 };
 
 describe("DashboardPage", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    Object.defineProperty(window.navigator, "languages", {
+      configurable: true,
+      value: ["en-US"]
+    });
+  });
+
   it("shows live status while waiting for the first stats snapshot", () => {
     render(<DashboardPage state={baseState} loading={false} onRefresh={() => undefined} />);
 
@@ -139,13 +147,56 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Max 9%")).toBeInTheDocument();
     expect(screen.queryByLabelText("FRR minimum adjustment")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("FRR maximum adjustment")).not.toBeInTheDocument();
-    expect(screen.getAllByRole("slider")).toHaveLength(2);
+    const rangeHandles = screen.getAllByRole("slider");
+    expect(rangeHandles).toHaveLength(2);
+    expect(rangeHandles[0]).toHaveAttribute("aria-valuemin", "-30");
 
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
 
     await waitFor(() =>
       expect(onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({ frrdelta_min: -3, frrdelta_max: 9 }))
     );
+  });
+
+  it("switches dashboard UI labels from settings while leaving logs unchanged", () => {
+    render(<DashboardPage state={baseState} loading={false} onRefresh={() => undefined} />);
+
+    expect(screen.queryByRole("radio", { name: "简体中文" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    fireEvent.click(screen.getByRole("radio", { name: "简体中文" }));
+
+    expect(screen.getByRole("link", { name: /图\s*表/ })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "设置" })).toBeInTheDocument();
+    expect(screen.getByText("运行中")).toBeInTheDocument();
+    expect(screen.getByText("借贷运行中")).toBeInTheDocument();
+    expect(screen.getByText("状态")).toBeInTheDocument();
+    expect(screen.getByText("借出仓位")).toBeInTheDocument();
+    expect(screen.getByText("最近日志")).toBeInTheDocument();
+    expect(screen.getByText("startup log")).toBeInTheDocument();
+  });
+
+  it("uses simplified Chinese when the browser default language is supported", () => {
+    Object.defineProperty(window.navigator, "languages", {
+      configurable: true,
+      value: ["zh-CN", "en-US"]
+    });
+
+    render(<DashboardPage state={baseState} loading={false} onRefresh={() => undefined} />);
+
+    expect(screen.getByRole("link", { name: /图\s*表/ })).toBeInTheDocument();
+    expect(screen.getByText("借贷运行中")).toBeInTheDocument();
+  });
+
+  it("falls back to English when the browser default language is unsupported", () => {
+    Object.defineProperty(window.navigator, "languages", {
+      configurable: true,
+      value: ["fr-FR"]
+    });
+
+    render(<DashboardPage state={baseState} loading={false} onRefresh={() => undefined} />);
+
+    expect(screen.getByRole("link", { name: "Charts" })).toBeInTheDocument();
+    expect(screen.getByText("Lending running")).toBeInTheDocument();
   });
 
   it("calls pause and resume actions from the header", () => {
