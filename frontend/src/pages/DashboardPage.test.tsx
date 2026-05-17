@@ -121,6 +121,33 @@ describe("DashboardPage", () => {
     await waitFor(() => expect(onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({ refreshRate: 45 })));
   });
 
+  it("uses a compact settings layout with one FRR range slider", async () => {
+    const onSaveSettings = vi.fn();
+    render(
+      <DashboardPage
+        state={{ ...baseState, settings: { ...baseState.settings, frrdelta_min: -3, frrdelta_max: 9 } }}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+
+    expect(screen.getByTestId("refresh-interval-control")).toBeInTheDocument();
+    expect(screen.getByText("Min -3%")).toBeInTheDocument();
+    expect(screen.getByText("Max 9%")).toBeInTheDocument();
+    expect(screen.queryByLabelText("FRR minimum adjustment")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("FRR maximum adjustment")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("slider")).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() =>
+      expect(onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({ frrdelta_min: -3, frrdelta_max: 9 }))
+    );
+  });
+
   it("calls pause and resume actions from the header", () => {
     const onSetPaused = vi.fn();
     const { rerender } = render(

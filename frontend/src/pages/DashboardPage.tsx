@@ -204,6 +204,22 @@ function SettingsModal({
   onSave: (settings: DashboardSettings) => Promise<void>;
 }) {
   const [form] = Form.useForm<DashboardSettings>();
+  const initialSettings = {
+    ...settings,
+    frrdelta_min: settings.frrdelta_min ?? -10,
+    frrdelta_max: settings.frrdelta_max ?? 10
+  };
+  const watchedFrrMin = Form.useWatch("frrdelta_min", form);
+  const watchedFrrMax = Form.useWatch("frrdelta_max", form);
+  const frrMin = typeof watchedFrrMin === "number" ? watchedFrrMin : initialSettings.frrdelta_min;
+  const frrMax = typeof watchedFrrMax === "number" ? watchedFrrMax : initialSettings.frrdelta_max;
+
+  function updateFrrRange(value: number | number[]) {
+    if (!Array.isArray(value)) return;
+    const [nextMin, nextMax] = value;
+    form.setFieldsValue({ frrdelta_min: nextMin, frrdelta_max: nextMax });
+  }
+
   return (
     <Modal
       title="Settings"
@@ -214,20 +230,22 @@ function SettingsModal({
       }}
       destroyOnHidden
     >
-      <Form form={form} layout="vertical" initialValues={settings}>
+      <Form className="settings-form" form={form} layout="vertical" initialValues={initialSettings}>
         <Form.Item
           name="refreshRate"
           label="Refresh interval"
           normalize={normalizeOptionalNumber}
           rules={[{ type: "number", min: 30, max: 600 }]}
         >
-          <Space.Compact block>
-            <InputNumber aria-label="Refresh interval" min={30} max={600} style={{ width: "100%" }} />
+          <Space.Compact className="settings-number-control" data-testid="refresh-interval-control">
+            <InputNumber aria-label="Refresh interval" min={30} max={600} />
             <span className="input-addon">seconds</span>
           </Space.Compact>
         </Form.Item>
         <Form.Item name="outputCurrencyDisplayMode" label="Output currency display">
           <Radio.Group
+            optionType="button"
+            buttonStyle="solid"
             options={[
               { label: "All Coins", value: "all" },
               { label: "Only Summary", value: "summary" }
@@ -235,23 +253,25 @@ function SettingsModal({
           />
         </Form.Item>
         <Form.Item label="FRR rate adjustment">
-          <Space wrap>
-            <Space.Compact>
-              <span className="input-addon">Min</span>
-              <Form.Item name="frrdelta_min" noStyle normalize={normalizeOptionalNumber}>
-                <InputNumber aria-label="FRR minimum adjustment" min={-50} max={50} />
-              </Form.Item>
-              <span className="input-addon">%</span>
-            </Space.Compact>
-            <Space.Compact>
-              <span className="input-addon">Max</span>
-              <Form.Item name="frrdelta_max" noStyle normalize={normalizeOptionalNumber}>
-                <InputNumber aria-label="FRR maximum adjustment" min={-50} max={50} />
-              </Form.Item>
-              <span className="input-addon">%</span>
-            </Space.Compact>
-          </Space>
-          <Slider range min={-50} max={50} defaultValue={[settings.frrdelta_min ?? -10, settings.frrdelta_max ?? 10]} />
+          <Form.Item name="frrdelta_min" hidden normalize={normalizeOptionalNumber}>
+            <input type="hidden" />
+          </Form.Item>
+          <Form.Item name="frrdelta_max" hidden normalize={normalizeOptionalNumber}>
+            <input type="hidden" />
+          </Form.Item>
+          <div className="frr-range-summary">
+            <span className="frr-value-chip">Min {frrMin}%</span>
+            <span className="frr-value-chip">Max {frrMax}%</span>
+          </div>
+          <Slider
+            range
+            min={-50}
+            max={50}
+            marks={{ "-50": "-50%", "0": "0%", "50": "50%" }}
+            tooltip={{ formatter: (value) => `${value}%` }}
+            value={[frrMin, frrMax]}
+            onChange={updateFrrRange}
+          />
         </Form.Item>
       </Form>
     </Modal>

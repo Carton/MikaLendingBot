@@ -82,6 +82,35 @@ body {
   color: #536173;
 }
 
+.settings-form .ant-form-item {
+  margin-bottom: 24px;
+}
+
+.settings-number-control {
+  width: 180px;
+}
+
+.settings-number-control .ant-input-number {
+  flex: 1;
+}
+
+.frr-range-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.frr-value-chip {
+  min-width: 76px;
+  padding: 4px 8px;
+  border: 1px solid #dce3ee;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #172033;
+  text-align: center;
+}
+
 .log-list {
   max-height: 420px;
   overflow: auto;
