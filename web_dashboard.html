@@ -1,0 +1,235 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3. Web Dashboard Architecture &mdash; MikaLendingBot(Py3 version) 1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=29a6c3e3"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="4. Market Analysis" href="market_analysis.html" />
+    <link rel="prev" title="2. Configuration" href="configuration.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            MikaLendingBot(Py3 version)
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">1. Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">2. Configuration</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">3. Web Dashboard Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#runtime-stack">3.1. Runtime Stack</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#backend">3.1.1. Backend</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#frontend">3.1.2. Frontend</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pages-and-build-output">3.2. Pages and Build Output</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#dashboard-data-flow">3.3. Dashboard Data Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#internationalization">3.4. Internationalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#charts">3.5. Charts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#development-checks">3.6. Development Checks</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="market_analysis.html">4. Market Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">5. Contributing</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">MikaLendingBot(Py3 version)</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active"><span class="section-number">3. </span>Web Dashboard Architecture</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/web_dashboard.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="web-dashboard-architecture">
+<h1><span class="section-number">3. </span>Web Dashboard Architecture<a class="headerlink" href="#web-dashboard-architecture" title="Link to this heading"></a></h1>
+<p>The web dashboard is now a React application served by the bot’s built-in
+FastAPI server. The source code lives under <code class="docutils literal notranslate"><span class="pre">frontend/</span></code> and the production
+assets are built into <code class="docutils literal notranslate"><span class="pre">www/</span></code>.</p>
+<section id="runtime-stack">
+<h2><span class="section-number">3.1. </span>Runtime Stack<a class="headerlink" href="#runtime-stack" title="Link to this heading"></a></h2>
+<section id="backend">
+<h3><span class="section-number">3.1.1. </span>Backend<a class="headerlink" href="#backend" title="Link to this heading"></a></h3>
+<p>The Python bot starts <code class="docutils literal notranslate"><span class="pre">src/lendingbot/modules/WebServer.py</span></code> when
+<code class="docutils literal notranslate"><span class="pre">[bot.web].enabled</span></code> is true. The server uses:</p>
+<ul class="simple">
+<li><p><strong>FastAPI</strong> for HTTP API routes.</p></li>
+<li><p><strong>Uvicorn</strong> to run the ASGI app in a daemon thread beside the lending loop.</p></li>
+<li><p><strong>Server-Sent Events (SSE)</strong> for streaming new log lines to the browser.</p></li>
+<li><p><strong>StaticFiles</strong> to serve the compiled files in the configured web template
+directory, usually <code class="docutils literal notranslate"><span class="pre">www</span></code>.</p></li>
+</ul>
+</section>
+<section id="frontend">
+<h3><span class="section-number">3.1.2. </span>Frontend<a class="headerlink" href="#frontend" title="Link to this heading"></a></h3>
+<p>The dashboard frontend uses:</p>
+<ul class="simple">
+<li><p><strong>React</strong> and <strong>TypeScript</strong> for UI state and components.</p></li>
+<li><p><strong>Vite</strong> for production builds.</p></li>
+<li><p><strong>Ant Design</strong> for layout and controls.</p></li>
+<li><p><strong>ECharts</strong> for profit charts.</p></li>
+<li><p>Local bundled assets under <code class="docutils literal notranslate"><span class="pre">www/assets</span></code>. The dashboard no longer depends on
+CDN-hosted jQuery, Bootstrap, or Google Charts.</p></li>
+</ul>
+</section>
+</section>
+<section id="pages-and-build-output">
+<h2><span class="section-number">3.2. </span>Pages and Build Output<a class="headerlink" href="#pages-and-build-output" title="Link to this heading"></a></h2>
+<p>The Vite build writes these entry pages and assets:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">www/lendingbot.html</span></code> for the main dashboard.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">www/charts.html</span></code> for profit charts.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">www/index.html</span></code> which redirects to the dashboard.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">www/assets/main.js</span></code> and <code class="docutils literal notranslate"><span class="pre">www/assets/main.css</span></code> for the main app bundle.</p></li>
+<li><p>Split chart/vendor bundles such as <code class="docutils literal notranslate"><span class="pre">ChartsPage.js</span></code>, <code class="docutils literal notranslate"><span class="pre">antd.js</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">charts2.js</span></code>.</p></li>
+</ul>
+<p>The web server uses the files in <code class="docutils literal notranslate"><span class="pre">www/</span></code> at runtime. If you modify files under
+<code class="docutils literal notranslate"><span class="pre">frontend/</span></code>, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>npm<span class="w"> </span>run<span class="w"> </span>build
+</pre></div>
+</div>
+<p>This compiles TypeScript, runs Vite, and refreshes the generated <code class="docutils literal notranslate"><span class="pre">www</span></code> assets.
+After backend API changes, restart <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">lendingbot</span></code> so the FastAPI routes
+are reloaded. Pure frontend asset changes can usually be picked up with a browser
+refresh after rebuilding.</p>
+</section>
+<section id="dashboard-data-flow">
+<h2><span class="section-number">3.3. </span>Dashboard Data Flow<a class="headerlink" href="#dashboard-data-flow" title="Link to this heading"></a></h2>
+<p>The React dashboard uses a small number of consolidated endpoints:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/dashboard/state</span></code> returns the initial dashboard state, including
+settings, bot status, persisted stats, plugin metadata, lending strategy
+names, pause state, and a recent log snapshot.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/dashboard/state?include_logs=false</span></code> returns the same dashboard
+state without <code class="docutils literal notranslate"><span class="pre">recent_logs</span></code>. The frontend uses this for scheduled polling
+and post-action refreshes to avoid repeatedly transferring the same log data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/stream-logs</span></code> keeps an SSE connection open and pushes new log lines as
+they are written.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/charts/history</span></code> returns the chart JSON dumped by the Charts
+plugin.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/settings</span></code> saves backend web settings such as refresh interval,
+output currency display mode, and FRR adjustment range.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/lending/pause</span></code> and <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/lending/resume</span></code> update the live
+lending pause state.</p></li>
+</ul>
+<p>On initial load, the dashboard fetches <code class="docutils literal notranslate"><span class="pre">/api/dashboard/state</span></code> once so it can
+show the current recent log snapshot. After that, log updates come from
+<code class="docutils literal notranslate"><span class="pre">/stream-logs</span></code>. Regular dashboard polling uses <code class="docutils literal notranslate"><span class="pre">include_logs=false</span></code> and keeps
+the logs already held in the browser.</p>
+</section>
+<section id="internationalization">
+<h2><span class="section-number">3.4. </span>Internationalization<a class="headerlink" href="#internationalization" title="Link to this heading"></a></h2>
+<p>The web UI currently supports English and Simplified Chinese. Language selection
+is available in Settings and is stored in browser local storage. If no saved
+language preference exists, the frontend checks the browser language and uses
+Simplified Chinese only for matching Chinese locales; otherwise it falls back to
+English.</p>
+<p>The bot log text itself is intentionally not translated. Logs are operational
+events from the backend and remain in their original form.</p>
+</section>
+<section id="charts">
+<h2><span class="section-number">3.5. </span>Charts<a class="headerlink" href="#charts" title="Link to this heading"></a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">AccountStats</span></code> plugin stores lending history in
+<code class="docutils literal notranslate"><span class="pre">market_data/loan_history.sqlite3</span></code>. The first history update starts in a
+background thread during plugin initialization so the first lending loop does not
+wait for chart history. The <code class="docutils literal notranslate"><span class="pre">Charts</span></code> plugin periodically exports summarized
+history to <code class="docutils literal notranslate"><span class="pre">www/history.json</span></code>. The React charts page reads that file through
+<code class="docutils literal notranslate"><span class="pre">/api/charts/history</span></code> and renders it with ECharts.</p>
+</section>
+<section id="development-checks">
+<h2><span class="section-number">3.6. </span>Development Checks<a class="headerlink" href="#development-checks" title="Link to this heading"></a></h2>
+<p>Useful commands for frontend work:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>npm<span class="w"> </span><span class="nb">test</span>
+npm<span class="w"> </span>run<span class="w"> </span>typecheck
+npm<span class="w"> </span>run<span class="w"> </span>build
+</pre></div>
+</div>
+<p>Useful commands for backend web changes:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/test_WebServer.py<span class="w"> </span>tests/test_DashboardStatic.py<span class="w"> </span>-q
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>src/lendingbot/modules/WebServer.py<span class="w"> </span>tests/test_WebServer.py
+uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>src/lendingbot/modules/WebServer.py
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">tests/test_DashboardStatic.py</span></code> verifies that the generated HTML points at
+local Vite assets and that the legacy dashboard script has been removed.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="configuration.html" class="btn btn-neutral float-left" title="2. Configuration" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="market_analysis.html" class="btn btn-neutral float-right" title="4. Market Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Mikadily and Contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

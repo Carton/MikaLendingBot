@@ -19,7 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="3. Market Analysis" href="market_analysis.html" />
+    <link rel="next" title="3. Web Dashboard Architecture" href="web_dashboard.html" />
     <link rel="prev" title="1. Installation" href="installation.html" /> 
 </head>
 
@@ -65,7 +65,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#profit-charts-plugin">2.12.2. Profit Charts Plugin</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#lendingbot-html-options">2.13. lendingbot.html options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lendingbot-html-settings">2.13. lendingbot.html settings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#notifications">2.14. Notifications</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#global-notification-settings">2.14.1. Global Notification Settings</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#email-notifications">2.14.2. Email notifications</a></li>
@@ -78,8 +78,9 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="market_analysis.html">3. Market Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="contributing.html">4. Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="web_dashboard.html">3. Web Dashboard Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="market_analysis.html">4. Market Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">5. Contributing</a></li>
 </ul>
 
         </div>
@@ -540,7 +541,8 @@ especially to “Withdraw”.</p></li>
 <div><ul class="simple">
 <li><p>Default value: <code class="docutils literal notranslate"><span class="pre">true</span></code></p></li>
 <li><p>The server page can be accessed locally, at <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/lendingbot.html</span></code> by default.</p></li>
-<li><p>When enabled, JSON logging is automatically enabled with output to <code class="docutils literal notranslate"><span class="pre">www/bot_stats.json</span></code>.</p></li>
+<li><p>The server is the built-in FastAPI/Uvicorn dashboard server. It serves the compiled React/Vite assets in <code class="docutils literal notranslate"><span class="pre">www/</span></code> and exposes dashboard API routes.</p></li>
+<li><p>When enabled, JSON status snapshots are written to the configured <code class="docutils literal notranslate"><span class="pre">stats_file</span></code>. The default is <code class="docutils literal notranslate"><span class="pre">www/bot_stats.json</span></code>.</p></li>
 <li><p>You must close bot with a keyboard interrupt (CTRL-C on Windows) to properly shutdown the server and release the socket, otherwise you may have to wait several minutes for it to release itself.</p></li>
 </ul>
 </div></blockquote>
@@ -549,7 +551,8 @@ especially to “Withdraw”.</p></li>
 <blockquote>
 <div><ul class="simple">
 <li><p>Default value: 200</p></li>
-<li><p>Reasons to lower this include: you are conscious of bandwidth when hosting your webserver, you prefer (slightly) faster loading times and less RAM usage of bot.</p></li>
+<li><p>The initial dashboard state includes a recent log snapshot. After page load, new logs are pushed with <code class="docutils literal notranslate"><span class="pre">/stream-logs</span></code> using Server-Sent Events. Scheduled dashboard polling uses <code class="docutils literal notranslate"><span class="pre">include_logs=false</span></code> so it does not repeatedly transfer the same log snapshot.</p></li>
+<li><p>Reasons to lower this include: you are conscious of initial page-load bandwidth, you prefer slightly faster first render, or you want less RAM usage by the bot.</p></li>
 </ul>
 </div></blockquote>
 </li>
@@ -579,6 +582,7 @@ especially to “Withdraw”.</p></li>
 <div><ul class="simple">
 <li><p>Default value: <code class="docutils literal notranslate"><span class="pre">www</span></code></p></li>
 <li><p>Format: <code class="docutils literal notranslate"><span class="pre">PATH</span></code></p></li>
+<li><p>This directory is expected to contain the generated React/Vite dashboard files, including <code class="docutils literal notranslate"><span class="pre">lendingbot.html</span></code>, <code class="docutils literal notranslate"><span class="pre">charts.html</span></code>, and <code class="docutils literal notranslate"><span class="pre">assets/</span></code>. Rebuild them with <code class="docutils literal notranslate"><span class="pre">npm</span> <span class="pre">run</span> <span class="pre">build</span></code> after changing files under <code class="docutils literal notranslate"><span class="pre">frontend/</span></code>.</p></li>
 </ul>
 </div></blockquote>
 </li>
@@ -621,13 +625,15 @@ To enable/disable a plugin add/remove it to the <code class="docutils literal no
 <span class="n">plugins</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s2">&quot;AccountStats&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;Charts&quot;</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>Plugins can add their own HTML pages by calling <code class="docutils literal notranslate"><span class="pre">self.log.addSectionlog('plugins',</span> <span class="pre">'&lt;pluginName&gt;',</span> <span class="pre">'navbar',</span> <span class="pre">True);</span></code> within their init code.
-This will add a navbar element on the main lendingbot.html page linking to &lt;pluginName&gt;.html</p>
+<p>Plugins can expose metadata for the dashboard by calling <code class="docutils literal notranslate"><span class="pre">self.log.addSectionLog(&quot;plugins&quot;,</span> <span class="pre">&quot;&lt;pluginName&gt;&quot;,</span> <span class="pre">{&quot;navbar&quot;:</span> <span class="pre">True})</span></code> within their init code.
+The React dashboard reads this metadata through <code class="docutils literal notranslate"><span class="pre">/api/dashboard/state</span></code>. New plugin pages should be added through the frontend source and rebuilt into <code class="docutils literal notranslate"><span class="pre">www/</span></code>.</p>
 </section>
 <section id="web-server-real-time">
 <h2><span class="section-number">2.12. </span>Web Server (Real-time)<a class="headerlink" href="#web-server-real-time" title="Link to this heading"></a></h2>
-<p>The bot includes a high-performance built-in web server (powered by FastAPI) to monitor and control its status in real-time.
-Logs are now pushed instantly to the dashboard using SSE (Server-Sent Events) technology, eliminating the need for periodic page reloads.</p>
+<p>The bot includes a built-in FastAPI web server to monitor and control status in real time.
+The browser UI is a React/TypeScript application built with Vite, Ant Design, and ECharts.
+See <a class="reference internal" href="web_dashboard.html"><span class="doc">Web Dashboard Architecture</span></a> for the full web architecture, endpoint list, frontend build process, and development checks.</p>
+<p>The dashboard primarily uses <code class="docutils literal notranslate"><span class="pre">/api/dashboard/state</span></code> for initial state and <code class="docutils literal notranslate"><span class="pre">/stream-logs</span></code> for live logs. Follow-up polling uses <code class="docutils literal notranslate"><span class="pre">/api/dashboard/state?include_logs=false</span></code> to reduce duplicate log transfer.</p>
 <section id="accountstats-plugin">
 <h3><span class="section-number">2.12.1. </span>AccountStats Plugin<a class="headerlink" href="#accountstats-plugin" title="Link to this heading"></a></h3>
 <p>The AccountStats plugin fetches all your loan history and provides statistics based on it.
@@ -646,8 +652,8 @@ Current implementation sends a earnings summary Notification (see Notifications 
 </section>
 <section id="profit-charts-plugin">
 <h3><span class="section-number">2.12.2. </span>Profit Charts Plugin<a class="headerlink" href="#profit-charts-plugin" title="Link to this heading"></a></h3>
-<p>The Charts plugin dumps out the historical lending data to a JSON structure which is read by the new charts.html page.
-This page reads this dump data and constructs a Google Chart showing daily profit over time.</p>
+<p>The Charts plugin dumps out the historical lending data to <code class="docutils literal notranslate"><span class="pre">www/history.json</span></code>.
+The React <code class="docutils literal notranslate"><span class="pre">charts.html</span></code> page reads this data through <code class="docutils literal notranslate"><span class="pre">/api/charts/history</span></code> and renders the daily and total earnings series with ECharts.</p>
 <p>The AccountStats plugin must be enabled for the Charts plugin to function correctly.</p>
 <p>To enable the plugin add <code class="docutils literal notranslate"><span class="pre">Charts</span></code> to the <code class="docutils literal notranslate"><span class="pre">plugins</span></code> list, example:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[bot]</span>
@@ -660,31 +666,14 @@ This page reads this dump data and constructs a Google Chart showing daily profi
 </pre></div>
 </div>
 <p>The history data is automatically saved to <code class="docutils literal notranslate"><span class="pre">www/history.json</span></code>.</p>
-<p>On a new installation, the AccountStats database may not be up to date on first iteration of the Charts plugin and no data will get dumped. Simply wait for the next interval or restart the bot after the AccountStats plugin is finished.</p>
+<p>On a new installation, the AccountStats plugin starts the first lending-history update in the background during plugin initialization. The Charts plugin will dump chart data once the history database is ready; until then, the chart page may show an empty state.</p>
 </section>
 </section>
-<section id="lendingbot-html-options">
-<h2><span class="section-number">2.13. </span>lendingbot.html options<a class="headerlink" href="#lendingbot-html-options" title="Link to this heading"></a></h2>
-<p>You can pass options to statistics page by adding them to URL. Eg, <code class="docutils literal notranslate"><span class="pre">http://localhost:8000/lendingbot.html?option1=value&amp;option2=0</span></code></p>
-<ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">displayUnit</span></code> controls BTC’s unit output.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">BTC</span></code>, <code class="docutils literal notranslate"><span class="pre">mBTC</span></code>, <code class="docutils literal notranslate"><span class="pre">Bits</span></code>, <code class="docutils literal notranslate"><span class="pre">Satoshi</span></code></p></li>
-<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">BTC</span></code></p></li>
-<li><p>This setting will change all display of Bitcoin to that unit. Ex. 1 BTC -&gt; 1000 mBTC.</p></li>
-</ul>
-</div></blockquote>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">earningsInOutputCurrency</span></code> define which earnings are shown in the output currency.</p>
-<blockquote>
-<div><ul class="simple">
-<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">all</span></code>, <code class="docutils literal notranslate"><span class="pre">summary</span></code></p></li>
-<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">all</span></code></p></li>
-</ul>
-</div></blockquote>
-</li>
-</ul>
+<section id="lendingbot-html-settings">
+<h2><span class="section-number">2.13. </span>lendingbot.html settings<a class="headerlink" href="#lendingbot-html-settings" title="Link to this heading"></a></h2>
+<p>Dashboard options are configured through the Settings dialog and persisted to <code class="docutils literal notranslate"><span class="pre">web_settings.json</span></code>.
+Current persisted web settings include refresh interval, output currency display mode, lending pause state, and FRR adjustment range.
+The UI language is selected in the same Settings dialog but stored in browser local storage.</p>
 </section>
 <section id="notifications">
 <h2><span class="section-number">2.14. </span>Notifications<a class="headerlink" href="#notifications" title="Link to this heading"></a></h2>
@@ -816,7 +805,7 @@ This page reads this dump data and constructs a Google Chart showing daily profi
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="installation.html" class="btn btn-neutral float-left" title="1. Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="market_analysis.html" class="btn btn-neutral float-right" title="3. Market Analysis" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="web_dashboard.html" class="btn btn-neutral float-right" title="3. Web Dashboard Architecture" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

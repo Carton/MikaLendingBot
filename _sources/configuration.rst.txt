@@ -343,13 +343,15 @@ Advanced logging and Web Display
 
     - Default value: ``true``
     - The server page can be accessed locally, at ``http://localhost:8000/lendingbot.html`` by default.
-    - When enabled, JSON logging is automatically enabled with output to ``www/bot_stats.json``.
+    - The server is the built-in FastAPI/Uvicorn dashboard server. It serves the compiled React/Vite assets in ``www/`` and exposes dashboard API routes.
+    - When enabled, JSON status snapshots are written to the configured ``stats_file``. The default is ``www/bot_stats.json``.
     - You must close bot with a keyboard interrupt (CTRL-C on Windows) to properly shutdown the server and release the socket, otherwise you may have to wait several minutes for it to release itself.
 
 - ``recent_logs_limit`` (within the ``[bot.web]`` section) is the amount of lines the in-memory recent log list will keep before deleting the oldest event.
 
     - Default value: 200
-    - Reasons to lower this include: you are conscious of bandwidth when hosting your webserver, you prefer (slightly) faster loading times and less RAM usage of bot.
+    - The initial dashboard state includes a recent log snapshot. After page load, new logs are pushed with ``/stream-logs`` using Server-Sent Events. Scheduled dashboard polling uses ``include_logs=false`` so it does not repeatedly transfer the same log snapshot.
+    - Reasons to lower this include: you are conscious of initial page-load bandwidth, you prefer slightly faster first render, or you want less RAM usage by the bot.
 
 - ``host`` (within the ``[bot.web]`` section) is the IP address that the webserver can be found at.
 
@@ -370,6 +372,7 @@ Advanced logging and Web Display
 
     - Default value: ``www``
     - Format: ``PATH``
+    - This directory is expected to contain the generated React/Vite dashboard files, including ``lendingbot.html``, ``charts.html``, and ``assets/``. Rebuild them with ``npm run build`` after changing files under ``frontend/``.
 
 - ``output_currency`` (within the ``[bot]`` section) this is the ticker of the coin which you would like the website to report your summary earnings in.
 
@@ -407,14 +410,17 @@ To enable/disable a plugin add/remove it to the ``plugins`` list config option u
     [bot]
     plugins = ["AccountStats", "Charts"]
 
-Plugins can add their own HTML pages by calling ``self.log.addSectionlog('plugins', '<pluginName>', 'navbar', True);`` within their init code.
-This will add a navbar element on the main lendingbot.html page linking to <pluginName>.html
+Plugins can expose metadata for the dashboard by calling ``self.log.addSectionLog("plugins", "<pluginName>", {"navbar": True})`` within their init code.
+The React dashboard reads this metadata through ``/api/dashboard/state``. New plugin pages should be added through the frontend source and rebuilt into ``www/``.
 
 Web Server (Real-time)
 ----------------------
 
-The bot includes a high-performance built-in web server (powered by FastAPI) to monitor and control its status in real-time.
-Logs are now pushed instantly to the dashboard using SSE (Server-Sent Events) technology, eliminating the need for periodic page reloads.
+The bot includes a built-in FastAPI web server to monitor and control status in real time.
+The browser UI is a React/TypeScript application built with Vite, Ant Design, and ECharts.
+See :doc:`web_dashboard` for the full web architecture, endpoint list, frontend build process, and development checks.
+
+The dashboard primarily uses ``/api/dashboard/state`` for initial state and ``/stream-logs`` for live logs. Follow-up polling uses ``/api/dashboard/state?include_logs=false`` to reduce duplicate log transfer.
 
 AccountStats Plugin
 ~~~~~~~~~~~~~~~~~~~
@@ -441,8 +447,8 @@ Be aware that first initialization might take longer as the bot will fetch all t
 Profit Charts Plugin
 ~~~~~~~~~~~~~~~~~~~~
 
-The Charts plugin dumps out the historical lending data to a JSON structure which is read by the new charts.html page.
-This page reads this dump data and constructs a Google Chart showing daily profit over time.
+The Charts plugin dumps out the historical lending data to ``www/history.json``.
+The React ``charts.html`` page reads this data through ``/api/charts/history`` and renders the daily and total earnings series with ECharts.
 
 The AccountStats plugin must be enabled for the Charts plugin to function correctly.
 
@@ -462,24 +468,15 @@ There is an optional typed setting to change how frequently this plugin dumps da
 
 The history data is automatically saved to ``www/history.json``.
 
-On a new installation, the AccountStats database may not be up to date on first iteration of the Charts plugin and no data will get dumped. Simply wait for the next interval or restart the bot after the AccountStats plugin is finished.
+On a new installation, the AccountStats plugin starts the first lending-history update in the background during plugin initialization. The Charts plugin will dump chart data once the history database is ready; until then, the chart page may show an empty state.
 
 
-lendingbot.html options
------------------------
+lendingbot.html settings
+------------------------
 
-You can pass options to statistics page by adding them to URL. Eg, ``http://localhost:8000/lendingbot.html?option1=value&option2=0``
-
-- ``displayUnit`` controls BTC's unit output.
-
-    - Allowed values: ``BTC``, ``mBTC``, ``Bits``, ``Satoshi``
-    - Default value: ``BTC``
-    - This setting will change all display of Bitcoin to that unit. Ex. 1 BTC -> 1000 mBTC.
-
-- ``earningsInOutputCurrency`` define which earnings are shown in the output currency.
-
-    - Allowed values: ``all``, ``summary``
-    - Default value: ``all``
+Dashboard options are configured through the Settings dialog and persisted to ``web_settings.json``.
+Current persisted web settings include refresh interval, output currency display mode, lending pause state, and FRR adjustment range.
+The UI language is selected in the same Settings dialog but stored in browser local storage.
 
 
 Notifications

@@ -104,6 +104,23 @@ To run, use ``uv``:
 
 .. note:: You can use arguments to specify a specific config file ``--config`` or to do dry runs ``--dry``. To see these args do: ``uv run lendingbot --help``
 
+Web dashboard assets
+--------------------
+
+The runtime web UI is served from ``www/``. The source for that UI lives in
+``frontend/`` and is built with React, TypeScript, Vite, Ant Design, and
+ECharts. Normal users can run the bot with the checked-in ``www/`` files.
+
+If you change the web UI source, rebuild the generated assets before running or
+packaging the bot:
+
+.. code-block:: bash
+
+    npm run build
+
+The built-in FastAPI server will serve the refreshed files from ``www/``.
+Backend route changes require restarting ``uv run lendingbot``.
+
 Installing on Pythonanywhere.com
 ================================
 
@@ -145,7 +162,7 @@ Creating the Web App (Optional)
 #. Set the static files to URL: ``/static/`` Directory: ``/home/<username>/poloniexlendingbot/www``
 #. Reload your website with the button at the top of the page.
 #. You will be able to access the webapp at ``http://<username>.pythonanywhere.com/static/lendingbot.html`` once it finishes setting up.
-#. To have a separate static web app consume bot status, configure ``stats_file`` under ``[bot]`` and ``recent_logs_limit`` under ``[bot.web]``. Make sure that ``enabled`` under ``[bot.web]`` remains disabled for this static-hosting setup.
+#. A separate static web app can serve the compiled HTML, CSS, and JavaScript files, but it cannot use the live FastAPI routes, SSE log stream, pause/resume actions, or settings API unless it is pointed at a running bot API server. The recommended setup is to use the built-in web server locally or behind a trusted reverse proxy.
 
 
 .. warning:: Do not use the built-in FastAPI Web Server on any host you do not control.

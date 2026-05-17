@@ -49,6 +49,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#downloading">1.1.2. Downloading</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#optional-automatically-run-on-startup">1.1.3. (Optional) Automatically Run on Startup</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#configuring">1.1.4. Configuring</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#web-dashboard-assets">1.1.5. Web dashboard assets</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#installing-on-pythonanywhere-com">1.2. Installing on Pythonanywhere.com</a><ul>
@@ -62,8 +63,9 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">2. Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="market_analysis.html">3. Market Analysis</a></li>
-<li class="toctree-l1"><a class="reference internal" href="contributing.html">4. Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="web_dashboard.html">3. Web Dashboard Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="market_analysis.html">4. Market Analysis</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">5. Contributing</a></li>
 </ul>
 
         </div>
@@ -196,6 +198,19 @@ WantedBy=multi-user.target
 <p>You can use arguments to specify a specific config file <code class="docutils literal notranslate"><span class="pre">--config</span></code> or to do dry runs <code class="docutils literal notranslate"><span class="pre">--dry</span></code>. To see these args do: <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">lendingbot</span> <span class="pre">--help</span></code></p>
 </div>
 </section>
+<section id="web-dashboard-assets">
+<h3><span class="section-number">1.1.5. </span>Web dashboard assets<a class="headerlink" href="#web-dashboard-assets" title="Link to this heading"></a></h3>
+<p>The runtime web UI is served from <code class="docutils literal notranslate"><span class="pre">www/</span></code>. The source for that UI lives in
+<code class="docutils literal notranslate"><span class="pre">frontend/</span></code> and is built with React, TypeScript, Vite, Ant Design, and
+ECharts. Normal users can run the bot with the checked-in <code class="docutils literal notranslate"><span class="pre">www/</span></code> files.</p>
+<p>If you change the web UI source, rebuild the generated assets before running or
+packaging the bot:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>npm<span class="w"> </span>run<span class="w"> </span>build
+</pre></div>
+</div>
+<p>The built-in FastAPI server will serve the refreshed files from <code class="docutils literal notranslate"><span class="pre">www/</span></code>.
+Backend route changes require restarting <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">lendingbot</span></code>.</p>
+</section>
 </section>
 <section id="installing-on-pythonanywhere-com">
 <h2><span class="section-number">1.2. </span>Installing on Pythonanywhere.com<a class="headerlink" href="#installing-on-pythonanywhere-com" title="Link to this heading"></a></h2>
@@ -240,7 +255,7 @@ WantedBy=multi-user.target
 <li><p>Set the static files to URL: <code class="docutils literal notranslate"><span class="pre">/static/</span></code> Directory: <code class="docutils literal notranslate"><span class="pre">/home/&lt;username&gt;/poloniexlendingbot/www</span></code></p></li>
 <li><p>Reload your website with the button at the top of the page.</p></li>
 <li><p>You will be able to access the webapp at <code class="docutils literal notranslate"><span class="pre">http://&lt;username&gt;.pythonanywhere.com/static/lendingbot.html</span></code> once it finishes setting up.</p></li>
-<li><p>To have a separate static web app consume bot status, configure <code class="docutils literal notranslate"><span class="pre">stats_file</span></code> under <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> and <code class="docutils literal notranslate"><span class="pre">recent_logs_limit</span></code> under <code class="docutils literal notranslate"><span class="pre">[bot.web]</span></code>. Make sure that <code class="docutils literal notranslate"><span class="pre">enabled</span></code> under <code class="docutils literal notranslate"><span class="pre">[bot.web]</span></code> remains disabled for this static-hosting setup.</p></li>
+<li><p>A separate static web app can serve the compiled HTML, CSS, and JavaScript files, but it cannot use the live FastAPI routes, SSE log stream, pause/resume actions, or settings API unless it is pointed at a running bot API server. The recommended setup is to use the built-in web server locally or behind a trusted reverse proxy.</p></li>
 </ol>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>

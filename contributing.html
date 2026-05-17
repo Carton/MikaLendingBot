@@ -6,7 +6,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>4. Contributing &mdash; MikaLendingBot(Py3 version) 1 documentation</title>
+  <title>5. Contributing &mdash; MikaLendingBot(Py3 version) 1 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
@@ -19,7 +19,7 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="prev" title="3. Market Analysis" href="market_analysis.html" /> 
+    <link rel="prev" title="4. Market Analysis" href="market_analysis.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -44,17 +44,19 @@
               <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">1. Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">2. Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="market_analysis.html">3. Market Analysis</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">4. Contributing</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#code-quality-and-styling">4.1. Code Quality and Styling</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#general-guidelines">4.1.1. General Guidelines</a></li>
+<li class="toctree-l1"><a class="reference internal" href="web_dashboard.html">3. Web Dashboard Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="market_analysis.html">4. Market Analysis</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">5. Contributing</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#code-quality-and-styling">5.1. Code Quality and Styling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#general-guidelines">5.1.1. General Guidelines</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#configuration-options">4.2. Configuration Options</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#building-documentation">4.3. Building Documentation</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#building-locally">4.3.1. Building Locally</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#ci-cd-deployment">4.3.2. CI/CD Deployment</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#writing-documentation">4.3.3. Writing Documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#frontend-development">5.2. Frontend Development</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration-options">5.3. Configuration Options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#building-documentation">5.4. Building Documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#building-locally">5.4.1. Building Locally</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ci-cd-deployment">5.4.2. CI/CD Deployment</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#writing-documentation">5.4.3. Writing Documentation</a></li>
 </ul>
 </li>
 </ul>
@@ -75,7 +77,7 @@
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active"><span class="section-number">4. </span>Contributing</li>
+      <li class="breadcrumb-item active"><span class="section-number">5. </span>Contributing</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/contributing.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -86,10 +88,10 @@
            <div itemprop="articleBody">
              
   <section id="contributing">
-<h1><span class="section-number">4. </span>Contributing<a class="headerlink" href="#contributing" title="Link to this heading"></a></h1>
+<h1><span class="section-number">5. </span>Contributing<a class="headerlink" href="#contributing" title="Link to this heading"></a></h1>
 <p>We welcome contributions! To ensure a smooth process, please follow these guidelines.</p>
 <section id="code-quality-and-styling">
-<h2><span class="section-number">4.1. </span>Code Quality and Styling<a class="headerlink" href="#code-quality-and-styling" title="Link to this heading"></a></h2>
+<h2><span class="section-number">5.1. </span>Code Quality and Styling<a class="headerlink" href="#code-quality-and-styling" title="Link to this heading"></a></h2>
 <p>We use automated tools to ensure code quality and consistent styling. To make following these standards as painless as possible, we use <strong>Ruff</strong> for linting and formatting.</p>
 <p>Before submitting a Pull Request, please run the following command to check and fix any issues:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>poe<span class="w"> </span>fix-full
@@ -100,7 +102,7 @@
 *   Check for linting errors and apply auto-fixes.
 *   Run <strong>MyPy</strong> for static type checking.</p>
 <section id="general-guidelines">
-<h3><span class="section-number">4.1.1. </span>General Guidelines<a class="headerlink" href="#general-guidelines" title="Link to this heading"></a></h3>
+<h3><span class="section-number">5.1.1. </span>General Guidelines<a class="headerlink" href="#general-guidelines" title="Link to this heading"></a></h3>
 <ul class="simple">
 <li><p><strong>PEP8</strong>: We follow standard PEP8 guidelines, which are largely enforced by our automated tooling.</p></li>
 <li><p><strong>Line Length</strong>: Limited to 100 characters.</p></li>
@@ -110,8 +112,28 @@
 </ul>
 </section>
 </section>
+<section id="frontend-development">
+<h2><span class="section-number">5.2. </span>Frontend Development<a class="headerlink" href="#frontend-development" title="Link to this heading"></a></h2>
+<p>The web dashboard source lives in <code class="docutils literal notranslate"><span class="pre">frontend/</span></code>. It is a React and TypeScript
+application built with Vite, Ant Design, and ECharts. The production files are
+generated into <code class="docutils literal notranslate"><span class="pre">www/</span></code> and are served by the Python FastAPI web server.</p>
+<p>For frontend-only changes, run:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>npm<span class="w"> </span><span class="nb">test</span>
+npm<span class="w"> </span>run<span class="w"> </span>typecheck
+npm<span class="w"> </span>run<span class="w"> </span>build
+</pre></div>
+</div>
+<p>Commit the relevant <code class="docutils literal notranslate"><span class="pre">frontend/</span></code> source changes and the generated <code class="docutils literal notranslate"><span class="pre">www/</span></code>
+assets. The runtime bot serves <code class="docutils literal notranslate"><span class="pre">www/</span></code> directly, so a source-only frontend
+change will not be visible to users until the assets are rebuilt.</p>
+<p>For backend web-route changes, also run focused Python checks such as:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>tests/test_WebServer.py<span class="w"> </span>tests/test_DashboardStatic.py<span class="w"> </span>-q
+uv<span class="w"> </span>run<span class="w"> </span>mypy<span class="w"> </span>src/lendingbot/modules/WebServer.py
+</pre></div>
+</div>
+</section>
 <section id="configuration-options">
-<h2><span class="section-number">4.2. </span>Configuration Options<a class="headerlink" href="#configuration-options" title="Link to this heading"></a></h2>
+<h2><span class="section-number">5.3. </span>Configuration Options<a class="headerlink" href="#configuration-options" title="Link to this heading"></a></h2>
 <p>New configuration options should be defined in the Pydantic models within the codebase.</p>
 <ul class="simple">
 <li><p>Place new options near similar settings.</p></li>
@@ -120,10 +142,10 @@
 </ul>
 </section>
 <section id="building-documentation">
-<h2><span class="section-number">4.3. </span>Building Documentation<a class="headerlink" href="#building-documentation" title="Link to this heading"></a></h2>
+<h2><span class="section-number">5.4. </span>Building Documentation<a class="headerlink" href="#building-documentation" title="Link to this heading"></a></h2>
 <p>Documentation is built using <strong>Sphinx</strong>.</p>
 <section id="building-locally">
-<h3><span class="section-number">4.3.1. </span>Building Locally<a class="headerlink" href="#building-locally" title="Link to this heading"></a></h3>
+<h3><span class="section-number">5.4.1. </span>Building Locally<a class="headerlink" href="#building-locally" title="Link to this heading"></a></h3>
 <p>To build the documentation locally:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>poe<span class="w"> </span>docs
 </pre></div>
@@ -134,11 +156,11 @@
 </div>
 </section>
 <section id="ci-cd-deployment">
-<h3><span class="section-number">4.3.2. </span>CI/CD Deployment<a class="headerlink" href="#ci-cd-deployment" title="Link to this heading"></a></h3>
+<h3><span class="section-number">5.4.2. </span>CI/CD Deployment<a class="headerlink" href="#ci-cd-deployment" title="Link to this heading"></a></h3>
 <p>The documentation is automatically built and deployed to GitHub Pages via GitHub Actions whenever changes are pushed to the <code class="docutils literal notranslate"><span class="pre">master</span></code> branch.</p>
 </section>
 <section id="writing-documentation">
-<h3><span class="section-number">4.3.3. </span>Writing Documentation<a class="headerlink" href="#writing-documentation" title="Link to this heading"></a></h3>
+<h3><span class="section-number">5.4.3. </span>Writing Documentation<a class="headerlink" href="#writing-documentation" title="Link to this heading"></a></h3>
 <ul class="simple">
 <li><p>Documentation is written in <strong>reStructuredText</strong> (RST).</p></li>
 <li><p>Configurations should include a description, default value, and any specific constraints.</p></li>
@@ -152,7 +174,7 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="market_analysis.html" class="btn btn-neutral float-left" title="3. Market Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="market_analysis.html" class="btn btn-neutral float-left" title="4. Market Analysis" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
     </div>
 
   <hr/>

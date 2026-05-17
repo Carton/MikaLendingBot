@@ -28,6 +28,32 @@ General Guidelines
 *   **Comments**: Only comment your code if you need to explain the *why* behind complex logic. Clear code is better than commented code.
 *   **Variable Naming**: Follow PEP8 (``snake_case``). Avoid single-letter variables unless they are used in a very local, obvious context (like a loop index).
 
+Frontend Development
+====================
+
+The web dashboard source lives in ``frontend/``. It is a React and TypeScript
+application built with Vite, Ant Design, and ECharts. The production files are
+generated into ``www/`` and are served by the Python FastAPI web server.
+
+For frontend-only changes, run:
+
+.. code-block:: bash
+
+    npm test
+    npm run typecheck
+    npm run build
+
+Commit the relevant ``frontend/`` source changes and the generated ``www/``
+assets. The runtime bot serves ``www/`` directly, so a source-only frontend
+change will not be visible to users until the assets are rebuilt.
+
+For backend web-route changes, also run focused Python checks such as:
+
+.. code-block:: bash
+
+    uv run pytest tests/test_WebServer.py tests/test_DashboardStatic.py -q
+    uv run mypy src/lendingbot/modules/WebServer.py
+
 Configuration Options
 =====================
 
