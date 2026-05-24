@@ -145,7 +145,8 @@ refresh after rebuilding.</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/dashboard/state</span></code> returns the initial dashboard state, including
 settings, bot status, persisted stats, plugin metadata, lending strategy
-names, pause state, and a recent log snapshot.</p></li>
+names, pause state, recent successful loans by currency, and a recent log
+snapshot.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/dashboard/state?include_logs=false</span></code> returns the same dashboard
 state without <code class="docutils literal notranslate"><span class="pre">recent_logs</span></code>. The frontend uses this for scheduled polling
 and post-action refreshes to avoid repeatedly transferring the same log data.</p></li>
@@ -162,6 +163,12 @@ lending pause state.</p></li>
 show the current recent log snapshot. After that, log updates come from
 <code class="docutils literal notranslate"><span class="pre">/stream-logs</span></code>. Regular dashboard polling uses <code class="docutils literal notranslate"><span class="pre">include_logs=false</span></code> and keeps
 the logs already held in the browser.</p>
+<p>The lending positions table can include recent successful loans per currency.
+The bot records these from newly observed active loans, so loans already active
+when the bot starts form the baseline and are not backfilled into the recent
+loan list. Configure the displayed count in TOML with
+<code class="docutils literal notranslate"><span class="pre">[bot.web].recent_successful_loans</span></code>. The allowed range is <code class="docutils literal notranslate"><span class="pre">0</span></code> to <code class="docutils literal notranslate"><span class="pre">6</span></code>;
+<code class="docutils literal notranslate"><span class="pre">0</span></code> hides the column.</p>
 </section>
 <section id="internationalization">
 <h2><span class="section-number">3.4. </span>Internationalization<a class="headerlink" href="#internationalization" title="Link to this heading"></a></h2>

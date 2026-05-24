@@ -63,7 +63,8 @@ The React dashboard uses a small number of consolidated endpoints:
 
 * ``GET /api/dashboard/state`` returns the initial dashboard state, including
   settings, bot status, persisted stats, plugin metadata, lending strategy
-  names, pause state, and a recent log snapshot.
+  names, pause state, recent successful loans by currency, and a recent log
+  snapshot.
 * ``GET /api/dashboard/state?include_logs=false`` returns the same dashboard
   state without ``recent_logs``. The frontend uses this for scheduled polling
   and post-action refreshes to avoid repeatedly transferring the same log data.
@@ -80,6 +81,13 @@ On initial load, the dashboard fetches ``/api/dashboard/state`` once so it can
 show the current recent log snapshot. After that, log updates come from
 ``/stream-logs``. Regular dashboard polling uses ``include_logs=false`` and keeps
 the logs already held in the browser.
+
+The lending positions table can include recent successful loans per currency.
+The bot records these from newly observed active loans, so loans already active
+when the bot starts form the baseline and are not backfilled into the recent
+loan list. Configure the displayed count in TOML with
+``[bot.web].recent_successful_loans``. The allowed range is ``0`` to ``6``;
+``0`` hides the column.
 
 Internationalization
 ====================
