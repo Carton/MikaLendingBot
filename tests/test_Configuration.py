@@ -219,3 +219,25 @@ class TestConfiguration(unittest.TestCase):
 
         self.assertEqual(config.plugins.account_stats.report_interval, 86400)
         self.assertEqual(config.plugins.charts.dump_interval, 21600)
+
+    def test_recent_successful_loans_dashboard_setting(self) -> None:
+        content = """
+        [bot.web]
+        recent_successful_loans = 6
+        """
+        with self.toml_path.open("w", encoding="utf-8") as f:
+            f.write(content)
+
+        config = Conf.load_config(self.toml_path)
+
+        self.assertEqual(config.bot.web.recent_successful_loans, 6)
+
+        invalid = """
+        [bot.web]
+        recent_successful_loans = 7
+        """
+        with self.toml_path.open("w", encoding="utf-8") as f:
+            f.write(invalid)
+
+        with self.assertRaises(ValidationError):
+            Conf.load_config(self.toml_path)

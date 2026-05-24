@@ -7,6 +7,7 @@ export interface DashboardSettings {
   outputCurrencyDisplayMode?: "all" | "summary";
   frrdelta_min?: number;
   frrdelta_max?: number;
+  recentSuccessfulLoans?: number;
 }
 
 export interface DashboardStatus {
@@ -48,6 +49,7 @@ export interface DashboardStateResponse {
   settings: DashboardSettings;
   status: DashboardStatus;
   stats: StatsSnapshot;
+  recent_successful_loans: Record<string, RecentSuccessfulLoan[]>;
   recent_logs?: string[];
   lending_paused: boolean;
   lending_strategies: Record<string, string>;
@@ -71,6 +73,19 @@ export interface CoinRow {
   yearlyRate: number;
   yearlyCompoundRate: number;
   earnings: CoinEarning[];
+  recentSuccessfulLoans: RecentLoan[];
+}
+
+export interface RecentSuccessfulLoan {
+  amount?: string;
+  rate?: string;
+  date?: string;
+}
+
+export interface RecentLoan {
+  amount: number;
+  rate: number;
+  date: string;
 }
 
 export interface DashboardView {

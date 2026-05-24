@@ -7,11 +7,12 @@ const baseState: DashboardStateResponse = {
   settings: { refreshRate: 30, timespanNames: ["Day"] },
   status: { last_status: "Lending running", last_update: "2026-05-13 22:47:59" },
   stats: { exchange: "Bitfinex", label: "Lending Bot", raw_data: {} },
+  recent_successful_loans: {},
   recent_logs: ["startup log"],
   lending_paused: false,
   lending_strategies: { USD: "FRR" },
   plugins: {}
-};
+} as DashboardStateResponse;
 
 describe("DashboardPage", () => {
   beforeEach(() => {
@@ -82,6 +83,43 @@ describe("DashboardPage", () => {
     expect(screen.getByText("50%")).toBeInTheDocument();
   });
 
+  it("renders recent successful loans in the desktop positions table", () => {
+    render(
+      <DashboardPage
+        loading={false}
+        onRefresh={() => undefined}
+        state={{
+          ...baseState,
+          recent_successful_loans: {
+            USD: [
+              {
+                amount: "300.0",
+                rate: "0.00033",
+                date: "2026-05-24 09:06:00"
+              }
+            ]
+          },
+          stats: {
+            ...baseState.stats,
+            raw_data: {
+              USD: {
+                averageLendingRate: "0.04",
+                lentSum: "50",
+                totalCoins: "100"
+              }
+            },
+            outputCurrency: { currency: "USD", highestBid: "1" }
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByText("Recent Loans")).toBeInTheDocument();
+    expect(screen.getByText("300 USD")).toBeInTheDocument();
+    expect(screen.getByText("0.03300%")).toBeInTheDocument();
+    expect(screen.getByText("2026-05-24 09:06:00")).toBeInTheDocument();
+  });
+
   it("renders mobile-friendly coin cards for narrow portrait screens", () => {
     render(
       <DashboardPage
@@ -109,6 +147,45 @@ describe("DashboardPage", () => {
 
     expect(screen.getByTestId("mobile-coin-list")).toBeInTheDocument();
     expect(screen.queryByTestId("desktop-coin-table")).not.toBeInTheDocument();
+  });
+
+  it("renders recent successful loans in compact coin cards", () => {
+    render(
+      <DashboardPage
+        loading={false}
+        onRefresh={() => undefined}
+        compact
+        state={{
+          ...baseState,
+          recent_successful_loans: {
+            USD: [
+              {
+                amount: "300.0",
+                rate: "0.00033",
+                date: "2026-05-24 09:06:00"
+              }
+            ]
+          },
+          stats: {
+            ...baseState.stats,
+            raw_data: {
+              USD: {
+                averageLendingRate: "0.04",
+                lentSum: "50",
+                totalCoins: "100",
+                maxToLend: "100"
+              }
+            },
+            outputCurrency: { currency: "USD", highestBid: "1" }
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByTestId("mobile-coin-list")).toBeInTheDocument();
+    expect(screen.getByText("Recent Loans")).toBeInTheDocument();
+    expect(screen.getByText("300 USD")).toBeInTheDocument();
+    expect(screen.getByText("0.03300%")).toBeInTheDocument();
   });
 
   it("omits the low-value snapshot metadata card", () => {

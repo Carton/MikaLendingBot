@@ -85,10 +85,31 @@ body {
   margin-top: 8px;
 }
 
+.recent-loans-block {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.recent-loans-list {
+  min-width: 190px;
+}
+
+.recent-loan-line {
+  display: grid;
+  grid-template-columns: minmax(76px, 1fr) minmax(70px, auto);
+  gap: 2px 8px;
+}
+
+.recent-loan-line .ant-typography:last-child {
+  grid-column: 1 / -1;
+}
+
 .ant-statistic-content,
 .ant-table-cell,
 .ant-descriptions-item-content,
 .earnings-list,
+.recent-loans-list,
 .log-line {
   font-variant-numeric: tabular-nums;
 }

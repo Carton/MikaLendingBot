@@ -4,7 +4,7 @@ import type { ColumnsType } from "antd/es/table";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildDashboardView, formatNumber } from "../domain/dashboard";
 import { LANGUAGE_OPTIONS, useLanguage } from "../i18n";
-import type { CoinRow, DashboardSettings, DashboardStateResponse } from "../domain/types";
+import type { CoinRow, DashboardSettings, DashboardStateResponse, RecentLoan } from "../domain/types";
 
 type TranslateFn = ReturnType<typeof useLanguage>["t"];
 type SetLanguageFn = ReturnType<typeof useLanguage>["setLanguage"];
@@ -38,15 +38,29 @@ export function DashboardPage({
   const view = useMemo(() => buildDashboardView(state), [state]);
   const useCompactLayout = compact ?? !screens.md;
   const statusText = translateStatusText(view.statusText, t);
+  const showRecentLoans =
+    (state.settings.recentSuccessfulLoans ?? 0) > 0 ||
+    view.coinRows.some((row) => row.recentSuccessfulLoans.length > 0);
   const columns = useMemo<ColumnsType<CoinRow>>(
-    () => [
-      { title: t("table.coin"), dataIndex: "currency", key: "currency", render: (value) => <Typography.Text strong>{value}</Typography.Text> },
-      { title: t("table.lent"), key: "lent", render: (_, row) => `${formatNumber(row.lentSum)} / ${formatNumber(row.totalCoins)}` },
-      { title: t("table.lentPercent"), key: "lentPercent", render: (_, row) => `${formatNumber(row.lentPercent, 2)}%` },
-      { title: t("table.averageDay"), key: "averageDailyRate", render: (_, row) => `${formatNumber(row.averageDailyRate, 5)}%` },
-      { title: t("table.effectiveDay"), key: "effectiveDailyRate", render: (_, row) => `${formatNumber(row.effectiveDailyRate, 5)}%` },
-      { title: t("table.compoundYear"), key: "yearlyCompoundRate", render: (_, row) => `${formatNumber(row.yearlyCompoundRate, 2)}%` },
-      {
+    () => {
+      const baseColumns: ColumnsType<CoinRow> = [
+        { title: t("table.coin"), dataIndex: "currency", key: "currency", render: (value) => <Typography.Text strong>{value}</Typography.Text> },
+        { title: t("table.lent"), key: "lent", render: (_, row) => `${formatNumber(row.lentSum)} / ${formatNumber(row.totalCoins)}` },
+        { title: t("table.lentPercent"), key: "lentPercent", render: (_, row) => `${formatNumber(row.lentPercent, 2)}%` },
+        { title: t("table.averageDay"), key: "averageDailyRate", render: (_, row) => `${formatNumber(row.averageDailyRate, 5)}%` },
+        { title: t("table.effectiveDay"), key: "effectiveDailyRate", render: (_, row) => `${formatNumber(row.effectiveDailyRate, 5)}%` },
+        { title: t("table.compoundYear"), key: "yearlyCompoundRate", render: (_, row) => `${formatNumber(row.yearlyCompoundRate, 2)}%` }
+      ];
+
+      if (showRecentLoans) {
+        baseColumns.push({
+          title: t("table.recentLoans"),
+          key: "recentSuccessfulLoans",
+          render: (_, row) => <RecentLoansList currency={row.currency} loans={row.recentSuccessfulLoans} t={t} />
+        });
+      }
+
+      baseColumns.push({
         title: t("table.earnings"),
         key: "earnings",
         render: (_, row) => (
@@ -58,9 +72,11 @@ export function DashboardPage({
             ))}
           </Space>
         )
-      }
-    ],
-    [t]
+      });
+
+      return baseColumns;
+    },
+    [showRecentLoans, t]
   );
 
   return (
@@ -121,7 +137,7 @@ export function DashboardPage({
         <Card title={t("dashboard.lendingPositions")} className="section-card">
           {view.coinRows.length > 0 ? (
             useCompactLayout ? (
-              <CoinCardList rows={view.coinRows} t={t} />
+              <CoinCardList rows={view.coinRows} showRecentLoans={showRecentLoans} t={t} />
             ) : (
               <Table
                 data-testid="desktop-coin-table"
@@ -129,7 +145,7 @@ export function DashboardPage({
                 columns={columns}
                 dataSource={view.coinRows}
                 pagination={false}
-                scroll={{ x: 920 }}
+                scroll={{ x: 1080 }}
                 size="middle"
               />
             )
@@ -171,7 +187,7 @@ function translateStatusText(statusText: string, t: TranslateFn) {
   return statusText;
 }
 
-function CoinCardList({ rows, t }: { rows: CoinRow[]; t: TranslateFn }) {
+function CoinCardList({ rows, showRecentLoans, t }: { rows: CoinRow[]; showRecentLoans: boolean; t: TranslateFn }) {
   return (
     <div className="coin-card-list" data-testid="mobile-coin-list">
       {rows.map((row) => (
@@ -190,6 +206,12 @@ function CoinCardList({ rows, t }: { rows: CoinRow[]; t: TranslateFn }) {
             <Descriptions.Item label={t("table.effectiveDay")}>{formatNumber(row.effectiveDailyRate, 5)}%</Descriptions.Item>
             <Descriptions.Item label={t("table.compoundYear")}>{formatNumber(row.yearlyCompoundRate, 2)}%</Descriptions.Item>
           </Descriptions>
+          {showRecentLoans ? (
+            <div className="recent-loans-block">
+              <Typography.Text strong>{t("table.recentLoans")}</Typography.Text>
+              <RecentLoansList currency={row.currency} loans={row.recentSuccessfulLoans} t={t} />
+            </div>
+          ) : null}
           <div className="earnings-list">
             {row.earnings.map((earning) => (
               <Typography.Text key={earning.timespan} type="secondary">
@@ -201,6 +223,33 @@ function CoinCardList({ rows, t }: { rows: CoinRow[]; t: TranslateFn }) {
       ))}
     </div>
   );
+}
+
+function RecentLoansList({ currency, loans, t }: { currency: string; loans: RecentLoan[]; t: TranslateFn }) {
+  if (loans.length === 0) {
+    return <Typography.Text type="secondary">{t("table.noRecentLoans")}</Typography.Text>;
+  }
+
+  return (
+    <Space className="recent-loans-list" orientation="vertical" size={2}>
+      {loans.map((loan) => (
+        <div className="recent-loan-line" key={`${loan.amount}-${loan.rate}-${loan.date}`}>
+          <Typography.Text>
+            {formatNumber(loan.amount, 8)} {currency}
+          </Typography.Text>
+          <Typography.Text type="secondary">{formatLoanRate(loan.rate)}%</Typography.Text>
+          <Typography.Text type="secondary">{loan.date}</Typography.Text>
+        </div>
+      ))}
+    </Space>
+  );
+}
+
+function formatLoanRate(rate: number): string {
+  return (rate * 100).toLocaleString(undefined, {
+    maximumFractionDigits: 5,
+    minimumFractionDigits: 5
+  });
 }
 
 function RecentLogsCard({ logs, t }: { logs: string[]; t: TranslateFn }) {

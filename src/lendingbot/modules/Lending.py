@@ -12,6 +12,7 @@ from .Utils import format_amount_currency, format_rate_pct
 
 
 SATOSHI = Decimal(10) ** -8
+MAX_RECENT_SUCCESSFUL_LOANS = 6
 
 
 @dataclass
@@ -68,6 +69,8 @@ class LendingEngine:
         self.max_active_alerted: dict[str, bool] = {}
         self.notify_conf: dict[str, Any] = {}
         self.loans_provided: list[dict[str, Any]] = []
+        self.recent_successful_loans: dict[str, list[dict[str, str]]] = {}
+        self._recent_successful_loans_lock = threading.RLock()
 
         self.frrdelta_cur_step: int = 0
         self.frrdelta_min: Decimal = Decimal(0)
@@ -825,6 +828,36 @@ class LendingEngine:
         if self.scheduler:
             self.scheduler.enter(sleep_time_val, 1, self.notify_summary, (sleep_time_val,))
 
+    def record_successful_loan(self, loan: dict[str, Any]) -> None:
+        currency = str(loan.get("currency", ""))
+        if not currency:
+            return
+
+        entry = {
+            "amount": str(loan.get("amount", "")),
+            "rate": str(loan.get("rate", "")),
+            "date": str(loan.get("date") or loan.get("open") or ""),
+        }
+        with self._recent_successful_loans_lock:
+            currency_loans = self.recent_successful_loans.setdefault(currency, [])
+            currency_loans.insert(0, entry)
+            del currency_loans[MAX_RECENT_SUCCESSFUL_LOANS:]
+
+    def get_recent_successful_loans(self, limit: int) -> dict[str, list[dict[str, str]]]:
+        if limit <= 0:
+            return {}
+
+        effective_limit = min(limit, MAX_RECENT_SUCCESSFUL_LOANS)
+        with self._recent_successful_loans_lock:
+            return {
+                currency: [dict(loan) for loan in loans[:effective_limit]]
+                for currency, loans in self.recent_successful_loans.items()
+                if loans[:effective_limit]
+            }
+
+    def _should_track_successful_loans(self) -> bool:
+        return self.config.bot.web.enabled and self.config.bot.web.recent_successful_loans > 0
+
     def notify_new_loans(self, sleep_time_val: float) -> None:
         """
         Checks for newly filled loans and sends notifications.
@@ -838,16 +871,20 @@ class LendingEngine:
 
                 loans_amount: dict[str, float] = {}
                 loans_info: dict[str, dict[str, Any]] = {}
-                for loan_id in get_id_set(new_provided) - get_id_set(self.loans_provided):
-                    loan = next(x for x in new_provided if x["id"] == loan_id)
+                previous_ids = get_id_set(self.loans_provided)
+                new_loans = [loan for loan in new_provided if loan["id"] not in previous_ids]
+                new_loans.sort(key=lambda loan: str(loan.get("date") or loan.get("open") or ""))
+                for loan in new_loans:
+                    self.record_successful_loan(loan)
                     k = f"c{loan['currency']}r{loan['rate']}d{loan['duration']}"
                     loans_amount[k] = float(loan["amount"]) + loans_amount.get(k, 0.0)
                     loans_info[k] = loan
-                for k, amount in loans_amount.items():
-                    loan = loans_info[k]
-                    text = f"{format_amount_currency(amount, loan['currency'])} loan filled for {loan['duration']} days at a rate of {format_rate_pct(loan['rate'])}"
-                    if self.log:
-                        self.log.notify(text, self.config.notifications.model_dump())
+                if self.config.notifications.notify_new_loans:
+                    for k, amount in loans_amount.items():
+                        loan = loans_info[k]
+                        text = f"{format_amount_currency(amount, loan['currency'])} loan filled for {loan['duration']} days at a rate of {format_rate_pct(loan['rate'])}"
+                        if self.log:
+                            self.log.notify(text, self.config.notifications.model_dump())
             self.loans_provided = new_provided
         except Exception as ex:
             print(f"Error during new loans notification: {ex}")
@@ -866,7 +903,7 @@ class LendingEngine:
                     self.notify_summary,
                     (self.config.notifications.notify_summary_minutes * 60,),
                 )
-            if self.config.notifications.notify_new_loans:
+            if self.config.notifications.notify_new_loans or self._should_track_successful_loans():
                 self.scheduler.enter(20, 1, self.notify_new_loans, (60,))
             if not self.scheduler.empty():
                 t = threading.Thread(target=self.scheduler.run)

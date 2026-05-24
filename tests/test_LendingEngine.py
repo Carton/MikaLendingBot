@@ -328,6 +328,75 @@ class TestLendingEngineLogic:
             resp = engine.construct_orders("BTC", Decimal("310"), Decimal("1000"), {})
             assert resp["amounts"][0] == Decimal("103.33333333") # Can't add remainder
 
+    def test_notify_new_loans_records_only_loans_after_baseline(self, engine, mock_api):
+        engine.config.bot.web.recent_successful_loans = 3
+        existing = {
+            "id": 1,
+            "currency": "USD",
+            "rate": "0.00031",
+            "amount": "100.0",
+            "duration": "2",
+            "date": "2026-05-24 09:00:00",
+        }
+        new_first = {
+            "id": 2,
+            "currency": "USD",
+            "rate": "0.00032",
+            "amount": "200.0",
+            "duration": "2",
+            "date": "2026-05-24 09:05:00",
+        }
+        new_second = {
+            "id": 3,
+            "currency": "USD",
+            "rate": "0.00033",
+            "amount": "300.0",
+            "duration": "2",
+            "date": "2026-05-24 09:06:00",
+        }
+        mock_api.return_active_loans.side_effect = [
+            {"provided": [existing]},
+            {"provided": [existing, new_first, new_second]},
+        ]
+
+        engine.notify_new_loans(60)
+        assert engine.get_recent_successful_loans(limit=3) == {}
+
+        engine.notify_new_loans(60)
+
+        assert engine.get_recent_successful_loans(limit=3) == {
+            "USD": [
+                {
+                    "amount": "300.0",
+                    "rate": "0.00033",
+                    "date": "2026-05-24 09:06:00",
+                },
+                {
+                    "amount": "200.0",
+                    "rate": "0.00032",
+                    "date": "2026-05-24 09:05:00",
+                },
+            ]
+        }
+
+    def test_recent_successful_loans_are_capped_per_currency(self, engine):
+        for index in range(7):
+            engine.record_successful_loan(
+                {
+                    "id": index,
+                    "currency": "USD",
+                    "rate": f"0.0003{index}",
+                    "amount": f"{index + 1}.0",
+                    "date": f"2026-05-24 09:0{index}:00",
+                }
+            )
+
+        recent = engine.get_recent_successful_loans(limit=6)
+
+        assert len(recent["USD"]) == 6
+        assert recent["USD"][0]["amount"] == "7.0"
+        assert recent["USD"][-1]["amount"] == "2.0"
+
 
 class TestLendingEngineFlow:
     """Tests for high-level flow (from comprehensive)."""

@@ -24,6 +24,26 @@ class MockEngine:
         self.coin_cfg: dict[str, Any] = {}
         self.frrdelta_min: int = -10
         self.frrdelta_max: int = 10
+        self.recent_successful_loans: dict[str, list[dict[str, str]]] = {
+            "USD": [
+                {
+                    "amount": "300.0",
+                    "rate": "0.00033",
+                    "date": "2026-05-24 09:06:00",
+                },
+                {
+                    "amount": "200.0",
+                    "rate": "0.00032",
+                    "date": "2026-05-24 09:05:00",
+                },
+            ]
+        }
+
+    def get_recent_successful_loans(self, limit: int) -> dict[str, list[dict[str, str]]]:
+        return {
+            currency: loans[:limit]
+            for currency, loans in self.recent_successful_loans.items()
+        }
 
 
 class MockLogger:
@@ -174,6 +194,25 @@ async def test_dashboard_state_returns_live_status_when_stats_file_missing(
     assert data["recent_logs"] == ["Mocked Log 1", "Mocked Log 2"]
     assert data["lending_paused"] is False
     assert data["settings"]["refreshRate"] == web_server.config.bot.web.refresh_rate
+    assert data["recent_successful_loans"]["USD"] == [
+        {"amount": "300.0", "rate": "0.00033", "date": "2026-05-24 09:06:00"},
+        {"amount": "200.0", "rate": "0.00032", "date": "2026-05-24 09:05:00"},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_dashboard_state_omits_recent_successful_loans_when_disabled(
+    web_server: WebServer,
+) -> None:
+    web_server.config.bot.web.recent_successful_loans = 0
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/dashboard/state")
+
+    assert response.status_code == 200
+    assert response.json()["recent_successful_loans"] == {}
 
 
 @pytest.mark.asyncio
@@ -301,6 +340,23 @@ async def test_api_settings_round_trip(web_server: WebServer) -> None:
         get_response = await ac.get("/api/settings")
         assert get_response.status_code == 200
         assert get_response.json()["refreshRate"] == 45
+
+
+@pytest.mark.asyncio
+async def test_recent_successful_loans_setting_stays_toml_controlled(
+    web_server: WebServer,
+) -> None:
+    web_server.config.bot.web.recent_successful_loans = 4
+    web_server.save_web_settings({"refreshRate": 45})
+    web_server.config.bot.web.recent_successful_loans = 2
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/settings")
+
+    assert response.status_code == 200
+    assert response.json()["recentSuccessfulLoans"] == 2
 
 
 @pytest.mark.asyncio

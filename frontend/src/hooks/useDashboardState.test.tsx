@@ -7,6 +7,7 @@ const state: DashboardStateResponse = {
   settings: { refreshRate: 30 },
   status: { last_status: "Lending running", last_update: "2026-05-13 22:47:59" },
   stats: { raw_data: {} },
+  recent_successful_loans: {},
   recent_logs: ["startup"],
   lending_paused: false,
   lending_strategies: { USD: "FRR" },

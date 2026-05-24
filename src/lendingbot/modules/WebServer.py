@@ -254,11 +254,23 @@ class WebServer:
             "stats": stats,
             "lending_paused": self.lending_engine.lending_paused,
             "lending_strategies": self._get_lending_strategies(),
+            "recent_successful_loans": self._get_recent_successful_loans(),
             "plugins": stats.get("plugins", {}),
         }
         if include_logs:
             state["recent_logs"] = self.log.get_recent_logs()
         return state
+
+    def _get_recent_successful_loans(self) -> dict[str, list[dict[str, str]]]:
+        limit = self.config.bot.web.recent_successful_loans
+        if limit <= 0:
+            return {}
+
+        get_recent = getattr(self.lending_engine, "get_recent_successful_loans", None)
+        if not callable(get_recent):
+            return {}
+        recent = get_recent(limit)
+        return recent if isinstance(recent, dict) else {}
 
     # Web Settings methods
     def get_web_settings(self) -> dict[str, Any]:
@@ -270,6 +282,7 @@ class WebServer:
             "outputCurrencyDisplayMode": "all",
             "frrdelta_min": float(default_coin_cfg.frr_delta_min),
             "frrdelta_max": float(default_coin_cfg.frr_delta_max),
+            "recentSuccessfulLoans": self.config.bot.web.recent_successful_loans,
         }
         default_settings = sanitize_web_settings(default_settings)
         if not Path(self.web_settings_file).exists():
@@ -281,6 +294,9 @@ class WebServer:
                 if isinstance(data, dict):
                     settings = default_settings | data
                     settings.pop("effRateMode", None)
+                    settings["recentSuccessfulLoans"] = default_settings[
+                        "recentSuccessfulLoans"
+                    ]
                     if not settings.get("timespanNames"):
                         settings["timespanNames"] = default_settings["timespanNames"]
                     return sanitize_web_settings(settings)
@@ -292,6 +308,7 @@ class WebServer:
         current = self.get_web_settings()
         current.update(settings)
         current.pop("effRateMode", None)
+        current.pop("recentSuccessfulLoans", None)
         current = sanitize_web_settings(current)
         try:
             with Path(self.web_settings_file).open("w", encoding="utf-8") as f:

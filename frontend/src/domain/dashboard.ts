@@ -5,6 +5,7 @@ import type {
   DashboardView,
   OutputCurrency,
   RawChartPoint,
+  RecentSuccessfulLoan,
   TimespanName
 } from "./types";
 
@@ -37,7 +38,12 @@ export function buildDashboardView(state: DashboardStateResponse): DashboardView
     statsReady,
     emptyStatsMessage: statsReady ? "" : "Waiting for the first statistics snapshot",
     logs: state.recent_logs ?? [],
-    coinRows: calculateCoinRows(rawData, state.stats.outputCurrency ?? {}, timespans),
+    coinRows: calculateCoinRows(
+      rawData,
+      state.stats.outputCurrency ?? {},
+      timespans,
+      state.recent_successful_loans ?? {}
+    ),
     strategies: uniqueValues(Object.values(state.lending_strategies)),
     paused: state.lending_paused
   };
@@ -46,7 +52,8 @@ export function buildDashboardView(state: DashboardStateResponse): DashboardView
 export function calculateCoinRows(
   rawData: NonNullable<DashboardStateResponse["stats"]["raw_data"]>,
   outputCurrency: OutputCurrency,
-  timespans: TimespanName[]
+  timespans: TimespanName[],
+  recentSuccessfulLoans: Record<string, RecentSuccessfulLoan[]> = {}
 ): CoinRow[] {
   const outputCoin = outputCurrency.currency || "BTC";
 
@@ -84,7 +91,8 @@ export function calculateCoinRows(
           timespan,
           value: calculateEarnings(lentSum, lendingRate, TIMESPAN_MULTIPLIER[timespan]),
           currency: currency === outputCoin ? currency : outputCoin
-        }))
+        })),
+        recentSuccessfulLoans: normalizeRecentLoans(recentSuccessfulLoans[currency])
       };
     })
     .filter((row): row is CoinRow => row !== null);
@@ -121,6 +129,16 @@ function calculateEarnings(sum: number, rate: number, multiplier: number): numbe
 function toNumber(value: string | number | undefined): number {
   if (value === undefined || value === "") return Number.NaN;
   return typeof value === "number" ? value : Number.parseFloat(value);
+}
+
+function normalizeRecentLoans(loans: RecentSuccessfulLoan[] | undefined) {
+  return (loans ?? [])
+    .map((loan) => ({
+      amount: toNumber(loan.amount),
+      rate: toNumber(loan.rate),
+      date: loan.date ?? ""
+    }))
+    .filter((loan) => Number.isFinite(loan.amount) && Number.isFinite(loan.rate));
 }
 
 function uniqueValues(values: string[]): string[] {

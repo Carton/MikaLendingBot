@@ -43,6 +43,9 @@ port = 8000
 template = "www"
 refresh_rate = 300
 recent_logs_limit = 200
+# Number of recent successful loans to show per currency in the dashboard.
+# 0 hides the column; allowed range is 0-6.
+recent_successful_loans = 3
 
 [coin.default]
 min_daily_rate = 0.01

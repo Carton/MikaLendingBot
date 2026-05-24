@@ -64,6 +64,7 @@ class WebServerConfig(BaseModel):
     template: str = "www"
     refresh_rate: int = Field(300, ge=30, le=86400)
     recent_logs_limit: int = 200
+    recent_successful_loans: int = Field(3, ge=0, le=6)
 
 
 class BotConfig(BaseModel):

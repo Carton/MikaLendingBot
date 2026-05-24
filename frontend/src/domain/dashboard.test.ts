@@ -7,6 +7,7 @@ describe("dashboard domain", () => {
       settings: { refreshRate: 30 },
       status: { last_status: "Lending running", last_update: "2026-05-13 22:47:59" },
       stats: {},
+      recent_successful_loans: {},
       recent_logs: ["startup"],
       lending_paused: false,
       lending_strategies: { USD: "FRR" },
@@ -38,6 +39,42 @@ describe("dashboard domain", () => {
     expect(rows[0].lentPercent).toBeCloseTo(50);
     expect(rows[0].effectiveDailyRate).toBeCloseTo(0.017);
     expect(rows[0].earnings[0].value).toBeCloseTo(0.017);
+  });
+
+  it("attaches recent successful loans to the matching coin row", () => {
+    const view = buildDashboardView({
+      settings: { refreshRate: 30 },
+      status: { last_status: "Lending running" },
+      stats: {
+        raw_data: {
+          USD: {
+            averageLendingRate: "0.04",
+            lentSum: "50",
+            totalCoins: "100"
+          }
+        }
+      },
+      recent_successful_loans: {
+        USD: [
+          {
+            amount: "300.0",
+            rate: "0.00033",
+            date: "2026-05-24 09:06:00"
+          }
+        ]
+      },
+      lending_paused: false,
+      lending_strategies: { USD: "FRR" },
+      plugins: {}
+    });
+
+    expect((view.coinRows[0] as any).recentSuccessfulLoans).toEqual([
+      {
+        amount: 300,
+        rate: 0.00033,
+        date: "2026-05-24 09:06:00"
+      }
+    ]);
   });
 
   it("normalizes chart history into sorted timestamp series", () => {
