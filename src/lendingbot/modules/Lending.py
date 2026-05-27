@@ -70,6 +70,9 @@ class LendingEngine:
         self.notify_conf: dict[str, Any] = {}
         self.loans_provided: list[dict[str, Any]] = []
         self.recent_successful_loans: dict[str, list[dict[str, str]]] = {}
+        self._active_loans_initialized = False
+        self._known_active_loan_ids: set[str] = set()
+        self._recent_successful_loan_ids: set[str] = set()
         self._recent_successful_loans_lock = threading.RLock()
 
         self.frrdelta_cur_step: int = 0
@@ -828,20 +831,50 @@ class LendingEngine:
         if self.scheduler:
             self.scheduler.enter(sleep_time_val, 1, self.notify_summary, (sleep_time_val,))
 
+    def _loan_tracking_id(self, loan: dict[str, Any]) -> str:
+        loan_id = loan.get("id")
+        if loan_id not in (None, ""):
+            return str(loan_id)
+
+        return "|".join(
+            str(loan.get(field, ""))
+            for field in ("currency", "amount", "rate", "duration", "date", "open")
+        )
+
+    def _dedupe_loans_by_tracking_id(self, loans: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen_ids: set[str] = set()
+        unique_loans = []
+        for loan in loans:
+            tracking_id = self._loan_tracking_id(loan)
+            if tracking_id in seen_ids:
+                continue
+            seen_ids.add(tracking_id)
+            unique_loans.append(loan)
+        return unique_loans
+
     def record_successful_loan(self, loan: dict[str, Any]) -> None:
         currency = str(loan.get("currency", ""))
         if not currency:
             return
 
+        tracking_id = self._loan_tracking_id(loan)
         entry = {
+            "_id": tracking_id,
             "amount": str(loan.get("amount", "")),
             "rate": str(loan.get("rate", "")),
             "date": str(loan.get("date") or loan.get("open") or ""),
         }
         with self._recent_successful_loans_lock:
+            if tracking_id in self._recent_successful_loan_ids:
+                return
+            self._recent_successful_loan_ids.add(tracking_id)
             currency_loans = self.recent_successful_loans.setdefault(currency, [])
             currency_loans.insert(0, entry)
+            removed_loans = currency_loans[MAX_RECENT_SUCCESSFUL_LOANS:]
             del currency_loans[MAX_RECENT_SUCCESSFUL_LOANS:]
+            self._recent_successful_loan_ids.difference_update(
+                loan["_id"] for loan in removed_loans if "_id" in loan
+            )
 
     def get_recent_successful_loans(self, limit: int) -> dict[str, list[dict[str, str]]]:
         if limit <= 0:
@@ -850,7 +883,14 @@ class LendingEngine:
         effective_limit = min(limit, MAX_RECENT_SUCCESSFUL_LOANS)
         with self._recent_successful_loans_lock:
             return {
-                currency: [dict(loan) for loan in loans[:effective_limit]]
+                currency: [
+                    {
+                        "amount": loan["amount"],
+                        "rate": loan["rate"],
+                        "date": loan["date"],
+                    }
+                    for loan in loans[:effective_limit]
+                ]
                 for currency, loans in self.recent_successful_loans.items()
                 if loans[:effective_limit]
             }
@@ -863,29 +903,41 @@ class LendingEngine:
         Checks for newly filled loans and sends notifications.
         """
         try:
-            new_provided = self.api.return_active_loans()["provided"]
-            if self.loans_provided:
+            new_provided = self._dedupe_loans_by_tracking_id(
+                self.api.return_active_loans()["provided"]
+            )
+            loans_amount: dict[str, float] = {}
+            loans_info: dict[str, dict[str, Any]] = {}
 
-                def get_id_set(loans: list[dict[str, Any]]) -> set[Any]:
-                    return {x["id"] for x in loans}
+            with self._recent_successful_loans_lock:
+                current_ids = {self._loan_tracking_id(loan) for loan in new_provided}
+                if not self._active_loans_initialized:
+                    self._known_active_loan_ids.update(current_ids)
+                    self.loans_provided = new_provided
+                    self._active_loans_initialized = True
+                else:
+                    new_loans = [
+                        loan
+                        for loan in new_provided
+                        if self._loan_tracking_id(loan) not in self._known_active_loan_ids
+                    ]
+                    new_loans.sort(
+                        key=lambda loan: str(loan.get("date") or loan.get("open") or "")
+                    )
+                    for loan in new_loans:
+                        self.record_successful_loan(loan)
+                        k = f"c{loan['currency']}r{loan['rate']}d{loan['duration']}"
+                        loans_amount[k] = float(loan["amount"]) + loans_amount.get(k, 0.0)
+                        loans_info[k] = loan
+                    self._known_active_loan_ids.update(current_ids)
+                    self.loans_provided = new_provided
 
-                loans_amount: dict[str, float] = {}
-                loans_info: dict[str, dict[str, Any]] = {}
-                previous_ids = get_id_set(self.loans_provided)
-                new_loans = [loan for loan in new_provided if loan["id"] not in previous_ids]
-                new_loans.sort(key=lambda loan: str(loan.get("date") or loan.get("open") or ""))
-                for loan in new_loans:
-                    self.record_successful_loan(loan)
-                    k = f"c{loan['currency']}r{loan['rate']}d{loan['duration']}"
-                    loans_amount[k] = float(loan["amount"]) + loans_amount.get(k, 0.0)
-                    loans_info[k] = loan
-                if self.config.notifications.notify_new_loans:
-                    for k, amount in loans_amount.items():
-                        loan = loans_info[k]
-                        text = f"{format_amount_currency(amount, loan['currency'])} loan filled for {loan['duration']} days at a rate of {format_rate_pct(loan['rate'])}"
-                        if self.log:
-                            self.log.notify(text, self.config.notifications.model_dump())
-            self.loans_provided = new_provided
+            if self.config.notifications.notify_new_loans:
+                for k, amount in loans_amount.items():
+                    loan = loans_info[k]
+                    text = f"{format_amount_currency(amount, loan['currency'])} loan filled for {loan['duration']} days at a rate of {format_rate_pct(loan['rate'])}"
+                    if self.log:
+                        self.log.notify(text, self.config.notifications.model_dump())
         except Exception as ex:
             print(f"Error during new loans notification: {ex}")
         if self.scheduler:

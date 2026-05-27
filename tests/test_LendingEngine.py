@@ -379,6 +379,81 @@ class TestLendingEngineLogic:
             ]
         }
 
+    def test_notify_new_loans_records_duplicate_active_loan_once(self, engine, mock_api):
+        engine.config.bot.web.recent_successful_loans = 3
+        existing = {
+            "id": 1,
+            "currency": "USD",
+            "rate": "0.00031",
+            "amount": "100.0",
+            "duration": "2",
+            "date": "2026-05-24 09:00:00",
+        }
+        new_loan = {
+            "id": 2,
+            "currency": "USD",
+            "rate": "0.00032",
+            "amount": "200.0",
+            "duration": "2",
+            "date": "2026-05-24 09:05:00",
+        }
+        mock_api.return_active_loans.side_effect = [
+            {"provided": [existing]},
+            {"provided": [existing, new_loan, dict(new_loan)]},
+        ]
+
+        engine.notify_new_loans(60)
+        engine.notify_new_loans(60)
+
+        assert engine.get_recent_successful_loans(limit=3) == {
+            "USD": [
+                {
+                    "amount": "200.0",
+                    "rate": "0.00032",
+                    "date": "2026-05-24 09:05:00",
+                }
+            ]
+        }
+
+    def test_notify_new_loans_normalizes_active_loan_ids(self, engine, mock_api):
+        engine.config.bot.web.recent_successful_loans = 3
+        existing = {
+            "id": 1,
+            "currency": "USD",
+            "rate": "0.00031",
+            "amount": "100.0",
+            "duration": "2",
+            "date": "2026-05-24 09:00:00",
+        }
+        new_loan = {
+            "id": 2,
+            "currency": "USD",
+            "rate": "0.00032",
+            "amount": "200.0",
+            "duration": "2",
+            "date": "2026-05-24 09:05:00",
+        }
+        repeated_loan = dict(new_loan, id="2")
+        mock_api.return_active_loans.side_effect = [
+            {"provided": [existing]},
+            {"provided": [existing, new_loan]},
+            {"provided": [existing, repeated_loan]},
+        ]
+
+        engine.notify_new_loans(60)
+        engine.notify_new_loans(60)
+        engine.notify_new_loans(60)
+
+        assert engine.get_recent_successful_loans(limit=3) == {
+            "USD": [
+                {
+                    "amount": "200.0",
+                    "rate": "0.00032",
+                    "date": "2026-05-24 09:05:00",
+                }
+            ]
+        }
+
     def test_recent_successful_loans_are_capped_per_currency(self, engine):
         for index in range(7):
             engine.record_successful_loan(
