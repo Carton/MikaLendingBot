@@ -1,8 +1,9 @@
+import datetime as dt
 import sched
 import threading
 import time
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from . import Configuration
@@ -71,8 +72,9 @@ class LendingEngine:
         self.loans_provided: list[dict[str, Any]] = []
         self.recent_successful_loans: dict[str, list[dict[str, str]]] = {}
         self._active_loans_initialized = False
-        self._known_active_loan_ids: set[str] = set()
-        self._recent_successful_loan_ids: set[str] = set()
+        self._active_loans_tracking_started_at: float | None = None
+        self._known_active_loan_fingerprints: set[str] = set()
+        self._recent_successful_loan_fingerprints: set[str] = set()
         self._recent_successful_loans_lock = threading.RLock()
 
         self.frrdelta_cur_step: int = 0
@@ -831,49 +833,138 @@ class LendingEngine:
         if self.scheduler:
             self.scheduler.enter(sleep_time_val, 1, self.notify_summary, (sleep_time_val,))
 
-    def _loan_tracking_id(self, loan: dict[str, Any]) -> str:
-        loan_id = loan.get("id")
-        if loan_id not in (None, ""):
-            return str(loan_id)
+    def _normalize_loan_decimal(self, value: Any) -> str:
+        try:
+            return format(Decimal(str(value)).normalize(), "f")
+        except (InvalidOperation, TypeError, ValueError):
+            return str(value)
 
+    def _loan_duration(self, loan: dict[str, Any]) -> Any:
+        for field in ("duration", "range", "period"):
+            value = loan.get(field)
+            if value not in (None, ""):
+                return value
+        return ""
+
+    def _loan_open_timestamp(self, loan: dict[str, Any]) -> float | None:
+        value = loan.get("date") or loan.get("open")
+        if value in (None, ""):
+            return None
+        if isinstance(value, int | float):
+            return float(value)
+
+        text = str(value).strip()
+        if not text:
+            return None
+
+        try:
+            parsed = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            try:
+                parsed = dt.datetime.strptime(text, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                return None
+
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt.UTC)
+        return parsed.timestamp()
+
+    def _normalize_loan_open_time(self, loan: dict[str, Any]) -> str:
+        open_timestamp = self._loan_open_timestamp(loan)
+        if open_timestamp is not None:
+            return f"{open_timestamp:.6f}"
+        return str(loan.get("date") or loan.get("open") or "")
+
+    def _loan_fingerprint(self, loan: dict[str, Any]) -> str:
         return "|".join(
-            str(loan.get(field, ""))
-            for field in ("currency", "amount", "rate", "duration", "date", "open")
+            [
+                str(loan.get("currency", "")),
+                self._normalize_loan_decimal(loan.get("amount", "")),
+                self._normalize_loan_decimal(loan.get("rate", "")),
+                self._normalize_loan_decimal(self._loan_duration(loan)),
+                self._normalize_loan_open_time(loan),
+            ]
         )
 
-    def _dedupe_loans_by_tracking_id(self, loans: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        seen_ids: set[str] = set()
+    def _dedupe_loans_by_fingerprint(self, loans: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        seen_fingerprints: set[str] = set()
         unique_loans = []
         for loan in loans:
-            tracking_id = self._loan_tracking_id(loan)
-            if tracking_id in seen_ids:
+            fingerprint = self._loan_fingerprint(loan)
+            if fingerprint in seen_fingerprints:
                 continue
-            seen_ids.add(tracking_id)
+            seen_fingerprints.add(fingerprint)
             unique_loans.append(loan)
         return unique_loans
+
+    def _loan_opened_after_recent_tracking_started(self, loan: dict[str, Any]) -> bool:
+        if self._active_loans_tracking_started_at is None:
+            return False
+
+        open_timestamp = self._loan_open_timestamp(loan)
+        if open_timestamp is None:
+            return False
+        return open_timestamp >= self._active_loans_tracking_started_at
+
+    def _track_active_loans(self, active_loans: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        unique_loans = self._dedupe_loans_by_fingerprint(active_loans)
+        new_loans: list[dict[str, Any]] = []
+
+        with self._recent_successful_loans_lock:
+            if self._active_loans_tracking_started_at is None:
+                self._active_loans_tracking_started_at = time.time()
+
+            current_fingerprints = {self._loan_fingerprint(loan) for loan in unique_loans}
+            if not self._active_loans_initialized:
+                self._known_active_loan_fingerprints.update(current_fingerprints)
+                self.loans_provided = unique_loans
+                self._active_loans_initialized = True
+                return []
+
+            for loan in unique_loans:
+                fingerprint = self._loan_fingerprint(loan)
+                if fingerprint in self._known_active_loan_fingerprints:
+                    continue
+                if not self._loan_opened_after_recent_tracking_started(loan):
+                    continue
+                new_loans.append(loan)
+
+            new_loans.sort(key=lambda loan: str(loan.get("date") or loan.get("open") or ""))
+            for loan in new_loans:
+                self.record_successful_loan(loan)
+
+            self._known_active_loan_fingerprints.update(current_fingerprints)
+            self.loans_provided = unique_loans
+        return new_loans
+
+    def initialize_recent_successful_loan_tracking(self) -> None:
+        try:
+            self._track_active_loans(self.api.return_active_loans()["provided"])
+        except Exception as ex:
+            print(f"Error during recent successful loan tracking initialization: {ex}")
 
     def record_successful_loan(self, loan: dict[str, Any]) -> None:
         currency = str(loan.get("currency", ""))
         if not currency:
             return
 
-        tracking_id = self._loan_tracking_id(loan)
+        fingerprint = self._loan_fingerprint(loan)
         entry = {
-            "_id": tracking_id,
+            "_fingerprint": fingerprint,
             "amount": str(loan.get("amount", "")),
             "rate": str(loan.get("rate", "")),
             "date": str(loan.get("date") or loan.get("open") or ""),
         }
         with self._recent_successful_loans_lock:
-            if tracking_id in self._recent_successful_loan_ids:
+            if fingerprint in self._recent_successful_loan_fingerprints:
                 return
-            self._recent_successful_loan_ids.add(tracking_id)
+            self._recent_successful_loan_fingerprints.add(fingerprint)
             currency_loans = self.recent_successful_loans.setdefault(currency, [])
             currency_loans.insert(0, entry)
             removed_loans = currency_loans[MAX_RECENT_SUCCESSFUL_LOANS:]
             del currency_loans[MAX_RECENT_SUCCESSFUL_LOANS:]
-            self._recent_successful_loan_ids.difference_update(
-                loan["_id"] for loan in removed_loans if "_id" in loan
+            self._recent_successful_loan_fingerprints.difference_update(
+                loan["_fingerprint"] for loan in removed_loans if "_fingerprint" in loan
             )
 
     def get_recent_successful_loans(self, limit: int) -> dict[str, list[dict[str, str]]]:
@@ -903,34 +994,14 @@ class LendingEngine:
         Checks for newly filled loans and sends notifications.
         """
         try:
-            new_provided = self._dedupe_loans_by_tracking_id(
-                self.api.return_active_loans()["provided"]
-            )
+            new_provided = self.api.return_active_loans()["provided"]
             loans_amount: dict[str, float] = {}
             loans_info: dict[str, dict[str, Any]] = {}
 
-            with self._recent_successful_loans_lock:
-                current_ids = {self._loan_tracking_id(loan) for loan in new_provided}
-                if not self._active_loans_initialized:
-                    self._known_active_loan_ids.update(current_ids)
-                    self.loans_provided = new_provided
-                    self._active_loans_initialized = True
-                else:
-                    new_loans = [
-                        loan
-                        for loan in new_provided
-                        if self._loan_tracking_id(loan) not in self._known_active_loan_ids
-                    ]
-                    new_loans.sort(
-                        key=lambda loan: str(loan.get("date") or loan.get("open") or "")
-                    )
-                    for loan in new_loans:
-                        self.record_successful_loan(loan)
-                        k = f"c{loan['currency']}r{loan['rate']}d{loan['duration']}"
-                        loans_amount[k] = float(loan["amount"]) + loans_amount.get(k, 0.0)
-                        loans_info[k] = loan
-                    self._known_active_loan_ids.update(current_ids)
-                    self.loans_provided = new_provided
+            for loan in self._track_active_loans(new_provided):
+                k = f"c{loan['currency']}r{loan['rate']}d{loan['duration']}"
+                loans_amount[k] = float(loan["amount"]) + loans_amount.get(k, 0.0)
+                loans_info[k] = loan
 
             if self.config.notifications.notify_new_loans:
                 for k, amount in loans_amount.items():
@@ -956,6 +1027,7 @@ class LendingEngine:
                     (self.config.notifications.notify_summary_minutes * 60,),
                 )
             if self.config.notifications.notify_new_loans or self._should_track_successful_loans():
+                self.initialize_recent_successful_loan_tracking()
                 self.scheduler.enter(20, 1, self.notify_new_loans, (60,))
             if not self.scheduler.empty():
                 t = threading.Thread(target=self.scheduler.run)

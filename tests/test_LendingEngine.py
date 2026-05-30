@@ -1,3 +1,4 @@
+import datetime as dt
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -11,6 +12,10 @@ from lendingbot.modules.Configuration import (
     RootConfig,
 )
 from lendingbot.modules.Lending import LendingEngine
+
+
+def timestamp(value: str) -> float:
+    return dt.datetime.strptime(value, "%Y-%m-%d %H:%M:%S").replace(tzinfo=dt.UTC).timestamp()
 
 
 @pytest.fixture
@@ -359,10 +364,14 @@ class TestLendingEngineLogic:
             {"provided": [existing, new_first, new_second]},
         ]
 
-        engine.notify_new_loans(60)
-        assert engine.get_recent_successful_loans(limit=3) == {}
+        with patch(
+            "lendingbot.modules.Lending.time.time",
+            return_value=timestamp("2026-05-24 09:01:00"),
+        ):
+            engine.notify_new_loans(60)
+            assert engine.get_recent_successful_loans(limit=3) == {}
 
-        engine.notify_new_loans(60)
+            engine.notify_new_loans(60)
 
         assert engine.get_recent_successful_loans(limit=3) == {
             "USD": [
@@ -378,6 +387,98 @@ class TestLendingEngineLogic:
                 },
             ]
         }
+
+    def test_notify_new_loans_dedupes_business_loan_when_id_changes(self, engine, mock_api):
+        engine.config.bot.web.recent_successful_loans = 3
+        new_loan = {
+            "id": 2,
+            "currency": "USD",
+            "rate": "0.0003980",
+            "amount": "8919.57146463",
+            "duration": "2",
+            "date": "2026-05-29 15:22:17",
+        }
+        repeated_loan = dict(new_loan, id="changed-id")
+        mock_api.return_active_loans.side_effect = [
+            {"provided": []},
+            {"provided": [new_loan]},
+            {"provided": [repeated_loan]},
+        ]
+
+        with patch(
+            "lendingbot.modules.Lending.time.time",
+            return_value=timestamp("2026-05-29 15:20:00"),
+        ):
+            engine.notify_new_loans(60)
+            engine.notify_new_loans(60)
+            engine.notify_new_loans(60)
+
+        assert engine.get_recent_successful_loans(limit=3) == {
+            "USD": [
+                {
+                    "amount": "8919.57146463",
+                    "rate": "0.0003980",
+                    "date": "2026-05-29 15:22:17",
+                }
+            ]
+        }
+
+    def test_notify_new_loans_skips_existing_active_loan_when_id_changes(
+        self, engine, mock_api
+    ):
+        engine.config.bot.web.recent_successful_loans = 3
+        existing = {
+            "id": "baseline-id",
+            "currency": "USD",
+            "rate": "0.0003938",
+            "amount": "187.75710464",
+            "duration": "2",
+            "date": "2026-05-21 13:58:51",
+        }
+        same_existing_loan = dict(existing, id="changed-id")
+        mock_api.return_active_loans.side_effect = [
+            {"provided": [existing]},
+            {"provided": [same_existing_loan]},
+        ]
+
+        with patch(
+            "lendingbot.modules.Lending.time.time",
+            return_value=timestamp("2026-05-29 15:20:00"),
+        ):
+            engine.notify_new_loans(60)
+            engine.notify_new_loans(60)
+
+        assert engine.get_recent_successful_loans(limit=3) == {}
+
+    def test_start_scheduler_initializes_recent_loan_baseline_immediately(
+        self, engine, mock_api
+    ):
+        engine.config.bot.web.enabled = True
+        engine.config.bot.web.recent_successful_loans = 3
+        engine.config.notifications.notify_new_loans = False
+        engine.scheduler = MagicMock()
+        engine.scheduler.empty.return_value = True
+        mock_api.return_active_loans.return_value = {
+            "provided": [
+                {
+                    "id": "baseline-id",
+                    "currency": "USD",
+                    "rate": "0.0003938",
+                    "amount": "187.75710464",
+                    "duration": "2",
+                    "date": "2026-05-21 13:58:51",
+                }
+            ]
+        }
+
+        with patch(
+            "lendingbot.modules.Lending.time.time",
+            return_value=timestamp("2026-05-29 15:20:00"),
+        ):
+            engine.start_scheduler()
+
+        mock_api.return_active_loans.assert_called_once_with()
+        assert engine.get_recent_successful_loans(limit=3) == {}
 
     def test_notify_new_loans_records_duplicate_active_loan_once(self, engine, mock_api):
         engine.config.bot.web.recent_successful_loans = 3
@@ -402,8 +503,12 @@ class TestLendingEngineLogic:
             {"provided": [existing, new_loan, dict(new_loan)]},
         ]
 
-        engine.notify_new_loans(60)
-        engine.notify_new_loans(60)
+        with patch(
+            "lendingbot.modules.Lending.time.time",
+            return_value=timestamp("2026-05-24 09:01:00"),
+        ):
+            engine.notify_new_loans(60)
+            engine.notify_new_loans(60)
 
         assert engine.get_recent_successful_loans(limit=3) == {
             "USD": [
@@ -440,9 +545,13 @@ class TestLendingEngineLogic:
             {"provided": [existing, repeated_loan]},
         ]
 
-        engine.notify_new_loans(60)
-        engine.notify_new_loans(60)
-        engine.notify_new_loans(60)
+        with patch(
+            "lendingbot.modules.Lending.time.time",
+            return_value=timestamp("2026-05-24 09:01:00"),
+        ):
+            engine.notify_new_loans(60)
+            engine.notify_new_loans(60)
+            engine.notify_new_loans(60)
 
         assert engine.get_recent_successful_loans(limit=3) == {
             "USD": [
