@@ -153,15 +153,15 @@ class BotOrchestrator:
                 self.log.log("Lending paused")
             self.engine.last_lending_status = self.engine.lending_paused
 
+        self.plugins_manager.before_lending()
         if not self.engine.lending_paused:
-            self.plugins_manager.before_lending()
             self.engine.transfer_balances()
             self.engine.cancel_all()
             self.engine.lend_all()
             lent_status_str = Data.stringify_total_lent(Data.get_total_lent())
             self.log.refreshStatus(lent_status_str)
             self.log.writeStatusSnapshot()
-            self.plugins_manager.after_lending()
+        self.plugins_manager.after_lending()
 
         lent_status_str = Data.stringify_total_lent(Data.get_total_lent())
         self.log.refreshStatus(lent_status_str)

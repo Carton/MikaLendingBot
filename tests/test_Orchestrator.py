@@ -117,6 +117,35 @@ class TestOrchestrator:
 
         assert call_order[:2] == ["writeStatusSnapshot", "after_lending"]
 
+    @patch("lendingbot.modules.Orchestrator.Data")
+    @patch("lendingbot.modules.Orchestrator.sys.stdout")
+    @patch("lendingbot.modules.Orchestrator.time.time")
+    def test_orchestrator_step_runs_plugins_while_lending_paused(
+        self, mock_time, _mock_stdout, mock_data
+    ):
+        orchestrator = BotOrchestrator(config_path="config.toml", dry_run=True)
+        orchestrator.config = MagicMock()
+        orchestrator.config.bot.output_currency = "BTC"
+        orchestrator.config.bot.web.enabled = False
+        orchestrator.config.bot.period_inactive = 60
+
+        orchestrator.log = MagicMock()
+        orchestrator.engine = MagicMock()
+        orchestrator.plugins_manager = MagicMock()
+        orchestrator.engine.lending_paused = True
+        orchestrator.engine.last_lending_status = True
+        mock_time.return_value = 1000
+        orchestrator.last_summary_time = 0
+        mock_data.stringify_total_lent.return_value = "total lent status"
+
+        orchestrator.step()
+
+        orchestrator.plugins_manager.before_lending.assert_called_once()
+        orchestrator.plugins_manager.after_lending.assert_called_once()
+        orchestrator.engine.transfer_balances.assert_not_called()
+        orchestrator.engine.cancel_all.assert_not_called()
+        orchestrator.engine.lend_all.assert_not_called()
+
     @patch("lendingbot.modules.Orchestrator.os._exit")
     def test_orchestrator_stop(self, mock_exit):
         """Test the stop method."""
