@@ -155,7 +155,10 @@ they are written.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/charts/history</span></code> returns the chart JSON dumped by the Charts
 plugin.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/settings</span></code> saves backend web settings such as refresh interval,
-output currency display mode, and FRR adjustment range.</p></li>
+output currency display mode, FRR adjustment range, and lending duration
+thresholds (<code class="docutils literal notranslate"><span class="pre">xday_thresholds</span></code>). Values are applied to the live lending
+engine and persisted to <code class="docutils literal notranslate"><span class="pre">web_settings.json</span></code>; invalid entries are dropped and
+thresholds whose days decrease as the rate increases are rejected.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/lending/pause</span></code> and <code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/api/lending/resume</span></code> update the live
 lending pause state.</p></li>
 </ul>

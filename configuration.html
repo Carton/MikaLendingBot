@@ -289,6 +289,8 @@ especially to “Withdraw”.</p></li>
 <li><p>Poloniex max lending period: 60 days</p></li>
 <li><p>Bitfinex max lending period: 120 days</p></li>
 <li><p>This feature allows you to lock in a better rate for a longer period of time.</p></li>
+<li><p>Only the <code class="docutils literal notranslate"><span class="pre">[coin.default]</span></code> thresholds take effect; per-coin overrides for this list are not applied.</p></li>
+<li><p>The list can also be edited in the web dashboard Settings dialog (see <a class="reference internal" href="#lendingbot-html-settings">lendingbot.html settings</a>). Once saved there, the web value takes precedence over this TOML value.</p></li>
 </ul>
 </div></blockquote>
 </li>
@@ -672,8 +674,18 @@ The React <code class="docutils literal notranslate"><span class="pre">charts.ht
 <section id="lendingbot-html-settings">
 <h2><span class="section-number">2.13. </span>lendingbot.html settings<a class="headerlink" href="#lendingbot-html-settings" title="Link to this heading"></a></h2>
 <p>Dashboard options are configured through the Settings dialog and persisted to <code class="docutils literal notranslate"><span class="pre">web_settings.json</span></code>.
-Current persisted web settings include refresh interval, output currency display mode, lending pause state, and FRR adjustment range.
+Current persisted web settings include refresh interval, output currency display mode, lending pause state, FRR adjustment range, and lending duration thresholds (<code class="docutils literal notranslate"><span class="pre">xday_thresholds</span></code>).
 The UI language is selected in the same Settings dialog but stored in browser local storage.</p>
+<p>Settings that also exist in <code class="docutils literal notranslate"><span class="pre">config.toml</span></code> (FRR adjustment range, lending duration
+thresholds) use the TOML value as the default. Once a value is saved from the web
+UI it is persisted to <code class="docutils literal notranslate"><span class="pre">web_settings.json</span></code> and takes precedence from then on;
+later changes to the TOML file are ignored until the corresponding key is removed
+from <code class="docutils literal notranslate"><span class="pre">web_settings.json</span></code>.</p>
+<p>Lending duration thresholds are edited as a list of daily rate / days pairs. The
+Settings dialog shows a preview of the resulting rate-to-days mapping, including
+the linear interpolation applied between thresholds. Days must not decrease as
+the rate increases, and an empty list disables the feature (every offer then uses
+the default 2-day duration).</p>
 </section>
 <section id="notifications">
 <h2><span class="section-number">2.14. </span>Notifications<a class="headerlink" href="#notifications" title="Link to this heading"></a></h2>

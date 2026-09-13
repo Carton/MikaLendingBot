@@ -73,7 +73,10 @@ The React dashboard uses a small number of consolidated endpoints:
 * ``GET /api/charts/history`` returns the chart JSON dumped by the Charts
   plugin.
 * ``POST /api/settings`` saves backend web settings such as refresh interval,
-  output currency display mode, and FRR adjustment range.
+  output currency display mode, FRR adjustment range, and lending duration
+  thresholds (``xday_thresholds``). Values are applied to the live lending
+  engine and persisted to ``web_settings.json``; invalid entries are dropped and
+  thresholds whose days decrease as the rate increases are rejected.
 * ``POST /api/lending/pause`` and ``POST /api/lending/resume`` update the live
   lending pause state.
 
