@@ -526,6 +526,75 @@ async def test_get_settings_drops_malformed_persisted_xday_thresholds(
 
 
 @pytest.mark.asyncio
+async def test_api_settings_drops_nan_xday_rate(web_server: WebServer) -> None:
+    # A raw NaN literal passes request.json() but crashes Decimal range
+    # comparisons; it must be dropped instead of turning the request into a
+    # 500. Sent as a raw body because httpx refuses to serialize NaN itself.
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post(
+            "/api/settings",
+            content=(
+                '{"xday_thresholds": [{"rate": NaN, "days": 30}, {"rate": 0.04, "days": 60}]}'
+            ),
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["xday_thresholds"] == [{"rate": 0.04, "days": 60}]
+
+
+@pytest.mark.asyncio
+async def test_api_settings_rejects_xday_without_partially_applying_frr(
+    web_server: WebServer,
+) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post(
+            "/api/settings",
+            json={
+                "frrdelta_min": -5,
+                "frrdelta_max": 5,
+                "xday_thresholds": [
+                    {"rate": 0.03, "days": 60},
+                    {"rate": 0.05, "days": 30},
+                ],
+            },
+        )
+
+    assert response.status_code == 400
+    # The valid frrdelta values must not have been applied to the live engine.
+    assert web_server.lending_engine.frrdelta_min == -10
+    assert web_server.lending_engine.has_web_frr_override is False
+    assert web_server.lending_engine.has_web_xday_override is False
+
+
+@pytest.mark.asyncio
+async def test_api_settings_dedupes_duplicate_xday_rates(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post(
+            "/api/settings",
+            json={
+                "xday_thresholds": [
+                    {"rate": 0.03, "days": 30},
+                    {"rate": 0.03, "days": 45},
+                    {"rate": 0.05, "days": 120},
+                ]
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["xday_thresholds"] == [
+        {"rate": 0.03, "days": 45},
+        {"rate": 0.05, "days": 120},
+    ]
+
+
+@pytest.mark.asyncio
 async def test_api_charts_history_reads_history_file(web_server: WebServer, tmp_path: Path) -> None:
     history_dir = tmp_path / "www"
     history_dir.mkdir()

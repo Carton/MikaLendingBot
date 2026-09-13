@@ -265,6 +265,23 @@ class TestLendingEngineLogic:
         # rate 0.01 > 0.0001 -> adjusted to 0.009999
         assert float(args[4]) == pytest.approx(0.009999)
 
+    def test_create_lend_offer_notifies_at_max_xday_threshold(self, engine):
+        engine.initialize()
+        engine.xday_thresholds = [
+            XDayThreshold(rate=Decimal("0.05"), days=25),
+            XDayThreshold(rate=Decimal("0.1"), days=60),
+        ]
+        engine.config.notifications.notify_xday_threshold = True
+
+        # Rate above the last threshold -> 60 days -> notify
+        engine.create_lend_offer("BTC", Decimal("1"), Decimal("0.002"))
+        assert engine.log.notify.call_count == 1
+        assert "60 days" in engine.log.notify.call_args[0][0]
+
+        # Rate mapping below the last threshold -> no additional notify
+        engine.create_lend_offer("BTC", Decimal("1"), Decimal("0.0004"))
+        assert engine.log.notify.call_count == 1
+
     def test_adjust_rate_for_competition(self, engine):
         # Above threshold
         assert engine._adjust_rate_for_competition(0.01) == pytest.approx(0.009999)

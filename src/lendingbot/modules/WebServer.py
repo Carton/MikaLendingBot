@@ -326,6 +326,36 @@ class WebServer:
         config_data = sanitize_web_settings(config_data)
         applied: dict[str, Any] = {}
 
+        # Validate xday before mutating anything so a rejected submission
+        # never leaves the engine half-updated.
+        xday_thresholds: list[Configuration.XDayThreshold] | None = None
+        if xday_submitted:
+            # sanitize_web_settings strips values that are not a list at all,
+            # so their absence here means the submitted shape was invalid.
+            xday_thresholds = (
+                normalize_xday_thresholds(config_data["xday_thresholds"])
+                if "xday_thresholds" in config_data
+                else None
+            )
+            if xday_thresholds is None:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "error": "xday_thresholds must be a list of {rate, days} entries",
+                    },
+                )
+            if any(
+                later.days < earlier.days for earlier, later in itertools.pairwise(xday_thresholds)
+            ):
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "error": "xday_thresholds days must not decrease as the rate increases",
+                    },
+                )
+
         if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
             try:
                 self.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
@@ -341,38 +371,15 @@ class WebServer:
             except (ValueError, TypeError, InvalidOperation) as e:
                 return JSONResponse(status_code=400, content={"success": False, "error": str(e)})
 
-        if xday_submitted:
-            # sanitize_web_settings strips values that are not a list at all,
-            # so their absence here means the submitted shape was invalid.
-            thresholds = (
-                normalize_xday_thresholds(config_data["xday_thresholds"])
-                if "xday_thresholds" in config_data
-                else None
-            )
-            if thresholds is None:
-                return JSONResponse(
-                    status_code=400,
-                    content={
-                        "success": False,
-                        "error": "xday_thresholds must be a list of {rate, days} entries",
-                    },
-                )
-            if any(later.days < earlier.days for earlier, later in itertools.pairwise(thresholds)):
-                return JSONResponse(
-                    status_code=400,
-                    content={
-                        "success": False,
-                        "error": "xday_thresholds days must not decrease as the rate increases",
-                    },
-                )
-            self.lending_engine.xday_thresholds = thresholds
+        if xday_thresholds is not None:
+            self.lending_engine.xday_thresholds = xday_thresholds
             self.lending_engine.has_web_xday_override = True
             self.log.log(
                 "Settings updated by user: xday_thresholds="
-                + ",".join(f"{t.rate}%->{t.days}d" for t in thresholds)
+                + ",".join(f"{t.rate}%->{t.days}d" for t in xday_thresholds)
             )
             applied["xday_thresholds"] = [
-                {"rate": float(t.rate), "days": t.days} for t in thresholds
+                {"rate": float(t.rate), "days": t.days} for t in xday_thresholds
             ]
 
         try:
@@ -409,7 +416,8 @@ def normalize_xday_thresholds(raw: Any) -> list[Configuration.XDayThreshold] | N
             days = int(days_raw)
         except (ValueError, TypeError, InvalidOperation):
             continue
-        if not (XDAY_RATE_MIN <= rate <= XDAY_RATE_MAX):
+        # A Decimal NaN parses fine, but comparing against it raises InvalidOperation.
+        if rate.is_nan() or not (XDAY_RATE_MIN <= rate <= XDAY_RATE_MAX):
             continue
         if not (XDAY_DAYS_MIN <= days <= XDAY_DAYS_MAX):
             continue
