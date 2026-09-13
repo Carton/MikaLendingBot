@@ -17,9 +17,7 @@ class TestCharts:
     @pytest.fixture
     def charts_plugin(self, tmp_path):
         # Use real configuration object
-        mock_cfg = RootConfig(
-            plugins=PluginsConfig(charts=ChartsConfig(dump_interval=21600))
-        )
+        mock_cfg = RootConfig(plugins=PluginsConfig(charts=ChartsConfig(dump_interval=21600)))
         mock_api = Mock()
         mock_log = MagicMock()
 
@@ -44,9 +42,7 @@ class TestCharts:
 
     def test_default_history_file(self):
         # Create a plugin instance without overriding history_file
-        mock_cfg = RootConfig(
-            plugins=PluginsConfig(charts=ChartsConfig(dump_interval=21600))
-        )
+        mock_cfg = RootConfig(plugins=PluginsConfig(charts=ChartsConfig(dump_interval=21600)))
         plugin = Charts(mock_cfg, Mock(), MagicMock(), {})
         assert plugin.history_file == "www/history.json"
 
