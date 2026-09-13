@@ -1,16 +1,20 @@
-import { PauseCircleOutlined, PlayCircleOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons";
+import { MinusCircleOutlined, PauseCircleOutlined, PlayCircleOutlined, PlusOutlined, ReloadOutlined, SettingOutlined } from "@ant-design/icons";
 import { Alert, Button, Card, Col, Descriptions, Empty, Flex, Modal, Row, Space, Statistic, Table, Tag, Typography, Form, InputNumber, Slider, Radio, Grid } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import ReactECharts from "echarts-for-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildDashboardView, formatNumber } from "../domain/dashboard";
+import { buildDashboardView, buildXdayDurationCurve, formatNumber } from "../domain/dashboard";
 import { LANGUAGE_OPTIONS, useLanguage } from "../i18n";
-import type { CoinRow, DashboardSettings, DashboardStateResponse, RecentLoan } from "../domain/types";
+import type { CoinRow, DashboardSettings, DashboardStateResponse, RecentLoan, XDayThresholdEntry } from "../domain/types";
 
 type TranslateFn = ReturnType<typeof useLanguage>["t"];
 type SetLanguageFn = ReturnType<typeof useLanguage>["setLanguage"];
 
 const FRR_DELTA_MIN_LIMIT = -30;
 const FRR_DELTA_MAX_LIMIT = 50;
+const XDAY_RATE_LIMIT = 5;
+const XDAY_DAYS_MIN = 2;
+const XDAY_DAYS_MAX = 120;
 const LOG_FOLLOW_THRESHOLD_PX = 32;
 
 interface DashboardPageProps {
@@ -346,14 +350,23 @@ function SettingsModal({
     () => ({
       ...settings,
       frrdelta_min: Math.max(settings.frrdelta_min ?? -10, FRR_DELTA_MIN_LIMIT),
-      frrdelta_max: Math.min(settings.frrdelta_max ?? 10, FRR_DELTA_MAX_LIMIT)
+      frrdelta_max: Math.min(settings.frrdelta_max ?? 10, FRR_DELTA_MAX_LIMIT),
+      xday_thresholds: (settings.xday_thresholds ?? []).map((entry) => ({
+        rate: entry.rate,
+        days: entry.days
+      }))
     }),
     [settings]
   );
   const watchedFrrMin = Form.useWatch("frrdelta_min", form);
   const watchedFrrMax = Form.useWatch("frrdelta_max", form);
+  const watchedXday = Form.useWatch("xday_thresholds", form);
   const frrMin = typeof watchedFrrMin === "number" ? watchedFrrMin : initialSettings.frrdelta_min;
   const frrMax = typeof watchedFrrMax === "number" ? watchedFrrMax : initialSettings.frrdelta_max;
+  const xdayCurve = useMemo(
+    () => buildXdayDurationCurve(watchedXday, XDAY_RATE_LIMIT),
+    [watchedXday]
+  );
 
   useEffect(() => {
     if (open) {
@@ -432,8 +445,138 @@ function SettingsModal({
             onChange={updateFrrRange}
           />
         </Form.Item>
+        <Form.Item label={t("settings.xdayTitle")}>
+          <Form.List
+            name="xday_thresholds"
+            rules={[
+              {
+                validator: async (_rule, value: XDayThresholdEntry[] | undefined) => {
+                  const sorted = [...(value ?? [])].sort(
+                    (left, right) => (left?.rate ?? 0) - (right?.rate ?? 0)
+                  );
+                  const decreasing = sorted.some(
+                    (entry, index) =>
+                      index > 0 && (entry?.days ?? 0) < (sorted[index - 1]?.days ?? 0)
+                  );
+                  if (decreasing) {
+                    throw new Error(t("settings.xdayDaysOrderError"));
+                  }
+                }
+              }
+            ]}
+          >
+            {(fields, { add, remove }, { errors }) => (
+              <div className="xday-threshold-list" data-testid="xday-threshold-list">
+                {fields.map((field) => (
+                  <Space key={field.key} align="center" className="xday-threshold-row">
+                    <Form.Item
+                      name={[field.name, "rate"]}
+                      noStyle
+                      normalize={normalizeOptionalNumber}
+                      rules={[
+                        { required: true, message: t("settings.xdayRateRequired") },
+                        { type: "number", min: 0, max: XDAY_RATE_LIMIT }
+                      ]}
+                    >
+                      <InputNumber
+                        aria-label={t("settings.xdayRateLabel")}
+                        min={0}
+                        max={XDAY_RATE_LIMIT}
+                        step={0.001}
+                      />
+                    </Form.Item>
+                    <span className="input-addon">%</span>
+                    <Form.Item
+                      name={[field.name, "days"]}
+                      noStyle
+                      normalize={normalizeOptionalNumber}
+                      rules={[
+                        { required: true, message: t("settings.xdayDaysRequired") },
+                        { type: "number", min: XDAY_DAYS_MIN, max: XDAY_DAYS_MAX }
+                      ]}
+                    >
+                      <InputNumber
+                        aria-label={t("settings.xdayDaysLabel")}
+                        min={XDAY_DAYS_MIN}
+                        max={XDAY_DAYS_MAX}
+                        step={1}
+                        precision={0}
+                      />
+                    </Form.Item>
+                    <span className="input-addon">{t("settings.xdayAxisDays")}</span>
+                    <Button
+                      aria-label={t("settings.xdayRemove")}
+                      icon={<MinusCircleOutlined />}
+                      onClick={() => remove(field.name)}
+                      type="text"
+                      danger
+                    />
+                  </Space>
+                ))}
+                <Button
+                  block
+                  icon={<PlusOutlined />}
+                  onClick={() => add({ rate: undefined, days: undefined })}
+                  type="dashed"
+                >
+                  {t("settings.xdayAdd")}
+                </Button>
+                <Form.ErrorList errors={errors} />
+              </div>
+            )}
+          </Form.List>
+          {xdayCurve.length > 0 ? (
+            <div className="xday-preview">
+              <Typography.Text className="xday-preview-title" strong>
+                {t("settings.xdayPreview")}
+              </Typography.Text>
+              <XdayPreviewChart points={xdayCurve} t={t} />
+              <Typography.Text type="secondary">{t("settings.xdayPreviewHint")}</Typography.Text>
+            </div>
+          ) : (
+            <Typography.Text type="secondary">{t("settings.xdayEmpty")}</Typography.Text>
+          )}
+        </Form.Item>
       </Form>
     </Modal>
+  );
+}
+
+function XdayPreviewChart({ points, t }: { points: Array<[number, number]>; t: TranslateFn }) {
+  const option = {
+    grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
+    xAxis: {
+      type: "value",
+      min: 0,
+      name: t("settings.xdayAxisRate"),
+      axisLabel: { formatter: (value: number) => `${value}` }
+    },
+    yAxis: {
+      type: "value",
+      min: 0,
+      minInterval: 1,
+      name: t("settings.xdayAxisDays")
+    },
+    tooltip: {
+      trigger: "axis",
+      valueFormatter: (value: unknown) => `${value} ${t("settings.xdayAxisDays")}`
+    },
+    series: [
+      {
+        type: "line",
+        showSymbol: true,
+        symbolSize: 7,
+        data: points,
+        areaStyle: { opacity: 0.08 },
+        lineStyle: { width: 2 }
+      }
+    ]
+  };
+
+  return (
+    <div data-testid="xday-preview-chart">
+      <ReactECharts option={option} style={{ height: 200 }} notMerge />
+    </div>
   );
 }
 

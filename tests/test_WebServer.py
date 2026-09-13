@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -14,7 +15,7 @@ import pytest
 import uvicorn
 from httpx import ASGITransport, AsyncClient
 
-from lendingbot.modules.Configuration import RootConfig
+from lendingbot.modules.Configuration import CoinConfig, RootConfig, XDayThreshold
 from lendingbot.modules.WebServer import WebServer
 
 
@@ -24,6 +25,9 @@ class MockEngine:
         self.coin_cfg: dict[str, Any] = {}
         self.frrdelta_min: int = -10
         self.frrdelta_max: int = 10
+        self.has_web_frr_override: bool = False
+        self.xday_thresholds: list[Any] = []
+        self.has_web_xday_override: bool = False
         self.recent_successful_loans: dict[str, list[dict[str, str]]] = {
             "USD": [
                 {
@@ -40,10 +44,7 @@ class MockEngine:
         }
 
     def get_recent_successful_loans(self, limit: int) -> dict[str, list[dict[str, str]]]:
-        return {
-            currency: loans[:limit]
-            for currency, loans in self.recent_successful_loans.items()
-        }
+        return {currency: loans[:limit] for currency, loans in self.recent_successful_loans.items()}
 
 
 class MockLogger:
@@ -399,9 +400,133 @@ async def test_get_settings_clamps_persisted_frr_minimum(
 
 
 @pytest.mark.asyncio
-async def test_api_charts_history_reads_history_file(
+async def test_get_settings_defaults_xday_thresholds_from_toml(
+    web_server: WebServer,
+) -> None:
+    web_server.config.coin["default"] = CoinConfig(
+        xday_thresholds=[
+            XDayThreshold(rate=Decimal("0.03"), days=30),
+            XDayThreshold(rate=Decimal("0.05"), days=120),
+        ]
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/settings")
+
+    assert response.status_code == 200
+    assert response.json()["xday_thresholds"] == [
+        {"rate": 0.03, "days": 30},
+        {"rate": 0.05, "days": 120},
+    ]
+
+
+@pytest.mark.asyncio
+async def test_api_settings_round_trip_xday_thresholds(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        save_response = await ac.post(
+            "/api/settings",
+            json={
+                "frrdelta_min": -3,
+                "frrdelta_max": 9,
+                "xday_thresholds": [
+                    {"rate": 0.05, "days": 120},
+                    {"rate": 6, "days": 90},  # rate above the 5% cap: dropped
+                    {"rate": 0.03, "days": 30},
+                    {"days": 60},  # missing rate: dropped
+                ],
+            },
+        )
+        assert save_response.status_code == 200
+
+        data = save_response.json()
+        assert data["frrdelta_min"] == "-3"
+        assert web_server.lending_engine.frrdelta_min == -3
+        assert data["xday_thresholds"] == [
+            {"rate": 0.03, "days": 30},
+            {"rate": 0.05, "days": 120},
+        ]
+        assert web_server.lending_engine.has_web_xday_override is True
+        assert [t.days for t in web_server.lending_engine.xday_thresholds] == [30, 120]
+
+        get_response = await ac.get("/api/settings")
+        assert get_response.status_code == 200
+        assert get_response.json()["xday_thresholds"] == [
+            {"rate": 0.03, "days": 30},
+            {"rate": 0.05, "days": 120},
+        ]
+
+
+@pytest.mark.asyncio
+async def test_api_settings_allows_empty_xday_thresholds(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        save_response = await ac.post("/api/settings", json={"xday_thresholds": []})
+        assert save_response.status_code == 200
+
+    assert web_server.lending_engine.xday_thresholds == []
+    assert web_server.lending_engine.has_web_xday_override is True
+
+
+@pytest.mark.asyncio
+async def test_api_settings_rejects_decreasing_xday_days(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        save_response = await ac.post(
+            "/api/settings",
+            json={
+                "xday_thresholds": [
+                    {"rate": 0.03, "days": 60},
+                    {"rate": 0.05, "days": 30},
+                ]
+            },
+        )
+
+    assert save_response.status_code == 400
+    assert save_response.json()["success"] is False
+    assert web_server.lending_engine.has_web_xday_override is False
+
+
+@pytest.mark.asyncio
+async def test_api_settings_rejects_non_list_xday_thresholds(
+    web_server: WebServer,
+) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        save_response = await ac.post("/api/settings", json={"xday_thresholds": "0.03:30"})
+
+    assert save_response.status_code == 400
+    assert web_server.lending_engine.has_web_xday_override is False
+
+
+@pytest.mark.asyncio
+async def test_get_settings_drops_malformed_persisted_xday_thresholds(
     web_server: WebServer, tmp_path: Path
 ) -> None:
+    settings_file = tmp_path / "web_settings.json"
+    settings_file.write_text(
+        json.dumps({"xday_thresholds": "garbage"}),
+        encoding="utf-8",
+    )
+    web_server.web_settings_file = str(settings_file)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/api/settings")
+
+    assert response.status_code == 200
+    assert response.json()["xday_thresholds"] == []
+
+
+@pytest.mark.asyncio
+async def test_api_charts_history_reads_history_file(web_server: WebServer, tmp_path: Path) -> None:
     history_dir = tmp_path / "www"
     history_dir.mkdir()
     (history_dir / "history.json").write_text(

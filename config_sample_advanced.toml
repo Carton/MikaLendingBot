@@ -75,6 +75,8 @@ frr_delta_max = 10.0
 # gap_top = 200
 
 # Longer lending duration thresholds. Rates are daily percentages.
+# Can also be edited in the web dashboard Settings dialog; a value saved there
+# overrides this list.
 xday_thresholds = [
     { rate = 0.028, days = 20 },
     { rate = 0.035, days = 30 },

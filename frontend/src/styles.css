@@ -159,6 +159,24 @@ body {
   text-align: center;
 }
 
+.xday-threshold-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.xday-threshold-row .ant-form-item {
+  margin-bottom: 0;
+}
+
+.xday-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
 .log-list {
   max-height: 420px;
   overflow: auto;

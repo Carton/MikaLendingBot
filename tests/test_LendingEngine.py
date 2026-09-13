@@ -10,6 +10,7 @@ from lendingbot.modules.Configuration import (
     GapMode,
     LendingStrategy,
     RootConfig,
+    XDayThreshold,
 )
 from lendingbot.modules.Lending import LendingEngine
 
@@ -111,6 +112,33 @@ class TestLendingEngineInit:
             assert engine.frrdelta_min == Decimal("-20")
             assert engine.frrdelta_max == Decimal("20")
             assert engine.lending_paused is True
+
+    def test_web_settings_xday_precedence(self, engine):
+        web_settings = {
+            "xday_thresholds": [
+                {"rate": 0.06, "days": 90},
+                {"rate": 0.03, "days": 30},
+            ]
+        }
+        with patch("lendingbot.modules.WebServer.get_web_settings", return_value=web_settings):
+            engine.initialize()
+            assert engine.has_web_xday_override is True
+            assert [(t.rate, t.days) for t in engine.xday_thresholds] == [
+                (Decimal("0.03"), 30),
+                (Decimal("0.06"), 90),
+            ]
+            # The web thresholds drive duration calculation
+            assert engine._calculate_duration(0.0002, "2") == "30"
+            assert engine._calculate_duration(0.0008, "2") == "90"
+
+    def test_web_settings_without_xday_keeps_toml_thresholds(self, engine, mock_config):
+        mock_config.coin["default"].xday_thresholds = [
+            XDayThreshold(rate=Decimal("0.05"), days=25),
+        ]
+        with patch("lendingbot.modules.WebServer.get_web_settings", return_value={}):
+            engine.initialize()
+            assert engine.has_web_xday_override is False
+            assert engine._calculate_duration(0.0005, "2") == "25"
 
 
 class TestLendingEngineLogic:
@@ -246,15 +274,17 @@ class TestLendingEngineLogic:
         assert engine._adjust_rate_for_competition(0.0001) == 0.0001
 
     def test_calculate_duration_no_thresholds(self, engine):
-        engine.xday_threshold = ""
+        engine.xday_thresholds = []
         # Default behavior when no thresholds defined
         assert engine._calculate_duration(0.01, "2") == "2"
         assert engine._calculate_duration(0.01, "5") == "5"
 
     def test_calculate_duration_with_thresholds(self, engine):
-        # 0.05% -> 25 days, 0.1% -> 60 days
-        # Internal representation is percentage / 100
-        engine.xday_threshold = "0.05:25,0.1:60"
+        # 0.05% -> 25 days, 0.1% -> 60 days (rates are daily percentages)
+        engine.xday_thresholds = [
+            XDayThreshold(rate=Decimal("0.05"), days=25),
+            XDayThreshold(rate=Decimal("0.1"), days=60),
+        ]
 
         # Rate below first threshold -> use first threshold days
         assert engine._calculate_duration(0.0004, "2") == "25"
@@ -288,7 +318,9 @@ class TestLendingEngineLogic:
         # Ensure spread allows 3 orders
         engine.spread_lend = 3
         # Mock gap rates
-        with patch.object(engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]):
+        with patch.object(
+            engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]
+        ):
             # cur_active_bal = 300. Expect 3 orders of 100.
             resp = engine.construct_orders("BTC", Decimal("300"), Decimal("1000"), {})
             assert len(resp["amounts"]) == 3
@@ -298,7 +330,9 @@ class TestLendingEngineLogic:
         engine.initialize()
         engine.coin_cfg["BTC"].max_offer_size = Decimal("50")
         engine.spread_lend = 3
-        with patch.object(engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]):
+        with patch.object(
+            engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]
+        ):
             # cur_active_bal = 300. Normally 100 per order, but capped at 50.
             resp = engine.construct_orders("BTC", Decimal("300"), Decimal("1000"), {})
             assert len(resp["amounts"]) == 3
@@ -309,7 +343,9 @@ class TestLendingEngineLogic:
         engine.initialize()
         engine.coin_cfg["BTC"].max_offer_size = Decimal("105")
         engine.spread_lend = 3
-        with patch.object(engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]):
+        with patch.object(
+            engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]
+        ):
             # cur_active_bal = 310.
             # 310 / 3 = 103.33333333.
             # Amounts before remainder: [103.33333333, 103.33333333, 103.33333333]
@@ -327,11 +363,13 @@ class TestLendingEngineLogic:
         # Cap exactly at the truncated amount
         engine.coin_cfg["BTC"].max_offer_size = Decimal("103.33333333")
         engine.spread_lend = 3
-        with patch.object(engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]):
+        with patch.object(
+            engine, "get_gap_mode_rates", return_value=[Decimal("0.05"), Decimal("0.01")]
+        ):
             # cur_active_bal = 310.
             # Remainder is 0.00000001, but allowance is 0.
             resp = engine.construct_orders("BTC", Decimal("310"), Decimal("1000"), {})
-            assert resp["amounts"][0] == Decimal("103.33333333") # Can't add remainder
+            assert resp["amounts"][0] == Decimal("103.33333333")  # Can't add remainder
 
     def test_notify_new_loans_records_only_loans_after_baseline(self, engine, mock_api):
         engine.config.bot.web.recent_successful_loans = 3
@@ -423,9 +461,7 @@ class TestLendingEngineLogic:
             ]
         }
 
-    def test_notify_new_loans_skips_existing_active_loan_when_id_changes(
-        self, engine, mock_api
-    ):
+    def test_notify_new_loans_skips_existing_active_loan_when_id_changes(self, engine, mock_api):
         engine.config.bot.web.recent_successful_loans = 3
         existing = {
             "id": "baseline-id",
@@ -450,9 +486,7 @@ class TestLendingEngineLogic:
 
         assert engine.get_recent_successful_loans(limit=3) == {}
 
-    def test_start_scheduler_initializes_recent_loan_baseline_immediately(
-        self, engine, mock_api
-    ):
+    def test_start_scheduler_initializes_recent_loan_baseline_immediately(self, engine, mock_api):
         engine.config.bot.web.enabled = True
         engine.config.bot.web.recent_successful_loans = 3
         engine.config.notifications.notify_new_loans = False

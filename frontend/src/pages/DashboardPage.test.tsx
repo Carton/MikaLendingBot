@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DashboardPage } from "./DashboardPage";
 import type { DashboardStateResponse } from "../domain/types";
 
+vi.mock("echarts-for-react", () => ({
+  default: ({ option }: { option: unknown }) => (
+    <div data-option={JSON.stringify(option)} data-testid="xday-echarts" />
+  )
+}));
+
 const baseState: DashboardStateResponse = {
   settings: { refreshRate: 30, timespanNames: ["Day"] },
   status: { last_status: "Lending running", last_update: "2026-05-13 22:47:59" },
@@ -12,6 +18,19 @@ const baseState: DashboardStateResponse = {
   lending_paused: false,
   lending_strategies: { USD: "FRR" },
   plugins: {}
+} as DashboardStateResponse;
+
+const xdayState: DashboardStateResponse = {
+  ...baseState,
+  settings: {
+    ...baseState.settings,
+    frrdelta_min: -3,
+    frrdelta_max: 9,
+    xday_thresholds: [
+      { rate: 0.03, days: 30 },
+      { rate: 0.05, days: 120 }
+    ]
+  }
 } as DashboardStateResponse;
 
 describe("DashboardPage", () => {
@@ -270,6 +289,115 @@ describe("DashboardPage", () => {
     await waitFor(() =>
       expect(onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({ frrdelta_min: -3, frrdelta_max: 9 }))
     );
+  });
+
+  it("edits and saves xday duration thresholds", async () => {
+    const onSaveSettings = vi.fn();
+    render(
+      <DashboardPage
+        state={xdayState}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+
+    const rateInputs = screen.getAllByLabelText("Daily rate");
+    const daysInputs = screen.getAllByLabelText("Lending days");
+    expect(rateInputs.map((input) => (input as HTMLInputElement).value)).toEqual(["0.030", "0.050"]);
+    expect(daysInputs.map((input) => (input as HTMLInputElement).value)).toEqual(["30", "120"]);
+
+    fireEvent.change(daysInputs[0], { target: { value: "45" } });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() =>
+      expect(onSaveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          xday_thresholds: [
+            { rate: 0.03, days: 45 },
+            { rate: 0.05, days: 120 }
+          ]
+        })
+      )
+    );
+  });
+
+  it("adds and removes xday threshold rows", async () => {
+    const onSaveSettings = vi.fn();
+    render(
+      <DashboardPage
+        state={baseState}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    expect(screen.getByText(/No thresholds configured/)).toBeInTheDocument();
+    expect(screen.queryByLabelText("Daily rate")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /add threshold/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add threshold/i }));
+    expect(screen.getAllByLabelText("Daily rate")).toHaveLength(2);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Remove threshold" })[0]);
+    expect(screen.getAllByLabelText("Daily rate")).toHaveLength(1);
+
+    const rateInput = screen.getByLabelText("Daily rate");
+    const daysInput = screen.getByLabelText("Lending days");
+    fireEvent.change(rateInput, { target: { value: "0.04" } });
+    fireEvent.change(daysInput, { target: { value: "60" } });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() =>
+      expect(onSaveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ xday_thresholds: [{ rate: 0.04, days: 60 }] })
+      )
+    );
+  });
+
+  it("shows the duration mapping preview when thresholds exist", async () => {
+    render(
+      <DashboardPage state={xdayState} loading={false} onRefresh={() => undefined} />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+
+    const chart = await screen.findByTestId("xday-echarts");
+    const option = JSON.parse(chart.dataset.option ?? "{}");
+    expect(option.series[0].data).toEqual([
+      [0, 30],
+      [0.03, 30],
+      [0.05, 120],
+      [0.055, 120]
+    ]);
+    expect(screen.getByText("Duration mapping preview")).toBeInTheDocument();
+  });
+
+  it("blocks saving when days decrease as the rate increases", async () => {
+    const onSaveSettings = vi.fn();
+    render(
+      <DashboardPage
+        state={xdayState}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+
+    const daysInputs = screen.getAllByLabelText("Lending days");
+    fireEvent.change(daysInputs[1], { target: { value: "20" } });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() =>
+      expect(screen.getByText("Days must not decrease as the rate increases")).toBeInTheDocument()
+    );
+    expect(onSaveSettings).not.toHaveBeenCalled();
   });
 
   it("switches dashboard UI labels from settings while leaving logs unchanged", () => {

@@ -1,5 +1,10 @@
 export type TimespanName = "Hour" | "Day" | "Week" | "Month" | "Year";
 
+export interface XDayThresholdEntry {
+  rate: number;
+  days: number;
+}
+
 export interface DashboardSettings {
   refreshRate?: number;
   timespanNames?: TimespanName[];
@@ -7,6 +12,7 @@ export interface DashboardSettings {
   outputCurrencyDisplayMode?: "all" | "summary";
   frrdelta_min?: number;
   frrdelta_max?: number;
+  xday_thresholds?: XDayThresholdEntry[];
   recentSuccessfulLoans?: number;
 }
 

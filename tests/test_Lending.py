@@ -2,66 +2,84 @@
 Tests for Lending module utility functions
 """
 
+from lendingbot.modules.Configuration import RootConfig, XDayThreshold
 from lendingbot.modules.Lending import LendingEngine
 
 
-parse_xday_threshold = LendingEngine.parse_xday_threshold
+def build_engine(thresholds: list[XDayThreshold]) -> LendingEngine:
+    engine = LendingEngine(RootConfig(), api=None, log=None, data=None)  # type: ignore[arg-type]
+    engine.xday_thresholds = thresholds
+    return engine
 
 
-class TestParseXdayThreshold:
-    """Tests for the parse_xday_threshold function"""
+class TestCalculateDuration:
+    """Tests for the rate -> days mapping in _calculate_duration"""
 
-    def test_parse_empty_threshold(self) -> None:
-        """Test parsing empty threshold returns empty lists"""
-        rates, xdays = parse_xday_threshold("")
-        assert rates == []
-        assert xdays == []
+    def test_no_thresholds_keeps_requested_days(self) -> None:
+        """Without thresholds the requested duration is returned unchanged"""
+        engine = build_engine([])
+        assert engine._calculate_duration(0.0005, "2") == "2"
+        assert engine._calculate_duration(0.0005, "30") == "30"
 
-    def test_parse_none_threshold(self) -> None:
-        """Test parsing None threshold returns empty lists"""
-        rates, xdays = parse_xday_threshold(None)  # type: ignore[arg-type]
-        assert rates == []
-        assert xdays == []
+    def test_rate_below_first_threshold_uses_first_days(self) -> None:
+        engine = build_engine([XDayThreshold(rate="0.05", days=25)])
+        assert engine._calculate_duration(0.0002, "2") == "25"
 
-    def test_parse_single_pair(self) -> None:
-        """Test parsing a single rate:days pair"""
-        rates, xdays = parse_xday_threshold("0.050:25")
-        assert len(rates) == 1
-        assert len(xdays) == 1
-        # Rate should be converted from percentage (0.050 -> 0.00050)
-        assert rates[0] == 0.00050
-        assert xdays[0] == "25"
+    def test_rate_above_last_threshold_uses_last_days(self) -> None:
+        engine = build_engine(
+            [
+                XDayThreshold(rate="0.050", days=25),
+                XDayThreshold(rate="0.058", days=30),
+                XDayThreshold(rate="0.060", days=45),
+                XDayThreshold(rate="0.064", days=60),
+                XDayThreshold(rate="0.070", days=120),
+            ]
+        )
+        # Rate is a daily fraction; 0.08% daily is above the 0.070% threshold.
+        assert engine._calculate_duration(0.0008, "2") == "120"
 
-    def test_parse_multiple_pairs(self) -> None:
-        """Test parsing multiple rate:days pairs"""
-        threshold = "0.050:25,0.058:30,0.060:45,0.064:60,0.070:120"
-        rates, xdays = parse_xday_threshold(threshold)
+    def test_rate_exactly_on_threshold_uses_that_days(self) -> None:
+        engine = build_engine(
+            [
+                XDayThreshold(rate="0.050", days=25),
+                XDayThreshold(rate="0.070", days=120),
+            ]
+        )
+        assert engine._calculate_duration(0.0005, "2") == "25"
+        assert engine._calculate_duration(0.0007, "2") == "120"
 
-        assert len(rates) == 5
-        assert len(xdays) == 5
+    def test_rate_between_thresholds_is_interpolated(self) -> None:
+        """Midpoint rate lands on the midpoint of the two surrounding days"""
+        engine = build_engine(
+            [
+                XDayThreshold(rate="0.03", days=30),
+                XDayThreshold(rate="0.05", days=120),
+            ]
+        )
+        assert engine._calculate_duration(0.0004, "2") == "75"
 
-        # Check rates are correctly converted
-        expected_rates = [0.00050, 0.00058, 0.00060, 0.00064, 0.00070]
-        for i, expected in enumerate(expected_rates):
-            assert abs(rates[i] - expected) < 1e-10
+    def test_interpolation_truncates_toward_zero(self) -> None:
+        engine = build_engine(
+            [
+                XDayThreshold(rate="0.03", days=30),
+                XDayThreshold(rate="0.05", days=120),
+            ]
+        )
+        # 30 + 90 * 0.375 = 63.75 -> 63
+        assert engine._calculate_duration(0.000375, "2") == "63"
 
-        # Check days
-        expected_days = ["25", "30", "45", "60", "120"]
-        assert xdays == expected_days
+    def test_thresholds_only_apply_to_default_duration(self) -> None:
+        """A requested duration other than the default "2" is kept as-is"""
+        engine = build_engine([XDayThreshold(rate="0.05", days=120)])
+        assert engine._calculate_duration(0.0005, "30") == "30"
 
-    def test_parse_threshold_order_preserved(self) -> None:
-        """Test that order of pairs is preserved"""
-        threshold = "0.070:120,0.050:25"  # Reverse order
-        rates, xdays = parse_xday_threshold(threshold)
-
-        assert rates[0] > rates[1]  # 0.070 > 0.050
-        assert xdays[0] == "120"
-        assert xdays[1] == "25"
-
-    def test_parse_threshold_with_high_rates(self) -> None:
-        """Test parsing thresholds with higher rates"""
-        threshold = "1.0:60,2.5:90"
-        rates, _xdays = parse_xday_threshold(threshold)
-
-        assert rates[0] == 0.01  # 1.0% -> 0.01
-        assert rates[1] == 0.025  # 2.5% -> 0.025
+    def test_unsorted_thresholds_are_matched_by_rate(self) -> None:
+        """Threshold order in the list does not need to be pre-sorted"""
+        engine = build_engine(
+            [
+                XDayThreshold(rate="0.070", days=120),
+                XDayThreshold(rate="0.050", days=25),
+            ]
+        )
+        assert engine._calculate_duration(0.0002, "2") == "25"
+        assert engine._calculate_duration(0.0008, "2") == "120"

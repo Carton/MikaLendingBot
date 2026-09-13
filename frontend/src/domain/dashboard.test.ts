@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDashboardView, calculateCoinRows, normalizeChartHistory } from "./dashboard";
+import { buildDashboardView, buildXdayDurationCurve, calculateCoinRows, normalizeChartHistory } from "./dashboard";
 
 describe("dashboard domain", () => {
   it("keeps live status visible while the first stats snapshot is missing", () => {
@@ -87,5 +87,43 @@ describe("dashboard domain", () => {
 
     expect(series[0].coin).toBe("USD");
     expect(series[0].points.map((point) => point.timestamp)).toEqual([100, 200]);
+  });
+
+  it("builds a clamped rate-to-days curve from xday thresholds", () => {
+    const points = buildXdayDurationCurve(
+      [
+        { rate: 0.05, days: 120 },
+        { rate: 0.03, days: 30 }
+      ],
+      5
+    );
+
+    // Sorted by rate with flat clamps on both ends of the range.
+    expect(points).toEqual([
+      [0, 30],
+      [0.03, 30],
+      [0.05, 120],
+      [0.055, 120]
+    ]);
+  });
+
+  it("returns an empty curve when xday thresholds are disabled or invalid", () => {
+    expect(buildXdayDurationCurve([], 5)).toEqual([]);
+    expect(buildXdayDurationCurve(undefined, 5)).toEqual([]);
+    expect(
+      buildXdayDurationCurve(
+        [
+          { rate: Number.NaN, days: 30 },
+          { rate: 0.03, days: Number.NaN }
+        ],
+        5
+      )
+    ).toEqual([]);
+  });
+
+  it("caps the preview range at the configured rate limit", () => {
+    const points = buildXdayDurationCurve([{ rate: 4.8, days: 120 }], 5);
+
+    expect(points[points.length - 1][0]).toBe(5);
   });
 });

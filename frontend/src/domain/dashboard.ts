@@ -6,7 +6,8 @@ import type {
   OutputCurrency,
   RawChartPoint,
   RecentSuccessfulLoan,
-  TimespanName
+  TimespanName,
+  XDayThresholdEntry
 } from "./types";
 
 const DEFAULT_TIMESPANS: TimespanName[] = ["Year", "Month", "Week", "Day", "Hour"];
@@ -119,6 +120,37 @@ export function formatNumber(value: number, precision = 4): string {
     maximumFractionDigits: precision,
     minimumFractionDigits: 0
   });
+}
+
+/**
+ * Builds the rate (%/day) -> lending days polyline shown in the settings
+ * preview, mirroring the backend duration mapping: thresholds are sorted by
+ * rate, days are interpolated between neighbours, and rates outside the range
+ * are clamped to the first/last duration. Returns [] when disabled.
+ */
+export function buildXdayDurationCurve(
+  thresholds: XDayThresholdEntry[] | undefined,
+  rateMax: number
+): Array<[number, number]> {
+  const sorted = (thresholds ?? [])
+    .filter((entry) => Number.isFinite(entry.rate) && Number.isFinite(entry.days))
+    .slice()
+    .sort((left, right) => left.rate - right.rate);
+
+  if (sorted.length === 0 || rateMax <= 0) return [];
+
+  const upperBound = roundToPrecision(Math.min(rateMax, sorted[sorted.length - 1].rate * 1.1), 4);
+  const points: Array<[number, number]> = [[0, sorted[0].days]];
+  for (const entry of sorted) {
+    points.push([entry.rate, entry.days]);
+  }
+  points.push([upperBound, sorted[sorted.length - 1].days]);
+  return points;
+}
+
+function roundToPrecision(value: number, precision: number): number {
+  const factor = Math.pow(10, precision);
+  return Math.round(value * factor) / factor;
 }
 
 function calculateEarnings(sum: number, rate: number, multiplier: number): number {

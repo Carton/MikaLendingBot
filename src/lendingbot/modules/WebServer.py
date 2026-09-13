@@ -1,4 +1,5 @@
 import asyncio
+import itertools
 import json
 import threading
 from collections.abc import AsyncGenerator
@@ -16,6 +17,11 @@ from .Logger import Logger
 
 
 FRR_DELTA_MIN_LIMIT = Decimal("-30")
+
+XDAY_RATE_MIN = Decimal("0")
+XDAY_RATE_MAX = Decimal("5")
+XDAY_DAYS_MIN = 2
+XDAY_DAYS_MAX = 120
 
 
 class WebServer:
@@ -203,17 +209,11 @@ class WebServer:
             snapshot = get_snapshot()
             if isinstance(snapshot, dict) and snapshot:
                 return {
-                    key: snapshot[key]
-                    for key in ("last_status", "last_update")
-                    if key in snapshot
+                    key: snapshot[key] for key in ("last_status", "last_update") if key in snapshot
                 }
 
         persisted = self._read_stats_file()
-        return {
-            key: persisted[key]
-            for key in ("last_status", "last_update")
-            if key in persisted
-        }
+        return {key: persisted[key] for key in ("last_status", "last_update") if key in persisted}
 
     def _get_persisted_stats_snapshot(self) -> dict[str, Any]:
         persisted = self._read_stats_file()
@@ -282,6 +282,9 @@ class WebServer:
             "outputCurrencyDisplayMode": "all",
             "frrdelta_min": float(default_coin_cfg.frr_delta_min),
             "frrdelta_max": float(default_coin_cfg.frr_delta_max),
+            "xday_thresholds": [
+                {"rate": float(t.rate), "days": t.days} for t in default_coin_cfg.xday_thresholds
+            ],
             "recentSuccessfulLoans": self.config.bot.web.recent_successful_loans,
         }
         default_settings = sanitize_web_settings(default_settings)
@@ -294,12 +297,14 @@ class WebServer:
                 if isinstance(data, dict):
                     settings = default_settings | data
                     settings.pop("effRateMode", None)
-                    settings["recentSuccessfulLoans"] = default_settings[
-                        "recentSuccessfulLoans"
-                    ]
+                    settings["recentSuccessfulLoans"] = default_settings["recentSuccessfulLoans"]
                     if not settings.get("timespanNames"):
                         settings["timespanNames"] = default_settings["timespanNames"]
-                    return sanitize_web_settings(settings)
+                    settings = sanitize_web_settings(settings)
+                    # Re-apply the TOML default when the persisted value was malformed.
+                    if "xday_thresholds" not in settings:
+                        settings["xday_thresholds"] = default_settings["xday_thresholds"]
+                    return settings
                 return default_settings
         except Exception:
             return default_settings
@@ -317,7 +322,10 @@ class WebServer:
             print(f"Error saving web settings: {e}")
 
     def _apply_web_settings(self, config_data: dict[str, Any]) -> dict[str, Any] | JSONResponse:
+        xday_submitted = "xday_thresholds" in config_data
         config_data = sanitize_web_settings(config_data)
+        applied: dict[str, Any] = {}
+
         if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
             try:
                 self.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
@@ -326,18 +334,50 @@ class WebServer:
                 self.log.log(
                     f"Settings updated by user: FRR Delta Min={self.lending_engine.frrdelta_min}%, Max={self.lending_engine.frrdelta_max}%"
                 )
-                self.save_web_settings(config_data)
-                return {
-                    "success": True,
+                applied |= {
                     "frrdelta_min": str(self.lending_engine.frrdelta_min),
                     "frrdelta_max": str(self.lending_engine.frrdelta_max),
                 }
             except (ValueError, TypeError, InvalidOperation) as e:
                 return JSONResponse(status_code=400, content={"success": False, "error": str(e)})
 
+        if xday_submitted:
+            # sanitize_web_settings strips values that are not a list at all,
+            # so their absence here means the submitted shape was invalid.
+            thresholds = (
+                normalize_xday_thresholds(config_data["xday_thresholds"])
+                if "xday_thresholds" in config_data
+                else None
+            )
+            if thresholds is None:
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "error": "xday_thresholds must be a list of {rate, days} entries",
+                    },
+                )
+            if any(later.days < earlier.days for earlier, later in itertools.pairwise(thresholds)):
+                return JSONResponse(
+                    status_code=400,
+                    content={
+                        "success": False,
+                        "error": "xday_thresholds days must not decrease as the rate increases",
+                    },
+                )
+            self.lending_engine.xday_thresholds = thresholds
+            self.lending_engine.has_web_xday_override = True
+            self.log.log(
+                "Settings updated by user: xday_thresholds="
+                + ",".join(f"{t.rate}%->{t.days}d" for t in thresholds)
+            )
+            applied["xday_thresholds"] = [
+                {"rate": float(t.rate), "days": t.days} for t in thresholds
+            ]
+
         try:
             self.save_web_settings(config_data)
-            return {"success": True}
+            return {"success": True} | applied
         except Exception as e:
             return JSONResponse(status_code=400, content={"success": False, "error": str(e)})
 
@@ -345,8 +385,57 @@ class WebServer:
 _web_server: WebServer | None = None
 
 
+def normalize_xday_thresholds(raw: Any) -> list[Configuration.XDayThreshold] | None:
+    """
+    Parses raw xday_thresholds web settings into a canonical threshold list.
+
+    Invalid entries (non-dict items, out-of-range values) are dropped, the list
+    is sorted by rate ascending and duplicate rates keep the last occurrence.
+    Returns None when raw is not a list at all.
+    """
+    if not isinstance(raw, list):
+        return None
+
+    parsed: list[Configuration.XDayThreshold] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        rate_raw = entry.get("rate")
+        days_raw = entry.get("days")
+        if rate_raw is None or days_raw is None:
+            continue
+        try:
+            rate = Decimal(str(rate_raw))
+            days = int(days_raw)
+        except (ValueError, TypeError, InvalidOperation):
+            continue
+        if not (XDAY_RATE_MIN <= rate <= XDAY_RATE_MAX):
+            continue
+        if not (XDAY_DAYS_MIN <= days <= XDAY_DAYS_MAX):
+            continue
+        parsed.append(Configuration.XDayThreshold(rate=rate, days=days))
+
+    parsed.sort(key=lambda t: t.rate)
+    deduped: list[Configuration.XDayThreshold] = []
+    for threshold in parsed:
+        if deduped and deduped[-1].rate == threshold.rate:
+            deduped[-1] = threshold
+        else:
+            deduped.append(threshold)
+    return deduped
+
+
 def sanitize_web_settings(settings: dict[str, Any]) -> dict[str, Any]:
     sanitized = dict(settings)
+    if "xday_thresholds" in sanitized:
+        thresholds = normalize_xday_thresholds(sanitized["xday_thresholds"])
+        if thresholds is None:
+            # Drop malformed values so the TOML defaults apply instead.
+            sanitized.pop("xday_thresholds")
+        else:
+            sanitized["xday_thresholds"] = [
+                {"rate": float(t.rate), "days": t.days} for t in thresholds
+            ]
     if "frrdelta_min" not in sanitized:
         return sanitized
 

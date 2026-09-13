@@ -1,3 +1,4 @@
+import bisect
 import datetime as dt
 import sched
 import threading
@@ -57,7 +58,8 @@ class LendingEngine:
         self.gap_bottom_default: Decimal = Decimal(0)
         self.gap_top_default: Decimal = Decimal(0)
         self.gap_mode_default: Configuration.GapMode | bool | str = ""
-        self.xday_threshold: str = ""
+        self.xday_thresholds: list[Configuration.XDayThreshold] = []
+        self.has_web_xday_override: bool = False
         self.min_loan_size: Decimal = Decimal(0)
         self.min_loan_sizes: dict[str, Decimal] = {}
 
@@ -111,12 +113,7 @@ class LendingEngine:
             else self.default_coin_cfg.gap_bottom
         )
 
-        # xday string reconstruction
-        xdays = self.default_coin_cfg.xday_thresholds
-        if xdays:
-            self.xday_threshold = ",".join([f"{x.rate}:{x.days}" for x in xdays])
-        else:
-            self.xday_threshold = ""
+        self.xday_thresholds = list(self.default_coin_cfg.xday_thresholds)
 
         self.min_loan_size = self.default_coin_cfg.min_loan_size
 
@@ -149,6 +146,16 @@ class LendingEngine:
             else:
                 self.has_web_frr_override = False
 
+            if "xday_thresholds" in web_settings:
+                thresholds = WebServer.normalize_xday_thresholds(web_settings["xday_thresholds"])
+                if thresholds is not None:
+                    self.xday_thresholds = thresholds
+                    self.has_web_xday_override = True
+                else:
+                    self.has_web_xday_override = False
+            else:
+                self.has_web_xday_override = False
+
             if "lending_paused" in web_settings:
                 self.lending_paused = bool(web_settings["lending_paused"])
                 if self.log:
@@ -170,23 +177,6 @@ class LendingEngine:
             return Decimal(self.min_loan_sizes[currency])
         return self.min_loan_size
 
-    @staticmethod
-    def parse_xday_threshold(xday_threshold_str: str) -> tuple[list[float], list[str]]:
-        """
-        Parses the xdaythreshold config string into rates and days lists.
-        """
-        rates: list[float] = []
-        xdays: list[str] = []
-        if xday_threshold_str:
-            for pair in xday_threshold_str.split(","):
-                try:
-                    rate, day = pair.split(":")
-                    rates.append(float(rate) / 100)
-                    xdays.append(day)
-                except (ValueError, TypeError):
-                    continue
-        return rates, xdays
-
     def _adjust_rate_for_competition(self, rate: float) -> float:
         """
         Adjusts the rate to be slightly below the competition if above a threshold.
@@ -200,28 +190,27 @@ class LendingEngine:
         Calculates the duration (days) based on rate thresholds and end_date.
         """
         days = requested_days
-        rates, xdays = self.parse_xday_threshold(self.xday_threshold)
 
-        if days == "2" and len(rates) > 0:
+        if days == "2" and self.xday_thresholds:
+            # Threshold rates are daily percentages. Convert the offer rate (a
+            # daily fraction) through its decimal repr so a rate that visually
+            # matches a threshold maps onto it exactly despite float rounding.
+            offer_rate = Decimal(str(rate)) * 100
+            thresholds = sorted(self.xday_thresholds, key=lambda t: t.rate)
+            rates = [t.rate for t in thresholds]
+            xdays = [t.days for t in thresholds]
             # map rate to xdays, use interpolation if rate is not in the list
-            if rate < rates[0]:
-                days = xdays[0]
+            index = bisect.bisect_left(rates, offer_rate)
+            if index <= 0:
+                days = str(xdays[0])
+            elif index >= len(rates):
+                days = str(xdays[-1])
             else:
-                for i in range(len(rates)):
-                    if rate <= rates[i]:
-                        # linear interpolation
-                        days = str(
-                            int(xdays[i - 1])
-                            + int(
-                                (int(xdays[i]) - int(xdays[i - 1]))
-                                * (rate - rates[i - 1])
-                                / (rates[i] - rates[i - 1])
-                            )
-                        )
-                        break
-                else:
-                    # If rate is greater than the last rate, use the last xdays
-                    days = xdays[-1]
+                # linear interpolation
+                lower_rate, upper_rate = rates[index - 1], rates[index]
+                lower_days, upper_days = xdays[index - 1], xdays[index]
+                fraction = (offer_rate - lower_rate) / (upper_rate - lower_rate)
+                days = str(int(lower_days + (upper_days - lower_days) * fraction))
 
         if self.config.bot.end_date:
             days_remaining = int(self.data.get_max_duration(self.config.bot.end_date, "order"))
@@ -257,11 +246,9 @@ class LendingEngine:
 
         if not self.dry_run:
             msg = self.api.create_loan_offer(currency, float(amt_s), int(days), 0, float(rate_f))
-            # Get thresholds again for notification check (logic from original)
-            _, xdays_list = self.parse_xday_threshold(self.xday_threshold)
             if (
-                len(xdays_list) > 0
-                and int(days) == int(xdays_list[-1])
+                self.xday_thresholds
+                and int(days) == self.xday_thresholds[-1].days
                 and self.config.notifications.notify_xday_threshold
             ):
                 text = f"{format_amount_currency(amt_s, currency)} loan placed for {days} days at a rate of {format_rate_pct(rate_f)}"
