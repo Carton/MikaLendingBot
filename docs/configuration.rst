@@ -260,6 +260,21 @@ Very few situations require you to change these settings.
     - A "Stuck" order occurs when it partially fills and leaves the coins balance total (total = open orders + let in balance) below your ``min_loan_size`` and so the bot would not be able to lend it again if it was canceled.
     - When disabled, stuck orders will be canceled and held in balance until enough orders expire to allow it to lend again.
 
+- ``cancel_policy`` Controls which open loan offers the bot may cancel each cycle. Found in the ``[bot]`` section.
+
+    - Default value: ``all``
+    - Allowed values: ``all`` or ``own``
+    - ``all`` (legacy behavior): every open lending offer for active currencies is canceled before re-lending, including offers you placed manually.
+    - ``own``: only offers the bot itself created are canceled. The bot keeps a persistent registry (see ``offer_registry_file``) of every offer it places; offers that are open on the exchange but missing from the registry — manual placements, offers created by other tools — are never touched.
+    - Use ``own`` when you lend part of your funds yourself at other rates or durations (for example, with a ``max_offer_size`` cap while the rest is placed manually) and do not want the bot to cancel those offers every cycle.
+    - The registry is created automatically on first run and bound to the exchange and API account. With ``cancel_policy = "own"``, a registry that is corrupt, has an unsupported version, or belongs to a different account pauses the bot's cancel and lending phases (with an error in the log) until the file is fixed or removed and the bot restarted — it never falls back to canceling everything. With the default ``all``, a registry problem only disables ownership recording; canceling and lending continue as before.
+    - Note: offers that existed before the first run with this feature are untracked and will not be canceled by ``own``. Cancel them manually once (or run one cycle with ``all``) if you want the bot to take them over.
+
+- ``offer_registry_file`` Path of the persistent offer registry used by ``cancel_policy = "own"``. Found in the ``[bot]`` section.
+
+    - Default value: ``offer_registry.json``
+    - Only change it if you run multiple bot instances; each instance (exchange + API account) should use its own registry file.
+
 - ``hide_coins`` If True, will not lend any of a coin if its market low is below the set ``min_daily_rate``. Found in the ``[bot]`` section.
 
     - Default value: True
