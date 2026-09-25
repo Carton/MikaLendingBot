@@ -437,6 +437,27 @@ especially to “Withdraw”.</p></li>
 </ul>
 </div></blockquote>
 </li>
+<li><p><code class="docutils literal notranslate"><span class="pre">cancel_policy</span></code> Controls which open loan offers the bot may cancel each cycle. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">all</span></code></p></li>
+<li><p>Allowed values: <code class="docutils literal notranslate"><span class="pre">all</span></code> or <code class="docutils literal notranslate"><span class="pre">own</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">all</span></code> (legacy behavior): every open lending offer for active currencies is canceled before re-lending, including offers you placed manually.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">own</span></code>: only offers the bot itself created are canceled. The bot keeps a persistent registry (see <code class="docutils literal notranslate"><span class="pre">offer_registry_file</span></code>) of every offer it places; offers that are open on the exchange but missing from the registry — manual placements, offers created by other tools — are never touched.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">own</span></code> when you lend part of your funds yourself at other rates or durations (for example, with a <code class="docutils literal notranslate"><span class="pre">max_offer_size</span></code> cap while the rest is placed manually) and do not want the bot to cancel those offers every cycle.</p></li>
+<li><p>The registry is created automatically on first run and bound to the exchange and API account. With <code class="docutils literal notranslate"><span class="pre">cancel_policy</span> <span class="pre">=</span> <span class="pre">&quot;own&quot;</span></code>, a registry that is corrupt, has an unsupported version, or belongs to a different account pauses the bot’s cancel and lending phases (with an error in the log) until the file is fixed or removed and the bot restarted — it never falls back to canceling everything. With the default <code class="docutils literal notranslate"><span class="pre">all</span></code>, a registry problem only disables ownership recording; canceling and lending continue as before.</p></li>
+<li><p>Note: offers that existed before the first run with this feature are untracked and will not be canceled by <code class="docutils literal notranslate"><span class="pre">own</span></code>. Cancel them manually once (or run one cycle with <code class="docutils literal notranslate"><span class="pre">all</span></code>) if you want the bot to take them over.</p></li>
+</ul>
+</div></blockquote>
+</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">offer_registry_file</span></code> Path of the persistent offer registry used by <code class="docutils literal notranslate"><span class="pre">cancel_policy</span> <span class="pre">=</span> <span class="pre">&quot;own&quot;</span></code>. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Default value: <code class="docutils literal notranslate"><span class="pre">offer_registry.json</span></code></p></li>
+<li><p>Only change it if you run multiple bot instances; each instance (exchange + API account) should use its own registry file.</p></li>
+</ul>
+</div></blockquote>
+</li>
 <li><p><code class="docutils literal notranslate"><span class="pre">hide_coins</span></code> If True, will not lend any of a coin if its market low is below the set <code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code>. Found in the <code class="docutils literal notranslate"><span class="pre">[bot]</span></code> section.</p>
 <blockquote>
 <div><ul class="simple">
