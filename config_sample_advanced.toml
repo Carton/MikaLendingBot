@@ -26,6 +26,15 @@ api_debug_log = false
 keep_stuck_orders = true
 hide_coins = true
 
+# Which open loan offers the bot may cancel each cycle.
+#   "all" = cancel every open offer for active currencies (legacy behavior).
+#   "own" = only cancel offers this bot created (tracked in offer_registry_file);
+#           manual placements and offers from other tools are never touched.
+# Use "own" if you lend part of your funds yourself at other rates/durations
+# (e.g. with a max_offer_size cap) and don't want the bot to cancel them.
+cancel_policy = "all"
+# offer_registry_file = "offer_registry.json"  # per-instance if running multiple bots
+
 # Stop opening loans after this date approaches. Preferred format: YYYY-MM-DD.
 # end_date = "2026-12-25"
 

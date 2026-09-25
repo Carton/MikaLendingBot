@@ -13,8 +13,10 @@ from lendingbot.modules.WebServer import WebServer
 
 
 @pytest.fixture
-def mock_config():
-    return RootConfig()
+def mock_config(tmp_path):
+    config = RootConfig()
+    config.bot.offer_registry_file = str(tmp_path / "offer_registry.json")
+    return config
 
 
 @pytest.fixture

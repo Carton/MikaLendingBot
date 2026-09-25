@@ -1,10 +1,12 @@
 import datetime as dt
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from pathlib import Path
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from lendingbot.modules.Configuration import (
+    CancelPolicy,
     CoinConfig,
     Exchange,
     GapMode,
@@ -13,6 +15,7 @@ from lendingbot.modules.Configuration import (
     XDayThreshold,
 )
 from lendingbot.modules.Lending import LendingEngine
+from lendingbot.modules.OfferRegistry import STATUS_CANCEL_PENDING
 
 
 def timestamp(value: str) -> float:
@@ -20,13 +23,14 @@ def timestamp(value: str) -> float:
 
 
 @pytest.fixture
-def mock_config():
+def mock_config(tmp_path):
     """Create a comprehensive RootConfig for testing."""
     config = RootConfig()
     config.api.exchange = Exchange.BITFINEX
     config.api.all_currencies = ["BTC", "ETH", "USD"]
     config.bot.period_active = 60
     config.bot.period_inactive = 300
+    config.bot.offer_registry_file = str(tmp_path / "offer_registry.json")
 
     # Default coin config
     config.coin["default"] = CoinConfig(
@@ -691,3 +695,220 @@ class TestLendingEngineFlow:
 
             with pytest.raises(RuntimeError, match="Serious Error"):
                 engine.lend_cur("BTC", total_lent_info, lending_balances, {})
+
+
+class TestCancelPolicy:
+    """Tests for cancel_policy and offer registry integration."""
+
+    @staticmethod
+    def setup_open_offers(mock_api, offers):
+        mock_api.return_open_loan_offers.return_value = offers
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.0"}}
+        mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
+
+    def test_policy_own_only_cancels_tracked_offers(self, engine, mock_api, mock_config):
+        mock_config.bot.cancel_policy = CancelPolicy.OWN
+        engine.initialize()
+        assert engine.offer_registry is not None
+        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+
+        self.setup_open_offers(
+            mock_api,
+            {"BTC": [{"id": 101, "amount": "1.0"}, {"id": 202, "amount": "5.0"}]},
+        )
+
+        engine.cancel_all()
+
+        assert mock_api.cancel_loan_offer.call_args_list == [call("BTC", 101)]
+        engine.log.log.assert_any_call(
+            "[BTC] cancel_policy=own: leaving 1 untracked offer(s) untouched"
+        )
+
+    def test_policy_own_without_tracked_offers_cancels_nothing(self, engine, mock_api, mock_config):
+        mock_config.bot.cancel_policy = CancelPolicy.OWN
+        engine.initialize()
+
+        self.setup_open_offers(mock_api, {"BTC": [{"id": 202, "amount": "5.0"}]})
+
+        engine.cancel_all()
+
+        mock_api.cancel_loan_offer.assert_not_called()
+
+    def test_policy_all_cancels_every_offer(self, engine, mock_api):
+        engine.initialize()
+        assert engine.offer_registry is not None
+        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+
+        self.setup_open_offers(
+            mock_api,
+            {"BTC": [{"id": 101, "amount": "1.0"}, {"id": 202, "amount": "5.0"}]},
+        )
+
+        engine.cancel_all()
+
+        assert mock_api.cancel_loan_offer.call_args_list == [
+            call("BTC", 101),
+            call("BTC", 202),
+        ]
+
+    def test_cancel_marks_cancel_pending_and_reconcile_removes(self, engine, mock_api, mock_config):
+        mock_config.bot.cancel_policy = CancelPolicy.OWN
+        engine.initialize()
+        assert engine.offer_registry is not None
+        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+
+        self.setup_open_offers(mock_api, {"BTC": [{"id": 101, "amount": "1.0"}]})
+        engine.cancel_all()
+
+        # Cancel requested -> status recorded and persisted...
+        assert engine.offer_registry.get("BTC", 101) is not None
+        assert engine.offer_registry.get("BTC", 101).status == STATUS_CANCEL_PENDING
+        persisted = Path(mock_config.bot.offer_registry_file).read_text(encoding="utf-8")
+        assert "BTC:101" in persisted
+
+        # ...next cycle the offer is gone from the exchange -> registry drops it
+        self.setup_open_offers(mock_api, {"BTC": []})
+        engine.cancel_all()
+        assert engine.offer_registry.get("BTC", 101) is None
+
+    def test_dry_run_cancels_nothing_and_keeps_registry(self, engine, mock_api, mock_config):
+        mock_config.bot.cancel_policy = CancelPolicy.OWN
+        engine.initialize(dry_run=True)
+        assert engine.offer_registry is not None
+        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+
+        self.setup_open_offers(mock_api, {"BTC": [{"id": 101, "amount": "1.0"}]})
+        engine.cancel_all()
+
+        mock_api.cancel_loan_offer.assert_not_called()
+        assert not engine.offer_registry.file_exists()
+
+    def test_registry_error_skips_cancel_and_lending(self, engine, mock_api):
+        engine.initialize()
+        engine.registry_error = "registry file is corrupt"
+
+        engine.cancel_all()
+        mock_api.return_open_loan_offers.assert_not_called()
+
+        engine.lend_all()
+        engine.data.get_total_lent.assert_not_called()
+        assert engine.sleep_time == engine.config.bot.period_inactive
+
+    def test_initialize_with_corrupt_registry_sets_error_in_own_mode(self, engine, mock_config):
+        mock_config.bot.cancel_policy = CancelPolicy.OWN
+        Path(mock_config.bot.offer_registry_file).write_text("{corrupt", encoding="utf-8")
+
+        engine.initialize()
+
+        assert engine.registry_error is not None
+        assert engine.offer_registry is None
+        engine.log.log_error.assert_called_once()
+
+    def test_initialize_with_corrupt_registry_warns_only_in_all_mode(self, engine, mock_config):
+        Path(mock_config.bot.offer_registry_file).write_text("{corrupt", encoding="utf-8")
+
+        engine.initialize()
+
+        # "all" does not depend on the registry for safety: keep lending.
+        assert engine.registry_error is None
+        assert engine.offer_registry is None
+        engine.log.log_error.assert_not_called()
+        assert any(
+            "Offer registry unavailable" in str(c.args[0]) for c in engine.log.log.call_args_list
+        )
+
+    def test_policy_own_dust_guard_counts_only_tracked_offers(self, engine, mock_api, mock_config):
+        mock_config.bot.cancel_policy = CancelPolicy.OWN
+        engine.initialize()
+        assert engine.offer_registry is not None
+        engine.offer_registry.add("BTC", 101, "0.5", "0.0001", 2)
+        engine.min_loan_sizes["BTC"] = Decimal("1.0")
+
+        # Free balance 0 + tracked 0.5 < min 1.0: canceling the tracked offer
+        # would strand dust, so nothing may be canceled even though the sum
+        # with the untracked 2.0 offer would clear the guard.
+        self.setup_open_offers(
+            mock_api,
+            {"BTC": [{"id": 101, "amount": "0.5"}, {"id": 202, "amount": "2.0"}]},
+        )
+
+        engine.cancel_all()
+
+        mock_api.cancel_loan_offer.assert_not_called()
+
+    def test_reconcile_error_pauses_cancel_and_lending(self, engine, mock_api, mock_config):
+        mock_config.bot.cancel_policy = CancelPolicy.OWN
+        engine.initialize()
+        assert engine.offer_registry is not None
+        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+
+        # Snapshot carries a non-numeric amount -> reconcile must fail closed.
+        self.setup_open_offers(mock_api, {"BTC": [{"id": 101, "amount": "not-a-number"}]})
+
+        engine.cancel_all()
+
+        mock_api.cancel_loan_offer.assert_not_called()
+        assert engine.registry_error is not None
+        engine.lend_all()
+        engine.data.get_total_lent.assert_not_called()
+
+    def test_untracked_log_only_emitted_on_count_change(self, engine, mock_api, mock_config):
+        mock_config.bot.cancel_policy = CancelPolicy.OWN
+        engine.initialize()
+        self.setup_open_offers(mock_api, {"BTC": [{"id": 202, "amount": "2.0"}]})
+
+        engine.cancel_all()
+        engine.cancel_all()
+
+        untracked_logs = [
+            c
+            for c in engine.log.log.call_args_list
+            if "untracked offer(s) untouched" in str(c.args[0])
+        ]
+        assert len(untracked_logs) == 1
+
+    def test_create_lend_offer_handles_poloniex_orderid_key(self, engine, mock_api):
+        engine.initialize()
+        mock_api.create_loan_offer.return_value = {"success": 1, "orderID": 888}
+
+        engine.create_lend_offer("BTC", Decimal("1"), Decimal("0.01"))
+
+        assert engine.offer_registry is not None
+        assert engine.offer_registry.tracked_ids("BTC") == {888}
+
+    def test_registry_persist_failure_stops_offer_recording(self, engine, mock_api):
+        engine.initialize()
+        mock_api.create_loan_offer.return_value = {"success": 1, "orderId": 999}
+        assert engine.offer_registry is not None
+        engine.offer_registry.persist = MagicMock(side_effect=OSError("disk full"))
+
+        # The offer is created (and logged) first; the persist failure then
+        # aborts the cycle by propagating.
+        with pytest.raises(OSError, match="disk full"):
+            engine.create_lend_offer("BTC", Decimal("1"), Decimal("0.01"))
+        engine.log.offer.assert_called_once()
+        assert engine.offer_registry.tracked_ids("BTC") == {999}
+
+    def test_create_lend_offer_registers_order(self, engine, mock_api, mock_config):
+        engine.initialize()
+        mock_api.create_loan_offer.return_value = {"success": 1, "orderId": 777}
+
+        engine.create_lend_offer("BTC", Decimal("1"), Decimal("0.01"))
+
+        assert engine.offer_registry is not None
+        assert engine.offer_registry.tracked_ids("BTC") == {777}
+        persisted = Path(mock_config.bot.offer_registry_file).read_text(encoding="utf-8")
+        assert "BTC:777" in persisted
+
+    def test_create_lend_offer_without_order_id_is_not_tracked(self, engine, mock_api):
+        engine.initialize()
+        mock_api.create_loan_offer.return_value = {"success": 1, "message": "no id"}
+
+        engine.create_lend_offer("BTC", Decimal("1"), Decimal("0.01"))
+
+        assert engine.offer_registry is not None
+        assert engine.offer_registry.order_count() == 0
+        engine.log.log.assert_any_call(
+            "[BTC] Offer placed but the response had no order id; "
+            "it cannot be tracked by cancel_policy=own"
+        )

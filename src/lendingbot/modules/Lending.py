@@ -10,6 +10,7 @@ from typing import Any
 from . import Configuration
 from .ExchangeApi import ExchangeApi
 from .Logger import Logger
+from .OfferRegistry import OfferRegistry, OfferRegistryError
 from .Utils import format_amount_currency, format_rate_pct
 
 
@@ -73,6 +74,10 @@ class LendingEngine:
         self.notify_conf: dict[str, Any] = {}
         self.loans_provided: list[dict[str, Any]] = []
         self.recent_successful_loans: dict[str, list[dict[str, str]]] = {}
+        self.cancel_policy: Configuration.CancelPolicy = Configuration.CancelPolicy.ALL
+        self.offer_registry: OfferRegistry | None = None
+        self.registry_error: str | None = None
+        self._untracked_offers_logged: dict[str, int] = {}
         self._active_loans_initialized = False
         self._active_loans_tracking_started_at: float | None = None
         self._known_active_loan_fingerprints: set[str] = set()
@@ -127,6 +132,43 @@ class LendingEngine:
             self.min_loan_sizes[symbol] = cc.min_loan_size
 
         self.transferable_currencies = list(self.config.bot.transferable_currencies)
+
+        self.cancel_policy = self.config.bot.cancel_policy
+        self.offer_registry = None
+        self.registry_error = None
+        try:
+            apikey = (
+                self.config.api.apikey.get_secret_value()
+                if self.config.api.apikey is not None
+                else None
+            )
+            self.offer_registry = OfferRegistry.load(
+                self.config.bot.offer_registry_file,
+                str(self.config.api.exchange.value),
+                OfferRegistry.account_key(apikey),
+            )
+            if not self.offer_registry.file_exists() and not self.dry_run:
+                self.offer_registry.persist(force=True)
+        except OfferRegistryError as ex:
+            self.offer_registry = None
+            if self.cancel_policy == Configuration.CancelPolicy.OWN:
+                # "own" cannot verify offer ownership without the registry, so
+                # both phases must stop (restart required after fixing).
+                self.registry_error = str(ex)
+                if self.log:
+                    self.log.log_error(f"Offer registry unavailable: {self.registry_error}")
+                    self.log.log(
+                        "Cancel and lending phases are paused because cancel_policy=own "
+                        "cannot verify offer ownership. Fix the registry issue (see the "
+                        "error above) and restart the bot; existing offers are untouched."
+                    )
+            elif self.log:
+                # "all" does not depend on the registry for safety; keep the
+                # legacy behavior running, just without ownership recording.
+                self.log.log(
+                    f"Offer registry unavailable ({ex}); offers will not be recorded for "
+                    "a future cancel_policy=own. Canceling is unaffected (cancel_policy=all)."
+                )
 
         self.frrdelta_min = self.default_coin_cfg.frr_delta_min
         self.frrdelta_max = self.default_coin_cfg.frr_delta_max
@@ -257,6 +299,38 @@ class LendingEngine:
             if self.log:
                 # Pass original_rate to show compete adjustment info
                 self.log.offer(amt_s, currency, float(rate_f), days, msg, original_rate)
+            # Register only after the offer is logged: a persist failure stops
+            # further offers this cycle but must not swallow this log entry.
+            self._register_created_offer(currency, msg, amt_s, rate_f, int(days))
+
+    def _register_created_offer(
+        self, currency: str, msg: Any, amount: str, rate: float, days: int
+    ) -> None:
+        """
+        Records a successfully created offer in the registry so later cycles can
+        tell it apart from offers the bot must not touch.
+        """
+        if self.offer_registry is None:
+            return
+        order_id: int | None = None
+        if isinstance(msg, dict):
+            raw_id = msg.get("orderId", msg.get("orderID"))
+            if raw_id is not None:
+                try:
+                    order_id = int(str(raw_id))
+                except (TypeError, ValueError):
+                    order_id = None
+        if order_id is None or order_id <= 0:
+            if self.log:
+                self.log.log(
+                    f"[{currency}] Offer placed but the response had no order id; "
+                    "it cannot be tracked by cancel_policy=own"
+                )
+            return
+        self.offer_registry.add(currency, order_id, amount, str(rate), days)
+        # Persist immediately: a crash after this point must not orphan the
+        # offer. A persist failure stops further offers this cycle by raising.
+        self.offer_registry.persist()
 
     def get_frr_or_min_daily_rate(self, cur: str) -> RateCalcInfo:
         """
@@ -625,9 +699,39 @@ class LendingEngine:
 
     def cancel_all(self) -> None:
         """
-        Cancels all open lending offers for active currencies.
+        Cancels open lending offers for active currencies, per cancel_policy.
+
+        With cancel_policy="own", only offers recorded in the offer registry
+        (offers this bot created) are canceled; untracked offers are never
+        touched. If the registry is unavailable, nothing is canceled.
         """
+        if self.registry_error is not None:
+            if self.log:
+                self.log.log(
+                    f"Skipping cancel phase: offer registry unavailable ({self.registry_error})"
+                )
+            return
+
         loan_offers = self.api.return_open_loan_offers()
+
+        # Align the registry with this fresh, complete snapshot before using it.
+        if self.offer_registry is not None:
+            try:
+                removed = self.offer_registry.reconcile(loan_offers)
+            except OfferRegistryError as ex:
+                # The snapshot data itself was unusable; stop trusting ownership.
+                self.registry_error = str(ex)
+                if self.log:
+                    self.log.log_error(f"Offer registry error during reconcile: {ex}")
+                    self.log.log(
+                        f"Skipping cancel phase: offer registry unavailable ({self.registry_error})"
+                    )
+                return
+            if removed and self.log:
+                self.log.log(f"Offer registry: {removed} tracked offer(s) no longer open")
+            if self.offer_registry.is_dirty() and not self.dry_run:
+                self.offer_registry.persist()
+
         available_balances = self.api.return_available_account_balances("lending")
         for cur in loan_offers:
             if cur not in self.config.api.all_currencies:
@@ -635,26 +739,55 @@ class LendingEngine:
             if (cfg := self.coin_cfg.get(cur)) and cfg.max_active_amount == 0:
                 # don't cancel disabled coin
                 continue
+            tracked_ids = (
+                self.offer_registry.tracked_ids(cur) if self.offer_registry is not None else set()
+            )
+            if self.cancel_policy == Configuration.CancelPolicy.OWN:
+                candidates = []
+                for offer in loan_offers[cur]:
+                    try:
+                        tracked = int(str(offer["id"])) in tracked_ids
+                    except (TypeError, ValueError):
+                        tracked = False
+                    if tracked:
+                        candidates.append(offer)
+                untracked = len(loan_offers[cur]) - len(candidates)
+                if untracked and self.log and self._untracked_offers_logged.get(cur) != untracked:
+                    self._untracked_offers_logged[cur] = untracked
+                    self.log.log(
+                        f"[{cur}] cancel_policy=own: leaving {untracked} untracked offer(s) "
+                        "untouched"
+                    )
+            else:
+                candidates = list(loan_offers[cur])
+            if not candidates:
+                continue
             if self.config.bot.keep_stuck_orders:
+                # Only amounts that would actually be freed count towards the
+                # dust guard; in "own" mode untracked offers stay on the books.
                 lending_balances = available_balances["lending"]
                 if isinstance(lending_balances, dict) and cur in lending_balances:
                     cur_sum = float(available_balances["lending"][cur])
                 else:
                     cur_sum = 0.0
-                for offer in loan_offers[cur]:
+                for offer in candidates:
                     cur_sum += float(offer["amount"])
             else:
                 cur_sum = float(self.get_min_loan_size(cur)) + 1.0
             if cur_sum >= float(self.get_min_loan_size(cur)):
-                for offer in loan_offers[cur]:
+                for offer in candidates:
                     if not self.dry_run:
                         try:
                             msg = self.api.cancel_loan_offer(cur, offer["id"])
+                            if self.offer_registry is not None:
+                                self.offer_registry.mark_cancel_pending(cur, int(offer["id"]))
                             if self.log:
                                 self.log.cancelOrder(cur, msg)
                         except Exception as ex:
                             if self.log:
                                 self.log.log(f"Error canceling loan offer: {ex}")
+                if self.offer_registry is not None and not self.dry_run:
+                    self.offer_registry.persist()
             else:
                 print(f"Not enough {cur} to lend if bot canceled open orders. Not cancelling.")
 
@@ -741,6 +874,13 @@ class LendingEngine:
         """
         Main loop to attempt lending for all currencies with available balance.
         """
+        if self.registry_error is not None:
+            if self.log:
+                self.log.log(
+                    f"Skipping lending: offer registry unavailable ({self.registry_error})"
+                )
+            self.sleep_time = self.config.bot.period_inactive
+            return
         total_lent_info = self.data.get_total_lent()
         total_lent = total_lent_info.total_lent
         lending_balances_data = self.api.return_available_account_balances("lending")

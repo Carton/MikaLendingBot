@@ -31,6 +31,15 @@ class GapMode(str, Enum):
     RELATIVE = "Relative"
 
 
+class CancelPolicy(str, Enum):
+    # Cancel every open lending offer for active currencies (legacy behavior).
+    ALL = "all"
+    # Only cancel offers recorded in the bot's own offer registry; offers the
+    # bot cannot prove it created (manual placements, other tools) are left
+    # untouched.
+    OWN = "own"
+
+
 class AnalysisMethod(str, Enum):
     PERCENTILE = "Percentile"
     MACD = "MACD"
@@ -80,6 +89,12 @@ class BotConfig(BaseModel):
     log_file_days: int = Field(10, ge=1)
     output_currency: str = "BTC"
     keep_stuck_orders: bool = True
+    # Which open loan offers the bot may cancel each cycle. "own" requires the
+    # persistent offer registry to decide ownership; see OfferRegistry.py.
+    cancel_policy: CancelPolicy = CancelPolicy.ALL
+    # Location of the persistent offer registry (records which loan offers this
+    # bot created, so cancel_policy="own" can leave other offers untouched).
+    offer_registry_file: str = "offer_registry.json"
     hide_coins: bool = True
     end_date: str | None = None
     plugins: list[str] = Field(default_factory=list)
