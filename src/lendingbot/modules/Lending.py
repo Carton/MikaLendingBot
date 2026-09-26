@@ -1,10 +1,11 @@
 import bisect
+import contextlib
 import datetime as dt
 import sched
 import threading
 import time
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_DOWN, Decimal, InvalidOperation
 from typing import Any
 
 from . import Configuration
@@ -77,7 +78,11 @@ class LendingEngine:
         self.cancel_policy: Configuration.CancelPolicy = Configuration.CancelPolicy.ALL
         self.offer_registry: OfferRegistry | None = None
         self.registry_error: str | None = None
-        self._untracked_offers_logged: dict[str, int] = {}
+        self._below_target_logged: dict[str, str] = {}
+        # Currencies whose own-offer refresh failed this cycle: lending is
+        # blocked for them so a second slice cannot be created (cleared each
+        # cycle by cancel_all).
+        self._lending_blocked_currencies: set[str] = set()
         self._active_loans_initialized = False
         self._active_loans_tracking_started_at: float | None = None
         self._known_active_loan_fingerprints: set[str] = set()
@@ -134,6 +139,8 @@ class LendingEngine:
         self.transferable_currencies = list(self.config.bot.transferable_currencies)
 
         self.cancel_policy = self.config.bot.cancel_policy
+        if self.cancel_policy == Configuration.CancelPolicy.LIMITED:
+            self._validate_limited_policy()
         self.offer_registry = None
         self.registry_error = None
         try:
@@ -151,14 +158,15 @@ class LendingEngine:
                 self.offer_registry.persist(force=True)
         except OfferRegistryError as ex:
             self.offer_registry = None
-            if self.cancel_policy == Configuration.CancelPolicy.OWN:
-                # "own" cannot verify offer ownership without the registry, so
-                # both phases must stop (restart required after fixing).
+            if self.cancel_policy == Configuration.CancelPolicy.LIMITED:
+                # "limited" cannot tell managed offers from untracked ones
+                # without the registry, so both phases must stop (restart
+                # required after fixing).
                 self.registry_error = str(ex)
                 if self.log:
                     self.log.log_error(f"Offer registry unavailable: {self.registry_error}")
                     self.log.log(
-                        "Cancel and lending phases are paused because cancel_policy=own "
+                        "Cancel and lending phases are paused because cancel_policy=limited "
                         "cannot verify offer ownership. Fix the registry issue (see the "
                         "error above) and restart the bot; existing offers are untouched."
                     )
@@ -167,7 +175,7 @@ class LendingEngine:
                 # legacy behavior running, just without ownership recording.
                 self.log.log(
                     f"Offer registry unavailable ({ex}); offers will not be recorded for "
-                    "a future cancel_policy=own. Canceling is unaffected (cancel_policy=all)."
+                    "cancel_policy=limited. Canceling is unaffected (cancel_policy=all)."
                 )
 
         self.frrdelta_min = self.default_coin_cfg.frr_delta_min
@@ -303,6 +311,20 @@ class LendingEngine:
             # further offers this cycle but must not swallow this log entry.
             self._register_created_offer(currency, msg, amt_s, rate_f, int(days))
 
+    @staticmethod
+    def _extract_order_id(msg: Any) -> int | None:
+        """Pulls the order id out of a create response (both adapters' shapes)."""
+        if not isinstance(msg, dict):
+            return None
+        raw_id = msg.get("orderId", msg.get("orderID"))
+        if raw_id is None:
+            return None
+        try:
+            order_id = int(str(raw_id))
+        except (TypeError, ValueError):
+            return None
+        return order_id if order_id > 0 else None
+
     def _register_created_offer(
         self, currency: str, msg: Any, amount: str, rate: float, days: int
     ) -> None:
@@ -312,19 +334,12 @@ class LendingEngine:
         """
         if self.offer_registry is None:
             return
-        order_id: int | None = None
-        if isinstance(msg, dict):
-            raw_id = msg.get("orderId", msg.get("orderID"))
-            if raw_id is not None:
-                try:
-                    order_id = int(str(raw_id))
-                except (TypeError, ValueError):
-                    order_id = None
-        if order_id is None or order_id <= 0:
+        order_id = self._extract_order_id(msg)
+        if order_id is None:
             if self.log:
                 self.log.log(
                     f"[{currency}] Offer placed but the response had no order id; "
-                    "it cannot be tracked by cancel_policy=own"
+                    "it cannot be tracked by cancel_policy=limited"
                 )
             return
         self.offer_registry.add(currency, order_id, amount, str(rate), days)
@@ -701,9 +716,13 @@ class LendingEngine:
         """
         Cancels open lending offers for active currencies, per cancel_policy.
 
-        With cancel_policy="own", only offers recorded in the offer registry
-        (offers this bot created) are canceled; untracked offers are never
-        touched. If the registry is unavailable, nothing is canceled.
+        With cancel_policy="all", every open offer is canceled (legacy
+        behavior). With cancel_policy="limited", the bot refreshes its own
+        (registry-managed) offers and absorbs at most max_offer_size worth of
+        untracked offers to fund this cycle's lending target; oversized
+        untracked offers are carved (canceled; the remainder is re-placed at
+        the original rate and duration). If the registry is unavailable,
+        nothing is canceled.
         """
         if self.registry_error is not None:
             if self.log:
@@ -713,6 +732,8 @@ class LendingEngine:
             return
 
         loan_offers = self.api.return_open_loan_offers()
+
+        self._lending_blocked_currencies.clear()
 
         # Align the registry with this fresh, complete snapshot before using it.
         if self.offer_registry is not None:
@@ -732,6 +753,12 @@ class LendingEngine:
             if self.offer_registry.is_dirty() and not self.dry_run:
                 self.offer_registry.persist()
 
+        if self.cancel_policy == Configuration.CancelPolicy.LIMITED:
+            self._cancel_limited(loan_offers)
+            if self.offer_registry is not None and not self.dry_run:
+                self.offer_registry.persist()
+            return
+
         available_balances = self.api.return_available_account_balances("lending")
         for cur in loan_offers:
             if cur not in self.config.api.all_currencies:
@@ -739,32 +766,10 @@ class LendingEngine:
             if (cfg := self.coin_cfg.get(cur)) and cfg.max_active_amount == 0:
                 # don't cancel disabled coin
                 continue
-            tracked_ids = (
-                self.offer_registry.tracked_ids(cur) if self.offer_registry is not None else set()
-            )
-            if self.cancel_policy == Configuration.CancelPolicy.OWN:
-                candidates = []
-                for offer in loan_offers[cur]:
-                    try:
-                        tracked = int(str(offer["id"])) in tracked_ids
-                    except (TypeError, ValueError):
-                        tracked = False
-                    if tracked:
-                        candidates.append(offer)
-                untracked = len(loan_offers[cur]) - len(candidates)
-                if untracked and self.log and self._untracked_offers_logged.get(cur) != untracked:
-                    self._untracked_offers_logged[cur] = untracked
-                    self.log.log(
-                        f"[{cur}] cancel_policy=own: leaving {untracked} untracked offer(s) "
-                        "untouched"
-                    )
-            else:
-                candidates = list(loan_offers[cur])
+            candidates = list(loan_offers[cur])
             if not candidates:
                 continue
             if self.config.bot.keep_stuck_orders:
-                # Only amounts that would actually be freed count towards the
-                # dust guard; in "own" mode untracked offers stay on the books.
                 lending_balances = available_balances["lending"]
                 if isinstance(lending_balances, dict) and cur in lending_balances:
                     cur_sum = float(available_balances["lending"][cur])
@@ -776,20 +781,304 @@ class LendingEngine:
                 cur_sum = float(self.get_min_loan_size(cur)) + 1.0
             if cur_sum >= float(self.get_min_loan_size(cur)):
                 for offer in candidates:
-                    if not self.dry_run:
-                        try:
-                            msg = self.api.cancel_loan_offer(cur, offer["id"])
-                            if self.offer_registry is not None:
-                                self.offer_registry.mark_cancel_pending(cur, int(offer["id"]))
-                            if self.log:
-                                self.log.cancelOrder(cur, msg)
-                        except Exception as ex:
-                            if self.log:
-                                self.log.log(f"Error canceling loan offer: {ex}")
+                    self._cancel_offer(cur, offer)
                 if self.offer_registry is not None and not self.dry_run:
                     self.offer_registry.persist()
             else:
                 print(f"Not enough {cur} to lend if bot canceled open orders. Not cancelling.")
+
+    def _validate_limited_policy(self) -> None:
+        """
+        Ensures every active currency can run under cancel_policy="limited":
+        a positive per-offer cap and FRR (single-order) placement. Currencies
+        disabled via max_active_amount=0 are skipped, mirroring runtime.
+        """
+        for symbol in self.config.api.all_currencies:
+            cfg = self.coin_cfg.get(symbol)
+            if cfg is None or cfg.max_active_amount == 0:
+                continue
+            if cfg.max_offer_size <= 0:
+                raise ValueError(f"[{symbol}] cancel_policy='limited' requires max_offer_size > 0")
+            if cfg.strategy != Configuration.LendingStrategy.FRR:
+                # Coin-level spread_lend is not honored by construct_orders
+                # (it uses the global default), so FRR is the only safe
+                # single-order construction here.
+                raise ValueError(
+                    f"[{symbol}] cancel_policy='limited' requires strategy='FRR' "
+                    "(single-order placement)"
+                )
+
+    def _lending_balance(self, cur: str) -> Decimal:
+        balances = self.api.return_available_account_balances("lending")
+        lending = balances.get("lending", {}) if isinstance(balances, dict) else {}
+        if isinstance(lending, dict) and cur in lending:
+            return Decimal(str(lending[cur]))
+        return Decimal(0)
+
+    def _cancel_offer(self, cur: str, offer: dict[str, Any]) -> tuple[str, dict[str, Any] | None]:
+        """
+        Cancels one offer. Returns the exchange response only when the cancel
+        was confirmed; a failed or unconfirmed cancel must stop further
+        slicing this cycle.
+        """
+        if self.dry_run:
+            # Plan only; callers treat this as a confirmed cancel.
+            return "ok", {"success": 1}
+        try:
+            msg = self.api.cancel_loan_offer(cur, offer["id"])
+            success = isinstance(msg, dict) and msg.get("success") == 1
+            if success and self.offer_registry is not None:
+                with contextlib.suppress(TypeError, ValueError):
+                    self.offer_registry.mark_cancel_pending(cur, int(str(offer["id"])))
+            if self.log:
+                self.log.cancelOrder(cur, msg)
+            return ("ok", msg) if success else ("failed", msg)
+        except Exception as ex:
+            # The request may or may not have reached the exchange (e.g. a
+            # timeout): the outcome is unknown and callers must stop slicing.
+            if self.log:
+                self.log.log(f"Error canceling loan offer (outcome unknown): {ex}")
+            return "unknown", None
+
+    @staticmethod
+    def _offer_amount(offer: dict[str, Any]) -> Decimal:
+        try:
+            return Decimal(str(offer.get("amount", 0)))
+        except InvalidOperation:
+            return Decimal(0)
+
+    def _cancel_limited(self, loan_offers: dict[str, list[dict[str, Any]]]) -> None:
+        """
+        "limited" cancel algorithm, per currency:
+
+        1. Refresh: cancel all registry-managed offers (the lend phase
+           re-places them at fresh rates). Not bounded by the cap; the bot is
+           resizing its own book.
+        2. Re-read the free balance (cancels may have failed or offers may
+           have filled in the meantime).
+        3. Absorb: while the balance cannot fund the target
+           (min(max_offer_size, max_active_amount headroom)), cancel untracked
+           offers whole, largest first, but only offers whose remaining amount
+           fits both the gap and the per-cycle budget (max_offer_size).
+        4. Carve: if no fitting offer remains but a larger one exists, cancel
+           the smallest offer that covers the gap and re-place its remainder
+           at the original rate and duration (restore_offer).
+        """
+        total_lent = self.data.get_total_lent().total_lent
+
+        for cur in loan_offers:
+            if cur not in self.config.api.all_currencies:
+                continue
+            cfg = self.coin_cfg.get(cur)
+            if cfg and cfg.max_active_amount == 0:
+                # don't cancel disabled coin
+                continue
+            cap = cfg.max_offer_size if cfg else Decimal(0)
+            min_size = self.get_min_loan_size(cur)
+
+            managed_ids = (
+                self.offer_registry.tracked_ids(cur) if self.offer_registry is not None else set()
+            )
+            own: list[dict[str, Any]] = []
+            other: list[dict[str, Any]] = []
+            for offer in loan_offers[cur]:
+                try:
+                    is_own = int(str(offer["id"])) in managed_ids
+                except (TypeError, ValueError):
+                    is_own = False
+                (own if is_own else other).append(offer)
+
+            free = self._lending_balance(cur)
+
+            # Dust guard before canceling anything: if even freeing every
+            # offer cannot form a minimal order, leave the book alone.
+            if self.config.bot.keep_stuck_orders:
+                total_open = sum((self._offer_amount(o) for o in loan_offers[cur]), Decimal(0))
+                if free + total_open < min_size:
+                    continue
+
+            # This cycle's target: the per-offer cap, bounded by max_active_amount headroom.
+            target = cap
+            if cfg is not None and cfg.max_active_amount is not None:
+                lent = total_lent.get(cur, Decimal(0))
+                target = min(cap, max(Decimal(0), cfg.max_active_amount - lent))
+            if target < min_size:
+                # Nothing placeable this cycle; slicing would only churn offers.
+                continue
+
+            # 1) refresh all managed offers
+            own_refresh_failed = False
+            for offer in own:
+                status, _ = self._cancel_offer(cur, offer)
+                if status != "ok":
+                    own_refresh_failed = True
+            if own_refresh_failed:
+                # A stuck own offer means the book state is unknown: slicing
+                # from untracked offers now could over-deploy the bot's
+                # stake, and lending could create a second slice.
+                self._lending_blocked_currencies.add(cur)
+                if self.log:
+                    self.log.log(
+                        f"[{cur}] cancel_policy=limited: failed to refresh own offer(s); "
+                        "skipping absorption and lending for this currency this cycle"
+                    )
+                continue
+
+            # 2) re-read the balance the target must be funded from
+            if not self.dry_run and own:
+                free = self._lending_balance(cur)
+            gap = max(Decimal(0), target - free)
+            budget = cap
+
+            # 3) absorb untracked offers that fit the gap, largest first
+            others_desc = sorted(other, key=self._offer_amount, reverse=True)
+            absorbed_ids: set[int] = set()
+            absorption_stopped = False
+            for offer in others_desc:
+                if gap <= 0 or budget <= 0:
+                    break
+                amount = self._offer_amount(offer)
+                if amount <= 0:
+                    continue
+                if amount > min(gap, budget):
+                    continue
+                status, _ = self._cancel_offer(cur, offer)
+                if status == "unknown":
+                    # The cancel may have succeeded without our knowing:
+                    # stop absorbing; the freed funds are picked up safely
+                    # next cycle after reconciliation.
+                    absorption_stopped = True
+                    if self.log:
+                        self.log.log(
+                            f"[{cur}] cancel_policy=limited: cancel outcome unknown; "
+                            "stopping absorption for this cycle"
+                        )
+                    break
+                if status != "ok":
+                    continue
+                with contextlib.suppress(TypeError, ValueError):
+                    absorbed_ids.add(int(str(offer["id"])))
+                budget -= amount
+                gap -= amount
+
+            # 4) carve the smallest untracked offer that covers the gap
+            if gap > 0 and budget > 0 and not absorption_stopped:
+                covering = []
+                for offer in others_desc:
+                    try:
+                        if int(str(offer["id"])) in absorbed_ids:
+                            continue
+                    except (TypeError, ValueError):
+                        pass
+                    if self._offer_amount(offer) >= gap:
+                        covering.append(offer)
+                if covering:
+                    target_offer = min(covering, key=self._offer_amount)
+                    amount = self._offer_amount(target_offer)
+                    status, cancel_msg = self._cancel_offer(cur, target_offer)
+                    if status == "ok":
+                        assert cancel_msg is not None
+                        # Prefer the amount the exchange reported at cancel
+                        # time; a partial fill since the snapshot would
+                        # otherwise inflate the restored remainder.
+                        actual = amount
+                        raw_remaining = cancel_msg.get("remaining_amount")
+                        if raw_remaining is not None:
+                            with contextlib.suppress(TypeError, ValueError, InvalidOperation):
+                                actual = Decimal(str(raw_remaining))
+                        take = min(gap, budget, actual)
+                        remainder = (actual - take).quantize(
+                            Decimal("0.00000001"), rounding=ROUND_DOWN
+                        )
+                        if remainder >= min_size:
+                            self.restore_offer(
+                                cur, remainder, target_offer["rate"], target_offer["duration"]
+                            )
+                    elif status == "unknown" and self.log:
+                        self.log.log(
+                            f"[{cur}] cancel_policy=limited: carve cancel outcome unknown; "
+                            "the remainder was not restored this cycle"
+                        )
+                else:
+                    self._log_below_target(cur, target, free, gap)
+
+    def _log_below_target(self, cur: str, target: Decimal, free: Decimal, gap: Decimal) -> None:
+        if self.log is None:
+            return
+        fingerprint = f"{target}|{free:.2f}|{gap:.2f}"
+        if self._below_target_logged.get(cur) == fingerprint:
+            return
+        self._below_target_logged[cur] = fingerprint
+        self.log.log(
+            f"[{cur}] cancel_policy=limited: lending target "
+            f"{format_amount_currency(target, cur)} not fully fundable this cycle "
+            f"(free {format_amount_currency(free, cur)}, short "
+            f"{format_amount_currency(gap, cur)}, no absorbable offers); lending what is free"
+        )
+
+    def restore_offer(
+        self, currency: str, amt: str | Decimal, rate: str | float | Decimal, days: str | int
+    ) -> None:
+        """
+        Re-places the carved remainder of an untracked offer at its original
+        rate and duration. Bypasses the compete adjustment and the xday
+        duration recalculation so the preserved terms stay intact; the offer
+        is registered as preserved (never refreshed, only observable).
+        """
+        amt_s = f"{Decimal(amt):.8f}"
+        days_s = str(int(str(days)))
+        print(
+            f"Restoring {format_amount_currency(amt_s, currency)} by rate "
+            f"{format_rate_pct(float(rate))} for {days_s} days (carved remainder)"
+        )
+        if self.dry_run:
+            return
+        try:
+            msg = self.api.create_loan_offer(currency, float(amt_s), int(days_s), 0, float(rate))
+        except Exception as ex:
+            # The carve cancel already succeeded and this request's outcome is
+            # unknown (e.g. timeout): the remainder may or may not have been
+            # re-placed. Do not abort the remaining currencies.
+            if self.log:
+                self.log.log(
+                    f"Uncertain outcome restoring carved remainder "
+                    f"{format_amount_currency(amt_s, currency)} at "
+                    f"{format_rate_pct(float(rate))} for {days_s} days: {ex}; next cycle's "
+                    "snapshot and balances will determine how the funds are treated"
+                )
+            return
+        if isinstance(msg, dict) and msg.get("success") == 0:
+            # A definite rejection: the remainder was not re-placed. The funds
+            # stay as free balance and will be lent at the bot's current rate
+            # instead of the preserved terms.
+            if self.log:
+                self.log.log(
+                    f"Error restoring carved remainder {format_amount_currency(amt_s, currency)} "
+                    f"at {format_rate_pct(float(rate))} for {days_s} days "
+                    f"(response: {msg}); the funds remain as free balance and will be "
+                    "lent at the bot's current rate"
+                )
+            return
+        order_id = self._extract_order_id(msg)
+        if order_id is None:
+            # Success-ish response without a usable id: the placement cannot
+            # be confirmed or registered as preserved.
+            if self.log:
+                self.log.log(
+                    f"Uncertain outcome restoring carved remainder "
+                    f"{format_amount_currency(amt_s, currency)} at "
+                    f"{format_rate_pct(float(rate))} for {days_s} days (no order id in "
+                    f"response: {msg}); it cannot be tracked, and next cycle's snapshot and "
+                    "balances will determine how the funds are treated"
+                )
+            return
+        if self.log:
+            self.log.offer(amt_s, currency, float(rate), days_s, msg, float(rate))
+        if self.offer_registry is not None:
+            self.offer_registry.add(
+                currency, order_id, amt_s, str(rate), int(days_s), managed=False
+            )
+            self.offer_registry.persist()
 
     def lend_cur(
         self, active_cur: str, total_lent_info: Any, lending_balances: dict[str, str], ticker: Any
@@ -911,10 +1200,20 @@ class LendingEngine:
         try:
             if lending_balances:
                 for cur in lending_balances:
-                    if cur in self.config.api.all_currencies:
-                        usable_currencies += self.lend_cur(
-                            cur, total_lent_info, lending_balances, ticker
-                        )
+                    if cur not in self.config.api.all_currencies:
+                        continue
+                    if cur in self._lending_blocked_currencies:
+                        # Own-offer refresh failed this cycle: placing here
+                        # could create a second slice alongside a stuck one.
+                        if self.log:
+                            self.log.log(
+                                f"[{cur}] skipping lending this cycle: own offer refresh "
+                                "failed or cancel outcome unknown"
+                            )
+                        continue
+                    usable_currencies += self.lend_cur(
+                        cur, total_lent_info, lending_balances, ticker
+                    )
         except StopIteration:
             self.lend_all()
             return

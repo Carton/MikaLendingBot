@@ -43,6 +43,11 @@ class TrackedOffer:
     rate: str
     duration_days: int
     status: str = STATUS_OPEN
+    # managed offers are refreshed (canceled and re-placed) by the bot each
+    # cycle; preserved offers (carved remainders re-placed at their original
+    # rate and duration) are never refreshed, only identifiable for
+    # observability and future absorption.
+    managed: bool = True
     created_at: str = ""
     last_seen_at: str = ""
 
@@ -169,9 +174,19 @@ class OfferRegistry:
             rate=_parse_decimal(entry.get("rate", ""), f"entry {key!r}"),
             duration_days=duration_days,
             status=status,
+            managed=cls._parse_managed(entry.get("managed", True), key),
             created_at=str(entry.get("created_at", "")),
             last_seen_at=str(entry.get("last_seen_at", "")),
         )
+
+    @staticmethod
+    def _parse_managed(value: object, key: str) -> bool:
+        # Older files have no "managed" field; they only held managed offers.
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str) and value.lower() in ("true", "false"):
+            return value.lower() == "true"
+        raise OfferRegistryError(f"offer registry entry {key!r}: invalid managed flag {value!r}")
 
     # --- Queries ---
 
@@ -179,8 +194,22 @@ class OfferRegistry:
         return self._path.exists()
 
     def tracked_ids(self, currency: str) -> set[int]:
+        """Ids of managed offers (refresh candidates) for a currency."""
         with self._lock:
-            return {offer.order_id for offer in self._orders.values() if offer.currency == currency}
+            return {
+                offer.order_id
+                for offer in self._orders.values()
+                if offer.currency == currency and offer.managed
+            }
+
+    def preserved_ids(self, currency: str) -> set[int]:
+        """Ids of preserved offers (carved remainders) for a currency."""
+        with self._lock:
+            return {
+                offer.order_id
+                for offer in self._orders.values()
+                if offer.currency == currency and not offer.managed
+            }
 
     def order_count(self) -> int:
         with self._lock:
@@ -192,7 +221,15 @@ class OfferRegistry:
 
     # --- Mutations ---
 
-    def add(self, currency: str, order_id: int, amount: str, rate: str, duration_days: int) -> None:
+    def add(
+        self,
+        currency: str,
+        order_id: int,
+        amount: str,
+        rate: str,
+        duration_days: int,
+        managed: bool = True,
+    ) -> None:
         """Records a newly created offer; caller is responsible for persist()."""
         if order_id <= 0:
             return
@@ -208,6 +245,7 @@ class OfferRegistry:
                 rate=rate_s,
                 duration_days=duration_days,
                 status=STATUS_OPEN,
+                managed=managed,
                 created_at=now,
                 last_seen_at=now,
             )

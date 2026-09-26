@@ -27,11 +27,14 @@ keep_stuck_orders = true
 hide_coins = true
 
 # Which open loan offers the bot may cancel each cycle.
-#   "all" = cancel every open offer for active currencies (legacy behavior).
-#   "own" = only cancel offers this bot created (tracked in offer_registry_file);
-#           manual placements and offers from other tools are never touched.
-# Use "own" if you lend part of your funds yourself at other rates/durations
-# (e.g. with a max_offer_size cap) and don't want the bot to cancel them.
+#   "all"     = cancel every open offer for active currencies (legacy behavior).
+#   "limited" = refresh the bot's own offers, then take at most max_offer_size
+#               (net) per cycle from untracked offers to fund this cycle's
+#               target (min(max_offer_size, max_active_amount headroom)).
+#               Oversized untracked offers are carved: canceled, with the
+#               remainder re-placed at its original rate and duration. As
+#               slices fill, the next slice is carved from remaining funds.
+#               Requires max_offer_size > 0 and strategy = "FRR" per currency.
 cancel_policy = "all"
 # offer_registry_file = "offer_registry.json"  # per-instance if running multiple bots
 

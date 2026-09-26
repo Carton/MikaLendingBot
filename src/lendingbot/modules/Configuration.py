@@ -34,10 +34,12 @@ class GapMode(str, Enum):
 class CancelPolicy(str, Enum):
     # Cancel every open lending offer for active currencies (legacy behavior).
     ALL = "all"
-    # Only cancel offers recorded in the bot's own offer registry; offers the
-    # bot cannot prove it created (manual placements, other tools) are left
-    # untouched.
-    OWN = "own"
+    # Refresh the bot's own offers and absorb at most max_offer_size worth of
+    # untracked offers per cycle to fund the lending target; oversized untracked
+    # offers are carved (canceled; remainder re-placed at the original rate and
+    # duration). Requires max_offer_size > 0 and single-order placement
+    # (strategy "FRR" or spread_lend = 1).
+    LIMITED = "limited"
 
 
 class AnalysisMethod(str, Enum):

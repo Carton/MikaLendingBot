@@ -266,15 +266,22 @@ class Bitfinex(ExchangeApi):
 
         success = 0
         message = ""
+        remaining_amount: float | None = None
         try:
             if bfx_resp["id"] == order_number:
                 success = 1
+                remaining_amount = float(bfx_resp["remaining_amount"])
                 message = f"Loan offer canceled ({format_amount_currency(bfx_resp['remaining_amount'], bfx_resp['currency'])} @ {format_rate_pct(float(bfx_resp['rate']) / 36500)})."
         except Exception as e:
             message = f"Error canceling offer: {e}"
             success = 0
 
-        return {"success": success, "message": message}
+        resp: dict[str, Any] = {"success": success, "message": message}
+        if remaining_amount is not None:
+            # Actual remaining amount at cancel time, for callers that must
+            # know how much was really freed (e.g. carving an offer).
+            resp["remaining_amount"] = remaining_amount
+        return resp
 
     def create_loan_offer(
         self,

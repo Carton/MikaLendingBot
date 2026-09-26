@@ -667,7 +667,7 @@ class TestLendingEngineFlow:
         # Should not crash, just log error
         engine.cancel_all()
         mock_api.cancel_loan_offer.assert_called()
-        engine.log.log.assert_called_with("Error canceling loan offer: API Down")
+        engine.log.log.assert_called_with("Error canceling loan offer (outcome unknown): API Down")
 
     def test_lend_cur_empty_books(self, engine, mock_api):  # noqa: ARG002
         engine.initialize()
@@ -697,42 +697,35 @@ class TestLendingEngineFlow:
                 engine.lend_cur("BTC", total_lent_info, lending_balances, {})
 
 
+@pytest.fixture
+def limited_config(mock_config):
+    """Config with cancel_policy=limited and valid coin settings for all currencies."""
+    mock_config.bot.cancel_policy = CancelPolicy.LIMITED
+    for symbol in ("BTC", "ETH", "USD"):
+        mock_config.coin[symbol] = CoinConfig(
+            min_daily_rate=Decimal("0.5"),
+            strategy=LendingStrategy.FRR,
+            max_offer_size=Decimal("20000"),
+        )
+    return mock_config
+
+
+@pytest.fixture
+def limited_engine(limited_config, mock_api, mock_log, mock_data):
+    return LendingEngine(limited_config, mock_api, mock_log, mock_data)
+
+
 class TestCancelPolicy:
-    """Tests for cancel_policy and offer registry integration."""
+    """Tests for cancel_policy ("all" / "limited") and offer registry integration."""
 
     @staticmethod
-    def setup_open_offers(mock_api, offers):
+    def setup_open_offers(mock_api, offers, balances=None):
         mock_api.return_open_loan_offers.return_value = offers
-        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.0"}}
+        if balances is not None:
+            mock_api.return_available_account_balances.return_value = {"lending": balances}
         mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
 
-    def test_policy_own_only_cancels_tracked_offers(self, engine, mock_api, mock_config):
-        mock_config.bot.cancel_policy = CancelPolicy.OWN
-        engine.initialize()
-        assert engine.offer_registry is not None
-        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
-
-        self.setup_open_offers(
-            mock_api,
-            {"BTC": [{"id": 101, "amount": "1.0"}, {"id": 202, "amount": "5.0"}]},
-        )
-
-        engine.cancel_all()
-
-        assert mock_api.cancel_loan_offer.call_args_list == [call("BTC", 101)]
-        engine.log.log.assert_any_call(
-            "[BTC] cancel_policy=own: leaving 1 untracked offer(s) untouched"
-        )
-
-    def test_policy_own_without_tracked_offers_cancels_nothing(self, engine, mock_api, mock_config):
-        mock_config.bot.cancel_policy = CancelPolicy.OWN
-        engine.initialize()
-
-        self.setup_open_offers(mock_api, {"BTC": [{"id": 202, "amount": "5.0"}]})
-
-        engine.cancel_all()
-
-        mock_api.cancel_loan_offer.assert_not_called()
+    # --- "all" (legacy) ---
 
     def test_policy_all_cancels_every_offer(self, engine, mock_api):
         engine.initialize()
@@ -742,6 +735,7 @@ class TestCancelPolicy:
         self.setup_open_offers(
             mock_api,
             {"BTC": [{"id": 101, "amount": "1.0"}, {"id": 202, "amount": "5.0"}]},
+            {"BTC": "0.0"},
         )
 
         engine.cancel_all()
@@ -751,37 +745,378 @@ class TestCancelPolicy:
             call("BTC", 202),
         ]
 
-    def test_cancel_marks_cancel_pending_and_reconcile_removes(self, engine, mock_api, mock_config):
-        mock_config.bot.cancel_policy = CancelPolicy.OWN
-        engine.initialize()
-        assert engine.offer_registry is not None
-        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+    # --- "limited": refresh + absorb ---
 
-        self.setup_open_offers(mock_api, {"BTC": [{"id": 101, "amount": "1.0"}]})
-        engine.cancel_all()
+    def test_limited_refreshes_own_and_absorbs_untracked(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "12000", "0.0003", 30)
 
-        # Cancel requested -> status recorded and persisted...
-        assert engine.offer_registry.get("BTC", 101) is not None
-        assert engine.offer_registry.get("BTC", 101).status == STATUS_CANCEL_PENDING
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 101, "amount": "12000"}, {"id": 202, "amount": "5000"}]
+        }
+        mock_api.return_available_account_balances.side_effect = [
+            {"lending": {"BTC": "100"}},
+            {"lending": {"BTC": "12100"}},
+        ]
+        mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
+
+        limited_engine.cancel_all()
+
+        # Own offer refreshed first, then the untracked offer absorbed for the gap.
+        assert mock_api.cancel_loan_offer.call_args_list == [
+            call("BTC", 101),
+            call("BTC", 202),
+        ]
+        own = limited_engine.offer_registry.get("BTC", 101)
+        assert own is not None
+        assert own.status == STATUS_CANCEL_PENDING
+
+    def test_limited_skips_untracked_when_balance_covers_target(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "12000", "0.0003", 30)
+
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 101, "amount": "12000"}, {"id": 202, "amount": "30000"}]
+        }
+        mock_api.return_available_account_balances.side_effect = [
+            {"lending": {"BTC": "25000"}},
+            {"lending": {"BTC": "37000"}},
+        ]
+        mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
+
+        limited_engine.cancel_all()
+
+        assert mock_api.cancel_loan_offer.call_args_list == [call("BTC", 101)]
+
+    def test_limited_absorbs_descending_then_carves_smallest_covering(
+        self, limited_engine, mock_api
+    ):
+        limited_engine.initialize()
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [
+                {"id": 1, "amount": "6000", "rate": "0.0002", "duration": 30},
+                {"id": 2, "amount": "15000", "rate": "0.0003", "duration": 60},
+            ]
+        }
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0"}}
+        mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
+        mock_api.create_loan_offer.return_value = {"success": 1, "orderId": 777}
+
+        limited_engine.cancel_all()
+
+        # 15000 absorbed first (fits the 20000 gap); 6000 does not fit the
+        # remaining 5000 gap, so it is carved down to 1000.
+        assert mock_api.cancel_loan_offer.call_args_list == [call("BTC", 2), call("BTC", 1)]
+        args = mock_api.create_loan_offer.call_args[0]
+        assert args[0] == "BTC"
+        assert args[1] == pytest.approx(1000.0)
+        assert args[2] == 30  # remainder keeps the carved offer's duration
+        assert args[4] == pytest.approx(0.0002)  # ... and its exact rate
+
+    def test_limited_carves_oversized_offer_and_preserves_remainder(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 202, "amount": "30000", "rate": "0.0311", "duration": 90}]
+        }
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.01"}}
+        mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
+        mock_api.create_loan_offer.return_value = {"success": 1, "orderId": 555}
+
+        limited_engine.cancel_all()
+
+        assert mock_api.cancel_loan_offer.call_args_list == [call("BTC", 202)]
+        args = mock_api.create_loan_offer.call_args[0]
+        assert args[1] == pytest.approx(10000.01)
+        assert args[2] == 90
+        assert args[4] == pytest.approx(0.0311)  # no compete adjustment on restore
+
+        registry = limited_engine.offer_registry
+        assert registry is not None
+        assert registry.tracked_ids("BTC") == set()
+        assert registry.preserved_ids("BTC") == {555}
+        persisted = Path(limited_engine.config.bot.offer_registry_file).read_text(encoding="utf-8")
+        assert '"managed": false' in persisted
+
+    def test_limited_dust_guard_skips_currency(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        self.setup_open_offers(
+            mock_api,
+            {"BTC": [{"id": 1, "amount": "0.004"}, {"id": 2, "amount": "0.004"}]},
+            {"BTC": "0"},
+        )
+
+        limited_engine.cancel_all()
+
+        mock_api.cancel_loan_offer.assert_not_called()
+
+    def test_limited_skips_when_max_active_reached(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        limited_engine.coin_cfg["BTC"].max_active_amount = Decimal("1000")
+        limited_engine.data.get_total_lent.return_value.total_lent = {"BTC": Decimal("1000")}
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "500", "0.0003", 30)
+
+        self.setup_open_offers(mock_api, {"BTC": [{"id": 101, "amount": "500"}]}, {"BTC": "0"})
+
+        limited_engine.cancel_all()
+
+        mock_api.cancel_loan_offer.assert_not_called()
+
+    def test_limited_below_target_log_deduped(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        mock_api.return_open_loan_offers.return_value = {"BTC": []}
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "150"}}
+
+        limited_engine.cancel_all()
+        limited_engine.cancel_all()
+
+        logs = [
+            c
+            for c in limited_engine.log.log.call_args_list
+            if "not fully fundable" in str(c.args[0])
+        ]
+        assert len(logs) == 1
+
+    def test_limited_dry_run_cancels_nothing(self, limited_engine, mock_api):
+        limited_engine.initialize(dry_run=True)
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "12000", "0.0003", 30)
+
+        self.setup_open_offers(
+            mock_api,
+            {"BTC": [{"id": 101, "amount": "12000"}, {"id": 202, "amount": "5000"}]},
+            {"BTC": "0"},
+        )
+
+        limited_engine.cancel_all()
+
+        mock_api.cancel_loan_offer.assert_not_called()
+        mock_api.create_loan_offer.assert_not_called()
+        assert not limited_engine.offer_registry.file_exists()
+
+    def test_limited_cancel_marks_pending_and_reconcile_removes(
+        self, limited_engine, mock_api, mock_config
+    ):
+        limited_engine.initialize()
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+
+        mock_api.return_open_loan_offers.return_value = {"BTC": [{"id": 101, "amount": "1.0"}]}
+        mock_api.return_available_account_balances.side_effect = [
+            {"lending": {"BTC": "0"}},
+            {"lending": {"BTC": "1.0"}},
+        ]
+        mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
+
+        limited_engine.cancel_all()
+
+        own = limited_engine.offer_registry.get("BTC", 101)
+        assert own is not None
+        assert own.status == STATUS_CANCEL_PENDING
         persisted = Path(mock_config.bot.offer_registry_file).read_text(encoding="utf-8")
         assert "BTC:101" in persisted
 
-        # ...next cycle the offer is gone from the exchange -> registry drops it
-        self.setup_open_offers(mock_api, {"BTC": []})
-        engine.cancel_all()
-        assert engine.offer_registry.get("BTC", 101) is None
+        # Next cycle the offer is gone from the exchange -> registry drops it.
+        mock_api.return_available_account_balances.side_effect = None
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "1.0"}}
+        mock_api.return_open_loan_offers.return_value = {"BTC": []}
 
-    def test_dry_run_cancels_nothing_and_keeps_registry(self, engine, mock_api, mock_config):
-        mock_config.bot.cancel_policy = CancelPolicy.OWN
-        engine.initialize(dry_run=True)
-        assert engine.offer_registry is not None
-        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+        limited_engine.cancel_all()
 
-        self.setup_open_offers(mock_api, {"BTC": [{"id": 101, "amount": "1.0"}]})
-        engine.cancel_all()
+        assert limited_engine.offer_registry.get("BTC", 101) is None
+
+    # --- validation and failure paths ---
+
+    def test_limited_requires_max_offer_size(self, mock_config, mock_api, mock_log, mock_data):
+        mock_config.bot.cancel_policy = CancelPolicy.LIMITED
+        mock_config.coin["BTC"] = CoinConfig(
+            min_daily_rate=Decimal("0.5"), strategy=LendingStrategy.FRR
+        )
+
+        engine = LendingEngine(mock_config, mock_api, mock_log, mock_data)
+
+        with pytest.raises(ValueError, match="max_offer_size"):
+            engine.initialize()
+
+    def test_limited_requires_single_order_placement(
+        self, mock_config, mock_api, mock_log, mock_data
+    ):
+        mock_config.bot.cancel_policy = CancelPolicy.LIMITED
+        mock_config.coin["BTC"] = CoinConfig(
+            min_daily_rate=Decimal("0.5"), max_offer_size=Decimal("1000")
+        )
+
+        engine = LendingEngine(mock_config, mock_api, mock_log, mock_data)
+
+        with pytest.raises(ValueError, match="strategy='FRR'"):
+            engine.initialize()
+
+    def test_limited_validation_skips_disabled_currency(self, limited_engine):
+        # A disabled coin (max_active_amount=0) must not block startup even
+        # without a cap or FRR strategy.
+        limited_engine.config.coin["ETH"] = CoinConfig(
+            min_daily_rate=Decimal("0.5"), max_active_amount=Decimal("0")
+        )
+
+        limited_engine.initialize()  # must not raise
+
+        assert limited_engine.registry_error is None
+
+    def test_limited_skips_absorption_when_own_refresh_fails(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "12000", "0.0003", 30)
+
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 101, "amount": "12000"}, {"id": 202, "amount": "5000"}]
+        }
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0"}}
+        mock_api.cancel_loan_offer.side_effect = Exception("API down")
+
+        limited_engine.cancel_all()
+
+        # Only the own refresh was attempted; the untracked offer is untouched.
+        assert mock_api.cancel_loan_offer.call_args_list == [call("BTC", 101)]
+        assert any(
+            "skipping absorption and lending" in str(c.args[0])
+            for c in limited_engine.log.log.call_args_list
+        )
+
+    def test_limited_carve_uses_actual_remaining_amount(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 202, "amount": "30000", "rate": "0.0311", "duration": 90}]
+        }
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.01"}}
+        # The offer partially filled between snapshot and cancel: the exchange
+        # only had 25000 left, so the restored remainder must shrink to match.
+        mock_api.cancel_loan_offer.return_value = {
+            "success": 1,
+            "message": "cancelled",
+            "remaining_amount": 25000,
+        }
+        mock_api.create_loan_offer.return_value = {"success": 1, "orderId": 556}
+
+        limited_engine.cancel_all()
+
+        args = mock_api.create_loan_offer.call_args[0]
+        assert args[1] == pytest.approx(5000.01)  # 25000 - 19999.99 taken
+
+    def test_limited_carve_cancel_failure_does_not_restore(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 202, "amount": "30000", "rate": "0.0311", "duration": 90}]
+        }
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.01"}}
+        mock_api.cancel_loan_offer.return_value = {"success": 0, "message": "cancel rejected"}
+
+        limited_engine.cancel_all()
+
+        mock_api.cancel_loan_offer.assert_called_once()
+        mock_api.create_loan_offer.assert_not_called()
+
+    def test_restore_failure_is_logged_not_raised(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 202, "amount": "30000", "rate": "0.0311", "duration": 90}]
+        }
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.01"}}
+        mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
+        mock_api.create_loan_offer.side_effect = Exception("create failed")
+
+        limited_engine.cancel_all()  # must not raise
+
+        assert any(
+            "Uncertain outcome restoring carved remainder" in str(c.args[0])
+            for c in limited_engine.log.log.call_args_list
+        )
+
+    def test_restore_definite_failure_logged(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 202, "amount": "30000", "rate": "0.0311", "duration": 90}]
+        }
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0.01"}}
+        mock_api.cancel_loan_offer.return_value = {"success": 1, "message": "cancelled"}
+        mock_api.create_loan_offer.return_value = {"success": 0, "orderId": 0}
+
+        limited_engine.cancel_all()
+
+        assert any(
+            "Error restoring carved remainder" in str(c.args[0])
+            for c in limited_engine.log.log.call_args_list
+        )
+
+    def test_limited_blocks_lending_when_own_refresh_fails(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "12000", "0.0003", 30)
+
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [{"id": 101, "amount": "12000"}, {"id": 202, "amount": "5000"}]
+        }
+        # Some free funds exist besides the stuck own offer.
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "5000"}}
+        mock_api.cancel_loan_offer.side_effect = Exception("API down")
+
+        limited_engine.cancel_all()
+        assert "BTC" in limited_engine._lending_blocked_currencies
+
+        # Lending must not create a second slice next to the stuck one.
+        mock_data = limited_engine.data
+        mock_data.get_total_lent.return_value.total_lent = {"BTC": Decimal("0")}
+        order_book = {"rates": [0.02], "volumes": [10]}
+        demand_book = {"rates": [0.001], "volumes": [5], "rangeMax": [2]}
+        with (
+            patch.object(
+                limited_engine, "construct_order_books", return_value=[demand_book, order_book]
+            ),
+            patch.object(limited_engine, "get_min_daily_rate", return_value=Decimal("0.001")),
+        ):
+            limited_engine.lend_all()
+
+        mock_api.create_loan_offer.assert_not_called()
+        assert any(
+            "skipping lending this cycle" in str(c.args[0])
+            for c in limited_engine.log.log.call_args_list
+        )
+
+    def test_limited_stops_absorption_on_unknown_cancel(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        mock_api.return_open_loan_offers.return_value = {
+            "BTC": [
+                {"id": 1, "amount": "20000", "rate": "0.0003", "duration": 30},
+                {"id": 2, "amount": "20000", "rate": "0.0003", "duration": 30},
+            ]
+        }
+        mock_api.return_available_account_balances.return_value = {"lending": {"BTC": "0"}}
+        # First cancel times out (outcome unknown): absorption must stop even
+        # though the budget accounting has not consumed anything.
+        mock_api.cancel_loan_offer.side_effect = [Exception("timed out"), {"success": 1}]
+
+        limited_engine.cancel_all()
+
+        assert mock_api.cancel_loan_offer.call_count == 1
+        assert any(
+            "stopping absorption for this cycle" in str(c.args[0])
+            for c in limited_engine.log.log.call_args_list
+        )
+        mock_api.create_loan_offer.assert_not_called()  # no carve after unknown
+
+    def test_limited_skips_when_target_below_min_size(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        limited_engine.coin_cfg["BTC"].max_offer_size = Decimal("100")
+        limited_engine.min_loan_sizes["BTC"] = Decimal("150")
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "500", "0.0003", 30)
+
+        self.setup_open_offers(mock_api, {"BTC": [{"id": 101, "amount": "500"}]}, {"BTC": "0"})
+
+        limited_engine.cancel_all()
 
         mock_api.cancel_loan_offer.assert_not_called()
-        assert not engine.offer_registry.file_exists()
 
     def test_registry_error_skips_cancel_and_lending(self, engine, mock_api):
         engine.initialize()
@@ -794,15 +1129,16 @@ class TestCancelPolicy:
         engine.data.get_total_lent.assert_not_called()
         assert engine.sleep_time == engine.config.bot.period_inactive
 
-    def test_initialize_with_corrupt_registry_sets_error_in_own_mode(self, engine, mock_config):
-        mock_config.bot.cancel_policy = CancelPolicy.OWN
+    def test_initialize_with_corrupt_registry_sets_error_in_limited_mode(
+        self, limited_engine, mock_config
+    ):
         Path(mock_config.bot.offer_registry_file).write_text("{corrupt", encoding="utf-8")
 
-        engine.initialize()
+        limited_engine.initialize()
 
-        assert engine.registry_error is not None
-        assert engine.offer_registry is None
-        engine.log.log_error.assert_called_once()
+        assert limited_engine.registry_error is not None
+        assert limited_engine.offer_registry is None
+        limited_engine.log.log_error.assert_called_once()
 
     def test_initialize_with_corrupt_registry_warns_only_in_all_mode(self, engine, mock_config):
         Path(mock_config.bot.offer_registry_file).write_text("{corrupt", encoding="utf-8")
@@ -817,55 +1153,24 @@ class TestCancelPolicy:
             "Offer registry unavailable" in str(c.args[0]) for c in engine.log.log.call_args_list
         )
 
-    def test_policy_own_dust_guard_counts_only_tracked_offers(self, engine, mock_api, mock_config):
-        mock_config.bot.cancel_policy = CancelPolicy.OWN
-        engine.initialize()
-        assert engine.offer_registry is not None
-        engine.offer_registry.add("BTC", 101, "0.5", "0.0001", 2)
-        engine.min_loan_sizes["BTC"] = Decimal("1.0")
-
-        # Free balance 0 + tracked 0.5 < min 1.0: canceling the tracked offer
-        # would strand dust, so nothing may be canceled even though the sum
-        # with the untracked 2.0 offer would clear the guard.
-        self.setup_open_offers(
-            mock_api,
-            {"BTC": [{"id": 101, "amount": "0.5"}, {"id": 202, "amount": "2.0"}]},
-        )
-
-        engine.cancel_all()
-
-        mock_api.cancel_loan_offer.assert_not_called()
-
-    def test_reconcile_error_pauses_cancel_and_lending(self, engine, mock_api, mock_config):
-        mock_config.bot.cancel_policy = CancelPolicy.OWN
-        engine.initialize()
-        assert engine.offer_registry is not None
-        engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
+    def test_reconcile_error_pauses_cancel_and_lending(self, limited_engine, mock_api):
+        limited_engine.initialize()
+        assert limited_engine.offer_registry is not None
+        limited_engine.offer_registry.add("BTC", 101, "1.0", "0.0001", 2)
 
         # Snapshot carries a non-numeric amount -> reconcile must fail closed.
-        self.setup_open_offers(mock_api, {"BTC": [{"id": 101, "amount": "not-a-number"}]})
+        self.setup_open_offers(
+            mock_api, {"BTC": [{"id": 101, "amount": "not-a-number"}]}, {"BTC": "0"}
+        )
 
-        engine.cancel_all()
+        limited_engine.cancel_all()
 
         mock_api.cancel_loan_offer.assert_not_called()
-        assert engine.registry_error is not None
-        engine.lend_all()
-        engine.data.get_total_lent.assert_not_called()
+        assert limited_engine.registry_error is not None
+        limited_engine.lend_all()
+        limited_engine.data.get_total_lent.assert_not_called()
 
-    def test_untracked_log_only_emitted_on_count_change(self, engine, mock_api, mock_config):
-        mock_config.bot.cancel_policy = CancelPolicy.OWN
-        engine.initialize()
-        self.setup_open_offers(mock_api, {"BTC": [{"id": 202, "amount": "2.0"}]})
-
-        engine.cancel_all()
-        engine.cancel_all()
-
-        untracked_logs = [
-            c
-            for c in engine.log.log.call_args_list
-            if "untracked offer(s) untouched" in str(c.args[0])
-        ]
-        assert len(untracked_logs) == 1
+    # --- offer registration ---
 
     def test_create_lend_offer_handles_poloniex_orderid_key(self, engine, mock_api):
         engine.initialize()
@@ -910,5 +1215,5 @@ class TestCancelPolicy:
         assert engine.offer_registry.order_count() == 0
         engine.log.log.assert_any_call(
             "[BTC] Offer placed but the response had no order id; "
-            "it cannot be tracked by cancel_policy=own"
+            "it cannot be tracked by cancel_policy=limited"
         )

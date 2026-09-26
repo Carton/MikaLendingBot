@@ -180,3 +180,51 @@ class TestReconcile:
         assert removed == 1
         assert registry.tracked_ids("USD") == set()
         assert registry.tracked_ids("ETH") == {7}
+
+
+class TestManagedFlag:
+    def test_managed_flag_roundtrip(self, registry_path):
+        registry = make_registry(registry_path)
+        registry.add("USD", 1, "10", "0.0001", 2)
+        registry.add("USD", 2, "20", "0.0002", 5, managed=False)
+        registry.persist()
+
+        loaded = OfferRegistry.load(registry_path, "Bitfinex", "abc123")
+        assert loaded.tracked_ids("USD") == {1}
+        assert loaded.preserved_ids("USD") == {2}
+        preserved = loaded.get("USD", 2)
+        assert preserved is not None
+        assert preserved.managed is False
+
+    def test_legacy_entry_without_managed_defaults_to_managed(self, registry_path):
+        orders = {
+            "USD:5": {
+                "currency": "USD",
+                "order_id": "5",
+                "original_amount": "10",
+                "remaining_amount": "10",
+                "rate": "0.0001",
+                "duration_days": 2,
+            }
+        }
+        write_registry_file(registry_path, orders=orders)
+
+        loaded = OfferRegistry.load(registry_path, "Bitfinex", "abc123")
+        assert loaded.tracked_ids("USD") == {5}
+        assert loaded.preserved_ids("USD") == set()
+
+    def test_invalid_managed_flag_raises(self, registry_path):
+        orders = {
+            "USD:5": {
+                "currency": "USD",
+                "order_id": "5",
+                "original_amount": "10",
+                "remaining_amount": "10",
+                "rate": "0.0001",
+                "duration_days": 2,
+                "managed": "maybe",
+            }
+        }
+        write_registry_file(registry_path, orders=orders)
+        with pytest.raises(OfferRegistryError, match="invalid managed flag"):
+            OfferRegistry.load(registry_path, "Bitfinex", "abc123")
