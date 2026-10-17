@@ -96,6 +96,16 @@ temp/
 tmp/
 old/
 
+# Bot runtime data: personal lending/account data, never commit.
+# (the blanket *.json / *.sqlite3 rules above already cover these; explicit
+# entries guard future file types and document intent)
+web_settings.json
+offer_registry.json
+www/bot_stats.json
+www/history.json
+market_data/*
+!market_data/readme.txt
+
 # ───────────────────────────────────────────────────────────────────────────────
 # Documentation
 # ───────────────────────────────────────────────────────────────────────────────
