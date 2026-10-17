@@ -24,6 +24,11 @@ def init(config: Configuration.RootConfig, log1: Logger) -> None:
     coin_cfg = {}
     for symbol in config.coin:
         coin_cfg[symbol] = config.get_coin_config(symbol)
+    # Also cover active currencies that have no [coin.SYMBOL] section, so a
+    # max_active_amount set in [coin.default] applies to them as well.
+    for symbol in config.api.all_currencies:
+        if symbol not in coin_cfg:
+            coin_cfg[symbol] = config.get_coin_config(symbol)
 
     default_coin = config.get_coin_config("default")
     min_loan_size = default_coin.min_loan_size

@@ -697,6 +697,73 @@ class TestLendingEngineFlow:
                 engine.lend_cur("BTC", total_lent_info, lending_balances, {})
 
 
+class TestMultiCurrencyLending:
+    """Lending several currencies side by side (e.g. USD + USDt) must apply
+    each currency's own coin config without cross-contamination."""
+
+    @staticmethod
+    def reset_max_to_lend():
+        from lendingbot.modules import MaxToLend
+
+        MaxToLend.coin_cfg = {}
+        MaxToLend.log = None
+
+    def test_lend_all_lends_each_currency_with_its_own_limits(
+        self, mock_config, mock_api, mock_log, mock_data
+    ):
+        self.reset_max_to_lend()
+        mock_config.api.all_currencies = ["USD", "USDt"]
+        mock_config.bot.hide_coins = False
+        mock_config.coin["default"] = CoinConfig(
+            min_daily_rate=Decimal("0.01"),
+            max_daily_rate=Decimal("5.0"),
+            strategy=LendingStrategy.FRR,
+        )
+        # USD is capped at 5000 total; USDt has no cap of its own.
+        mock_config.coin["USD"] = CoinConfig(
+            min_daily_rate=Decimal("0.02"),
+            strategy=LendingStrategy.FRR,
+            max_active_amount=Decimal("5000"),
+        )
+        mock_config.coin["USDt"] = CoinConfig(
+            min_daily_rate=Decimal("0.03"),
+            strategy=LendingStrategy.FRR,
+        )
+        mock_config.coin.pop("BTC", None)
+        mock_config.coin.pop("ETH", None)
+
+        engine = LendingEngine(mock_config, mock_api, mock_log, mock_data)
+        with patch("lendingbot.modules.WebServer.get_web_settings", return_value={}):
+            engine.initialize()
+
+        # initialize() must wire MaxToLend for the per-currency caps to apply.
+        from lendingbot.modules import MaxToLend
+
+        assert MaxToLend.coin_cfg["USD"].max_active_amount == Decimal("5000")
+        assert MaxToLend.coin_cfg["USDt"].max_active_amount is None
+
+        mock_data.get_total_lent.return_value.total_lent = {
+            "USD": Decimal("4500"),
+            "USDt": Decimal("100"),
+        }
+        mock_api.return_available_account_balances.return_value = {
+            "lending": {"USD": "1000.0", "USDt": "2000.0"}
+        }
+        mock_api.get_frr.return_value = 0.001  # above both floors
+        mock_api.create_loan_offer.return_value = {"success": 1, "orderId": 42}
+
+        order_book = {"rates": [0.01], "volumes": [100]}
+        books = {"USD": ({}, order_book), "USDt": ({}, order_book)}
+
+        with patch.object(engine, "construct_order_books", side_effect=lambda cur: books[cur]):
+            engine.lend_all()
+
+        offers = {c.args[0]: c.args[1] for c in mock_api.create_loan_offer.call_args_list}
+        # USD is reduced to the 5000 - 4500 headroom; USDt lends in full.
+        assert offers["USD"] == pytest.approx(500.0)
+        assert offers["USDt"] == pytest.approx(2000.0)
+
+
 @pytest.fixture
 def limited_config(mock_config):
     """Config with cancel_policy=limited and valid coin settings for all currencies."""

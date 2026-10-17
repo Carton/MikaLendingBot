@@ -136,6 +136,12 @@ class LendingEngine:
             self.coin_cfg[symbol] = cc
             self.min_loan_sizes[symbol] = cc.min_loan_size
 
+        # lend_cur/lend_all consult MaxToLend for the per-currency
+        # max_active_amount caps; without this the limits are never applied.
+        from . import MaxToLend
+
+        MaxToLend.init(self.config, self.log)
+
         self.transferable_currencies = list(self.config.bot.transferable_currencies)
 
         self.cancel_policy = self.config.bot.cancel_policy

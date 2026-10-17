@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from lendingbot.modules import MaxToLend
-from lendingbot.modules.Configuration import CoinConfig, RootConfig
+from lendingbot.modules.Configuration import ApiConfig, CoinConfig, RootConfig
 
 
 @pytest.fixture
@@ -38,6 +38,19 @@ class TestMaxToLend:
         assert maxtolend_module.min_loan_size == Decimal("0.01")
         # test coin_cfg override
         assert maxtolend_module.coin_cfg["BTC"].max_active_amount == Decimal("1.0")
+
+    def test_init_covers_active_currencies_without_sections(self, maxtolend_module):
+        """A max_active_amount in [coin.default] must also cover active
+        currencies that have no [coin.SYMBOL] section of their own."""
+        config = RootConfig(
+            coin={"default": CoinConfig(max_active_amount=Decimal("5000"))},
+            api=ApiConfig(all_currencies=["USD", "USDt"]),
+        )
+
+        maxtolend_module.init(config, MagicMock())
+
+        assert maxtolend_module.coin_cfg["USD"].max_active_amount == Decimal("5000")
+        assert maxtolend_module.coin_cfg["USDt"].max_active_amount == Decimal("5000")
 
     # --- New tests for max_active_amount limit feature ---
 
