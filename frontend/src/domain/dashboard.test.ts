@@ -30,7 +30,6 @@ describe("dashboard domain", () => {
           highestBid: "1"
         }
       },
-      { currency: "USD", highestBid: "1" },
       ["Day"]
     );
 
@@ -39,6 +38,27 @@ describe("dashboard domain", () => {
     expect(rows[0].lentPercent).toBeCloseTo(50);
     expect(rows[0].effectiveDailyRate).toBeCloseTo(0.017);
     expect(rows[0].earnings[0].value).toBeCloseTo(0.017);
+  });
+
+  it("labels each coin's earnings estimate in that coin's own currency", () => {
+    const rows = calculateCoinRows(
+      {
+        USD: { averageLendingRate: "0.04", lentSum: "50", totalCoins: "100" },
+        USDt: { averageLendingRate: "0.03", lentSum: "80", totalCoins: "200" }
+      },
+      ["Day"]
+    );
+
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      // The estimate is compounded from lentSum in coin units, so every
+      // timespan entry must carry the row's currency, never a shared
+      // output currency that would mislabel USDt amounts as USD.
+      expect(row.earnings.every((earning) => earning.currency === row.currency)).toBe(true);
+    }
+    expect(rows.find((row) => row.currency === "USDt")?.earnings[0].value).toBeCloseTo(
+      80 * Math.pow(1 + (0.03 * 0.85) / 100, 1) - 80
+    );
   });
 
   it("attaches recent successful loans to the matching coin row", () => {

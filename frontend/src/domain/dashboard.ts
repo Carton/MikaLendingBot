@@ -3,7 +3,6 @@ import type {
   CoinRow,
   DashboardStateResponse,
   DashboardView,
-  OutputCurrency,
   RawChartPoint,
   RecentSuccessfulLoan,
   TimespanName,
@@ -41,7 +40,6 @@ export function buildDashboardView(state: DashboardStateResponse): DashboardView
     logs: state.recent_logs ?? [],
     coinRows: calculateCoinRows(
       rawData,
-      state.stats.outputCurrency ?? {},
       timespans,
       state.recent_successful_loans ?? {}
     ),
@@ -52,12 +50,9 @@ export function buildDashboardView(state: DashboardStateResponse): DashboardView
 
 export function calculateCoinRows(
   rawData: NonNullable<DashboardStateResponse["stats"]["raw_data"]>,
-  outputCurrency: OutputCurrency,
   timespans: TimespanName[],
   recentSuccessfulLoans: Record<string, RecentSuccessfulLoan[]> = {}
 ): CoinRow[] {
-  const outputCoin = outputCurrency.currency || "BTC";
-
   return Object.entries(rawData)
     .map(([currency, stats]) => {
       const averageDailyRate = toNumber(stats.averageLendingRate);
@@ -91,7 +86,9 @@ export function calculateCoinRows(
         earnings: timespans.map((timespan) => ({
           timespan,
           value: calculateEarnings(lentSum, lendingRate, TIMESPAN_MULTIPLIER[timespan]),
-          currency: currency === outputCoin ? currency : outputCoin
+          // The estimate compounds lentSum in the row's own units; no output
+          // currency conversion happens, so it must be labeled in that currency.
+          currency
         })),
         recentSuccessfulLoans: normalizeRecentLoans(recentSuccessfulLoans[currency])
       };
