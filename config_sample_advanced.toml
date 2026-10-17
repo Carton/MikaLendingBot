@@ -24,7 +24,9 @@ api_debug_log = false
 
 # Order handling behavior.
 keep_stuck_orders = true
-hide_coins = true
+# Must be false for the FRR strategy below: with hide_coins = true the bot
+# skips FRR currencies entirely (the constructed rate starts below min_daily_rate).
+hide_coins = false
 
 # Which open loan offers the bot may cancel each cycle.
 #   "all"     = cancel every open offer for active currencies (legacy behavior).

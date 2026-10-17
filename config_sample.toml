@@ -20,6 +20,10 @@ plugins = ["AccountStats", "Charts"]
 # Currency used for dashboard earnings summary.
 output_currency = "USD"
 
+# Must be false for the FRR strategy below: with hide_coins = true the bot
+# skips FRR currencies entirely (the constructed rate starts below min_daily_rate).
+hide_coins = false
+
 [coin.default]
 # Minimum daily lending rate in percent.
 min_daily_rate = 0.01
