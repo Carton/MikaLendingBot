@@ -196,6 +196,22 @@ def test_create_loan_offer_min_amount_error(mock_post, bitfinex_api):
 
 
 @patch("requests.post")
+def test_create_loan_offer_min_amount_error_without_usd_pair(mock_post, bitfinex_api):
+    # USDt funding has no USD_USDt ticker on v1; the min-amount error must
+    # still raise a convertible message (so lend_cur can raise the per-currency
+    # min_loan_size and retry) instead of leaking a KeyError.
+    with patch.object(
+        bitfinex_api,
+        "_request",
+        side_effect=ApiError("Invalid offer: incorrect amount, minimum is 50"),
+    ):
+        bitfinex_api.ticker = {"USD_BTC": {"lowestAsk": "50000.0"}}
+        bitfinex_api.tickerTime = 10000000000
+        with pytest.raises(ApiError, match=re.escape("Amount must be at least 50.0 USDt")):
+            bitfinex_api.create_loan_offer("USDt", 10.0, 2, 0, 0.01)
+
+
+@patch("requests.post")
 def test_transfer_balance(mock_post, bitfinex_api):
     mock_response = MagicMock()
     mock_response.status_code = 200

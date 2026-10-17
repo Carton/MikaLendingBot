@@ -319,15 +319,23 @@ class Bitfinex(ExchangeApi):
                 usd_min = 50.0
                 cur_min = float(usd_min)
                 if currency != "USD":
-                    ticker = self.return_ticker()
-                    if currency == "EUR":
-                        cur_min = (
-                            usd_min
-                            / float(ticker["USD_BTC"]["lowestAsk"])
-                            * float(ticker["EUR_BTC"]["lowestAsk"])
-                        )
-                    else:
-                        cur_min = usd_min / float(ticker["USD_" + currency]["lowestAsk"])
+                    try:
+                        ticker = self.return_ticker()
+                        if currency == "EUR":
+                            cur_min = (
+                                usd_min
+                                / float(ticker["USD_BTC"]["lowestAsk"])
+                                * float(ticker["EUR_BTC"]["lowestAsk"])
+                            )
+                        else:
+                            cur_min = usd_min / float(ticker["USD_" + currency]["lowestAsk"])
+                    except (KeyError, ValueError, TypeError, ZeroDivisionError):
+                        # No usable USD ticker pair for this funding currency
+                        # (e.g. USDt has no USD_USDt pair on v1). Fall back to
+                        # the raw USD minimum: stablecoin funding minimums
+                        # match it, and lend_cur only needs a number to retry
+                        # with after raising the per-currency min_loan_size.
+                        cur_min = usd_min
 
                 raise ApiError(
                     f"Error create_loan_offer: Amount must be at least {cur_min} {currency}"
