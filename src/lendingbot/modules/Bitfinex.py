@@ -329,13 +329,22 @@ class Bitfinex(ExchangeApi):
                             )
                         else:
                             cur_min = usd_min / float(ticker["USD_" + currency]["lowestAsk"])
-                    except (KeyError, ValueError, TypeError, ZeroDivisionError):
-                        # No usable USD ticker pair for this funding currency
-                        # (e.g. USDt has no USD_USDt pair on v1). Fall back to
-                        # the raw USD minimum: stablecoin funding minimums
-                        # match it, and lend_cur only needs a number to retry
-                        # with after raising the per-currency min_loan_size.
-                        cur_min = usd_min
+                    except (KeyError, ValueError, TypeError, ZeroDivisionError) as ex:
+                        if currency.upper() in ("USDT", "UST"):
+                            # USD-pegged funding currencies have no USD_<cur>
+                            # ticker pair but share the 50-unit USD minimum,
+                            # so no conversion is needed.
+                            cur_min = usd_min
+                        else:
+                            # For anything else a missing pair means an
+                            # unconverted guess; lend_cur pattern-matches
+                            # "Amount must be at least", so word this to keep
+                            # it from adopting 50 as the coin's minimum.
+                            raise ApiError(
+                                "Error create_loan_offer: minimum amount is 50 USD "
+                                f"but no USD_{currency} ticker rate was available "
+                                "to convert it"
+                            ) from ex
 
                 raise ApiError(
                     f"Error create_loan_offer: Amount must be at least {cur_min} {currency}"
