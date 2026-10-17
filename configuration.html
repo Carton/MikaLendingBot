@@ -261,6 +261,7 @@ especially to “Withdraw”.</p></li>
 <li><p>When active, it forces <code class="docutils literal notranslate"><span class="pre">spread_lend</span> <span class="pre">=</span> <span class="pre">1</span></code> internally.</p></li>
 <li><p>It enables the use of <code class="docutils literal notranslate"><span class="pre">frr_delta_min</span></code> and <code class="docutils literal notranslate"><span class="pre">frr_delta_max</span></code> for rate adjustments.</p></li>
 <li><p>If selected on a non-Bitfinex exchange, the bot will fail to start.</p></li>
+<li><p>Requires <code class="docutils literal notranslate"><span class="pre">hide_coins</span> <span class="pre">=</span> <span class="pre">false</span></code>: the FRR offer is constructed at a rate below <code class="docutils literal notranslate"><span class="pre">min_daily_rate</span></code> and clamped up, so with <code class="docutils literal notranslate"><span class="pre">hide_coins</span> <span class="pre">=</span> <span class="pre">true</span></code> (the default) FRR currencies are never lent.</p></li>
 </ul>
 </dd>
 </dl>

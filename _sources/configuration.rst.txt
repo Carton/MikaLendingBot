@@ -138,6 +138,7 @@ The bot supports different lending strategies. You can select the active strateg
         - When active, it forces ``spread_lend = 1`` internally.
         - It enables the use of ``frr_delta_min`` and ``frr_delta_max`` for rate adjustments.
         - If selected on a non-Bitfinex exchange, the bot will fail to start.
+        - Requires ``hide_coins = false``: the FRR offer is constructed at a rate below ``min_daily_rate`` and clamped up, so with ``hide_coins = true`` (the default) FRR currencies are never lent.
 
 - ``frr_delta_min`` and ``frr_delta_max`` are the adjustment range (in percent) relative to the `flash return rate <https://support.bitfinex.com/hc/en-us/articles/115003284729-What-is-the-FRR-Delta->`_.
 
