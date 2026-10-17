@@ -14,6 +14,7 @@ from lendingbot.modules.Configuration import (
     RootConfig,
     XDayThreshold,
 )
+from lendingbot.modules.ExchangeApi import ApiError
 from lendingbot.modules.Lending import LendingEngine
 from lendingbot.modules.OfferRegistry import STATUS_CANCEL_PENDING
 
@@ -708,10 +709,10 @@ class TestMultiCurrencyLending:
         MaxToLend.coin_cfg = {}
         MaxToLend.log = None
 
-    def test_lend_all_lends_each_currency_with_its_own_limits(
-        self, mock_config, mock_api, mock_log, mock_data
-    ):
-        self.reset_max_to_lend()
+    @classmethod
+    def make_engine(cls, mock_config, mock_api, mock_log, mock_data):
+        """USD (capped at 5000 total) + USDt (no cap), both on FRR."""
+        cls.reset_max_to_lend()
         mock_config.api.all_currencies = ["USD", "USDt"]
         mock_config.bot.hide_coins = False
         mock_config.coin["default"] = CoinConfig(
@@ -719,7 +720,6 @@ class TestMultiCurrencyLending:
             max_daily_rate=Decimal("5.0"),
             strategy=LendingStrategy.FRR,
         )
-        # USD is capped at 5000 total; USDt has no cap of its own.
         mock_config.coin["USD"] = CoinConfig(
             min_daily_rate=Decimal("0.02"),
             strategy=LendingStrategy.FRR,
@@ -741,6 +741,12 @@ class TestMultiCurrencyLending:
 
         assert MaxToLend.coin_cfg["USD"].max_active_amount == Decimal("5000")
         assert MaxToLend.coin_cfg["USDt"].max_active_amount is None
+        return engine
+
+    def test_lend_all_lends_each_currency_with_its_own_limits(
+        self, mock_config, mock_api, mock_log, mock_data
+    ):
+        engine = self.make_engine(mock_config, mock_api, mock_log, mock_data)
 
         mock_data.get_total_lent.return_value.total_lent = {
             "USD": Decimal("4500"),
@@ -762,6 +768,56 @@ class TestMultiCurrencyLending:
         # USD is reduced to the 5000 - 4500 headroom; USDt lends in full.
         assert offers["USD"] == pytest.approx(500.0)
         assert offers["USDt"] == pytest.approx(2000.0)
+
+    def test_lend_all_capped_out_currency_does_not_block_the_other(
+        self, mock_config, mock_api, mock_log, mock_data
+    ):
+        engine = self.make_engine(mock_config, mock_api, mock_log, mock_data)
+
+        mock_data.get_total_lent.return_value.total_lent = {
+            "USD": Decimal("5000"),  # already at the cap
+            "USDt": Decimal("100"),
+        }
+        mock_api.return_available_account_balances.return_value = {
+            "lending": {"USD": "1000.0", "USDt": "2000.0"}
+        }
+        mock_api.get_frr.return_value = 0.001
+        mock_api.create_loan_offer.return_value = {"success": 1, "orderId": 42}
+
+        order_book = {"rates": [0.01], "volumes": [100]}
+        with patch.object(
+            engine, "construct_order_books", side_effect=lambda _cur: ({}, order_book)
+        ):
+            engine.lend_all()
+
+        # USD offers nothing; USDt is unaffected and lends in full.
+        assert [c.args[0] for c in mock_api.create_loan_offer.call_args_list] == ["USDt"]
+        assert mock_api.create_loan_offer.call_args[0][1] == pytest.approx(2000.0)
+
+    def test_lend_cur_adopts_usdt_min_after_exchange_rejection(
+        self, mock_config, mock_api, mock_log, mock_data
+    ):
+        engine = self.make_engine(mock_config, mock_api, mock_log, mock_data)
+
+        total_lent_info = MagicMock()
+        total_lent_info.total_lent = {"USD": Decimal("0"), "USDt": Decimal("0")}
+        mock_api.get_frr.return_value = 0.001
+        mock_api.create_loan_offer.side_effect = ApiError(
+            "Error create_loan_offer: Amount must be at least 50.0 USDt"
+        )
+
+        order_book = {"rates": [0.01], "volumes": [100]}
+        with patch.object(engine, "construct_order_books", return_value=({}, order_book)):
+            # 30 USDt is above the configured min (0.01) but below the
+            # exchange minimum the rejection reveals (50).
+            result = engine.lend_cur("USDt", total_lent_info, {"USDt": "30.0"}, {})
+
+        assert result == 0
+        # One rejected offer, then the retry sees balance < new minimum and stops.
+        assert mock_api.create_loan_offer.call_count == 1
+        assert engine.min_loan_sizes["USDt"] == Decimal("50.0")
+        # The detected minimum is per-currency; USD keeps its configured value.
+        assert engine.min_loan_sizes["USD"] == Decimal("0.01")
 
 
 @pytest.fixture
