@@ -48,6 +48,25 @@ class AnalysisMethod(str, Enum):
     MACD = "MACD"
 
 
+# --- Currency aliases ---
+
+
+# Exchanges report/configure some currencies under legacy codes; normalize
+# them to the canonical config-side codes at load time (Bitfinex.py maps the
+# canonical code back for requests). "UST" is Bitfinex's raw code for USDt.
+CURRENCY_ALIASES = {"UST": "USDt"}
+
+
+def normalize_currency(code: str) -> str:
+    return CURRENCY_ALIASES.get(code, code)
+
+
+def _normalize_currency_list(v: Any) -> Any:
+    if isinstance(v, list):
+        return [normalize_currency(c) if isinstance(c, str) else c for c in v]
+    return v
+
+
 # --- Sub-Models ---
 
 
@@ -65,6 +84,11 @@ class ApiConfig(BaseModel):
         if isinstance(v, str):
             return v.capitalize()
         return v
+
+    @field_validator("all_currencies", mode="before")
+    @classmethod
+    def normalize_currency_codes(cls, v: Any) -> Any:
+        return _normalize_currency_list(v)
 
 
 class WebServerConfig(BaseModel):
@@ -93,6 +117,11 @@ class BotConfig(BaseModel):
     # notification services. None/empty keeps library defaults, which still
     # honor HTTP(S)_PROXY environment variables.
     proxy: str | None = None
+
+    @field_validator("transferable_currencies", mode="before")
+    @classmethod
+    def normalize_currency_codes(cls, v: Any) -> Any:
+        return _normalize_currency_list(v)
 
     @field_validator("proxy")
     @classmethod
@@ -208,6 +237,11 @@ class MarketAnalysisConfig(BaseModel):
     daily_min_multiplier: float = Field(1.05, ge=1.0)
     analysis_method: AnalysisMethod = AnalysisMethod.PERCENTILE
 
+    @field_validator("analyse_currencies", mode="before")
+    @classmethod
+    def normalize_currency_codes(cls, v: Any) -> Any:
+        return _normalize_currency_list(v)
+
     @field_validator("analysis_method", mode="before")
     @classmethod
     def case_insensitive_method(cls, v: Any) -> Any:
@@ -264,6 +298,18 @@ class RootConfig(BaseModel):
     plugins: PluginsConfig = Field(default_factory=lambda: PluginsConfig())
     coin: dict[str, CoinConfig] = Field(default_factory=dict)
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_coin_section_keys(cls, data: Any) -> Any:
+        """Renames [coin.UST] and other alias keys to the canonical codes."""
+        if isinstance(data, dict) and isinstance(data.get("coin"), dict):
+            coin = {
+                normalize_currency(k) if isinstance(k, str) else k: v
+                for k, v in data["coin"].items()
+            }
+            return {**data, "coin": coin}
+        return data
+
     def get_coin_config(self, symbol: str) -> CoinConfig:
         """
         Returns the merged configuration for a specific coin.
@@ -295,6 +341,39 @@ class RootConfig(BaseModel):
 _current_config: RootConfig | None = None
 
 
+def _currency_alias_notes(data: dict[str, Any]) -> list[str]:
+    """Collects human-readable notes for alias codes normalized at load."""
+    notes: list[str] = []
+
+    def check_list(section: str, key: str, values: Any) -> None:
+        if isinstance(values, list):
+            for code in values:
+                if isinstance(code, str) and code in CURRENCY_ALIASES:
+                    notes.append(f"{section}.{key}: '{code}' -> '{normalize_currency(code)}'")
+
+    api_section = data.get("api")
+    if isinstance(api_section, dict):
+        check_list("api", "all_currencies", api_section.get("all_currencies"))
+    bot_section = data.get("bot")
+    if isinstance(bot_section, dict):
+        check_list("bot", "transferable_currencies", bot_section.get("transferable_currencies"))
+    plugins_section = data.get("plugins")
+    if isinstance(plugins_section, dict):
+        ma_section = plugins_section.get("market_analysis")
+        if isinstance(ma_section, dict):
+            check_list(
+                "plugins.market_analysis",
+                "analyse_currencies",
+                ma_section.get("analyse_currencies"),
+            )
+    coin_section = data.get("coin")
+    if isinstance(coin_section, dict):
+        for key in coin_section:
+            if isinstance(key, str) and key in CURRENCY_ALIASES:
+                notes.append(f"coin section: '[coin.{key}]' -> '[coin.{normalize_currency(key)}]'")
+    return notes
+
+
 def load_config(file_path: Path) -> RootConfig:
     global _current_config
 
@@ -303,6 +382,10 @@ def load_config(file_path: Path) -> RootConfig:
 
     with file_path.open("rb") as f:
         data = tomllib.load(f)
+
+    notes = _currency_alias_notes(data)
+    if notes:
+        print("Note: normalized legacy currency codes: " + "; ".join(notes))
 
     config = RootConfig(**data)
     _current_config = config

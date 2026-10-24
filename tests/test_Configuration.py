@@ -241,3 +241,51 @@ class TestConfiguration(unittest.TestCase):
 
         with self.assertRaises(ValidationError):
             Conf.load_config(self.toml_path)
+
+
+class TestCurrencyAliases:
+    """Legacy currency codes (UST) normalize to canonical codes (USDt)."""
+
+    def _toml(self, tmp_path, content):
+        path = tmp_path / "aliases.toml"
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def test_all_currencies_and_coin_sections_normalized(self, tmp_path):
+        path = self._toml(
+            tmp_path,
+            """
+[api]
+exchange = "Bitfinex"
+all_currencies = ["USD", "UST"]
+
+[coin.UST]
+min_daily_rate = 0.02
+""",
+        )
+        config = Conf.load_config(path)
+        assert config.api.all_currencies == ["USD", "USDt"]
+        assert "USDt" in config.coin
+        assert "UST" not in config.coin
+
+    def test_transferable_and_analysis_currencies_normalized(self, tmp_path):
+        path = self._toml(
+            tmp_path,
+            """
+[api]
+all_currencies = ["UST"]
+
+[bot]
+transferable_currencies = ["UST", "BTC"]
+
+[plugins.market_analysis]
+analyse_currencies = ["UST"]
+""",
+        )
+        config = Conf.load_config(path)
+        assert config.bot.transferable_currencies == ["USDt", "BTC"]
+        assert config.plugins.market_analysis.analyse_currencies == ["USDt"]
+
+    def test_canonical_codes_untouched(self):
+        cfg = Conf.ApiConfig(all_currencies=["USD", "USDt", "BTC"])
+        assert cfg.all_currencies == ["USD", "USDt", "BTC"]

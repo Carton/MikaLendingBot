@@ -69,6 +69,8 @@ The ``[api]`` section contains exchange-related configurations.
 
 .. note:: In the new TOML format, this is a list of strings. To disable a currency, simply remove it from the list.
 
+.. note:: Legacy currency codes are normalized at load time: on Bitfinex the API reports tether as ``UST``, but the config, dashboard and logs use ``USDt`` — writing either ``USDt`` or ``UST`` in ``all_currencies``, ``[coin.X]`` section names, ``transferable_currencies`` or ``analyse_currencies`` all resolve to the canonical ``USDt``.
+
 
 
 Timing

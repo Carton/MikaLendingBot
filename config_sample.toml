@@ -8,6 +8,7 @@ apikey = "YourAPIKey"
 secret = "YourSecret"
 
 # Supported currencies whitelist. Choose based on your exchange.
+# Legacy codes are normalized ("UST" resolves to "USDt").
 # Bitfinex:
 all_currencies = ["USD", "USDt"]
 # Poloniex:
