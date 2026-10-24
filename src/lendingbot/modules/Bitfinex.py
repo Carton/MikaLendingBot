@@ -9,7 +9,7 @@ from typing import Any
 
 import requests
 
-from . import Configuration
+from . import Configuration, Network
 from .Bitfinex2Poloniex import Bitfinex2Poloniex
 from .ExchangeApi import ApiError, ExchangeApi
 from .Utils import format_amount_currency, format_rate_pct
@@ -96,11 +96,16 @@ class Bitfinex(ExchangeApi):
     ) -> Any:
         try:
             url = f"{self.url}{request_path}"
+            proxies = Network.get_proxies()
             if method == "get":
-                r = requests.get(url, timeout=self.timeout, headers={"Connection": "close"})
+                r = requests.get(
+                    url, timeout=self.timeout, headers={"Connection": "close"}, proxies=proxies
+                )
                 self.debug_log(f"GET: {url}")
             else:
-                r = requests.post(url, headers=payload, verify=verify, timeout=self.timeout)
+                r = requests.post(
+                    url, headers=payload, verify=verify, timeout=self.timeout, proxies=proxies
+                )
                 self.debug_log(f"POST: {url} headers={payload}")
 
             if r.status_code != 200:

@@ -4,6 +4,7 @@ import tomllib
 from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
@@ -79,12 +80,42 @@ class WebServerConfig(BaseModel):
 
 
 class BotConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # hide_input_in_errors: proxy URLs may embed credentials; never echo the
+    # raw input back in validation errors (it can end up in startup logs).
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
     label: str = "Lending Bot"
     period_active: float = Field(60.0, ge=1, le=3600)
     period_inactive: float = Field(300.0, ge=1, le=3600)
     request_timeout: int = Field(30, ge=1, le=180)
+    # HTTP(S) CONNECT proxy URL (e.g. "http://127.0.0.1:7890") applied to all
+    # outbound traffic: exchange APIs, blockchain.info rate lookups and
+    # notification services. None/empty keeps library defaults, which still
+    # honor HTTP(S)_PROXY environment variables.
+    proxy: str | None = None
+
+    @field_validator("proxy")
+    @classmethod
+    def validate_proxy_scheme(cls, v: str | None) -> str | None:
+        if v is None or v == "":
+            return None
+        error = ValueError(
+            "proxy must be an http:// or https:// proxy URL with a host "
+            "(SOCKS proxies are not supported)"
+        )
+        try:
+            parsed = urlparse(v)
+            port = parsed.port  # Rejects invalid ports such as ':abc' or ':70000'.
+        except ValueError as ex:
+            # urlparse can raise ValueErrors quoting the (credential-bearing)
+            # netloc; normalize everything to the fixed message.
+            raise error from ex
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            raise error
+        if port is not None and not 1 <= port <= 65535:
+            raise error
+        return v
+
     api_debug_log: bool = False
     stats_file: str = "www/bot_stats.json"
     log_file: str = "logs/lendingbot.log"
@@ -222,7 +253,10 @@ class NotificationConfig(BaseModel):
 
 
 class RootConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # hide_input_in_errors: nested validation errors (e.g. a proxy URL with
+    # embedded credentials) are rendered by the outermost model, so this must
+    # be set here as well, not just on BotConfig.
+    model_config = ConfigDict(extra="forbid", hide_input_in_errors=True)
 
     api: ApiConfig = Field(default_factory=lambda: ApiConfig())
     bot: BotConfig = Field(default_factory=lambda: BotConfig())

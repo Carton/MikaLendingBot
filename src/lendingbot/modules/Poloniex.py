@@ -9,7 +9,7 @@ from typing import Any, cast
 
 import requests
 
-from . import Configuration
+from . import Configuration, Network
 from .ExchangeApi import ApiError, ExchangeApi
 
 
@@ -81,24 +81,25 @@ class Poloniex(ExchangeApi):
         try:
             headers = {"Connection": "close"}
             timeout = int(self.cfg.bot.request_timeout)
+            proxies = Network.get_proxies()
 
             if command in ("returnTicker", "return24hVolume"):
                 url = f"https://poloniex.com/public?command={command}"
-                r = requests.get(url, headers=headers, timeout=timeout)
+                r = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
                 return _handle_response(r)
             elif command == "returnOrderBook":
                 url = f"https://poloniex.com/public?command={command}&currencyPair={req['currencyPair']}"
-                r = requests.get(url, headers=headers, timeout=timeout)
+                r = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
                 return _handle_response(r)
             elif command == "returnMarketTradeHistory":
                 url = f"https://poloniex.com/public?command=returnTradeHistory&currencyPair={req['currencyPair']}"
-                r = requests.get(url, headers=headers, timeout=timeout)
+                r = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
                 return _handle_response(r)
             elif command == "returnLoanOrders":
                 url = f"https://poloniex.com/public?command=returnLoanOrders&currency={req['currency']}"
                 if req.get("limit", 0) > 0:
                     url += f"&limit={req['limit']}"
-                r = requests.get(url, headers=headers, timeout=timeout)
+                r = requests.get(url, headers=headers, timeout=timeout, proxies=proxies)
                 return _handle_response(r)
             else:
                 req["command"] = command
@@ -110,7 +111,11 @@ class Poloniex(ExchangeApi):
 
                 headers.update({"Sign": sign, "Key": self.APIKey})
                 r = requests.post(
-                    "https://poloniex.com/tradingApi", data=req, headers=headers, timeout=timeout
+                    "https://poloniex.com/tradingApi",
+                    data=req,
+                    headers=headers,
+                    timeout=timeout,
+                    proxies=proxies,
                 )
                 json_ret = _handle_response(r)
                 return post_process(json_ret)

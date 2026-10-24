@@ -1,9 +1,10 @@
 import importlib.util
-import json
 import smtplib
-import urllib.parse
-import urllib.request
 from typing import Any
+
+import requests
+
+from . import Network
 
 
 IRC_LOADED = importlib.util.find_spec("irc") is not None
@@ -16,9 +17,9 @@ class NotificationException(Exception):
     pass
 
 
-def check_urllib_response(response: Any, platform: str) -> None:
-    response_str = response.read().decode("utf-8")
-    response_obj = json.loads(response_str)
+def check_response(response: requests.Response, platform: str) -> None:
+    response.raise_for_status()
+    response_obj = response.json()
     if not response_obj.get("ok"):
         msg = f"Error connecting to {platform}, got response: {response_obj}"
         raise NotificationException(msg)
@@ -36,11 +37,13 @@ def post_to_slack(msg: str, channels: list[str], token: str, username: str) -> N
     """
     for channel in channels:
         post_data = {"text": msg, "channel": channel, "token": token, "username": username}
-        enc_post_data = urllib.parse.urlencode(post_data).encode("utf-8")
-        url = "https://slack.com/api/chat.postMessage"
-        req = urllib.request.Request(url, data=enc_post_data)
-        with urllib.request.urlopen(req) as response:
-            check_urllib_response(response, "slack")
+        r = requests.post(
+            "https://slack.com/api/chat.postMessage",
+            data=post_data,
+            timeout=Network.request_timeout(),
+            proxies=Network.get_proxies(),
+        )
+        check_response(r, "slack")
 
 
 def post_to_telegram(msg: str, chat_ids: list[str], bot_id: str) -> None:
@@ -54,12 +57,15 @@ def post_to_telegram(msg: str, chat_ids: list[str], bot_id: str) -> None:
     """
     for chat_id in chat_ids:
         post_data = {"chat_id": chat_id, "text": msg}
-        enc_post_data = urllib.parse.urlencode(post_data).encode("utf-8")
         url = f"https://api.telegram.org/bot{bot_id}/sendMessage"
         try:
-            req = urllib.request.Request(url, data=enc_post_data)
-            with urllib.request.urlopen(req) as response:
-                check_urllib_response(response, "telegram")
+            r = requests.post(
+                url,
+                data=post_data,
+                timeout=Network.request_timeout(),
+                proxies=Network.get_proxies(),
+            )
+            check_response(r, "telegram")
         except Exception as e:
             msg_err = "Your bot id is probably configured incorrectly"
             raise NotificationException(f"{e}\n{msg_err}") from e
@@ -117,14 +123,15 @@ def send_email(
 
 def post_to_pushbullet(msg: str, token: str, deviceid: str) -> None:
     post_data = {"body": msg, "device_iden": deviceid, "title": "Poloniex Bot", "type": "note"}
-    req = urllib.request.Request(
-        "https://api.pushbullet.com/v2/pushes",
-        data=json.dumps(post_data).encode("utf-8"),
-        headers={"Content-Type": "application/json", "Access-Token": token},
-    )
     try:
-        with urllib.request.urlopen(req):
-            pass
+        r = requests.post(
+            "https://api.pushbullet.com/v2/pushes",
+            json=post_data,
+            headers={"Access-Token": token},
+            timeout=Network.request_timeout(),
+            proxies=Network.get_proxies(),
+        )
+        r.raise_for_status()
     except Exception as e:
         print(f"Could not send pushbullet, got error {e}")
         raise NotificationException(e) from e

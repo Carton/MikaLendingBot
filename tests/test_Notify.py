@@ -2,47 +2,67 @@
 Tests for Notify module.
 """
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from lendingbot.modules import Notify
 
 
+def _ok_response():
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"ok": True}
+    return mock_response
+
+
+def _http_error_response():
+    mock_response = MagicMock()
+    mock_response.raise_for_status.side_effect = requests.HTTPError("500 Server Error")
+    mock_response.json.return_value = {"ok": True}
+    return mock_response
+
+
 class TestNotify:
-    @patch("urllib.request.urlopen")
-    def test_post_to_slack(self, mock_urlopen):
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({"ok": True}).encode("utf-8")
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+    @patch("lendingbot.modules.Notify.requests.post")
+    def test_post_to_slack(self, mock_post):
+        mock_post.return_value = _ok_response()
 
         Notify.post_to_slack("test", ["channel"], "token", "user")
-        mock_urlopen.assert_called()
+        mock_post.assert_called()
 
-    @patch("urllib.request.urlopen")
-    def test_check_urllib_response_error(self, _mock_urlopen):
+    def test_check_response_error(self):
         mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({"ok": False, "error": "failed"}).encode(
-            "utf-8"
-        )
+        mock_response.json.return_value = {"ok": False, "error": "failed"}
         with pytest.raises(Notify.NotificationException):
-            Notify.check_urllib_response(mock_response, "test")
+            Notify.check_response(mock_response, "test")
 
-    @patch("urllib.request.urlopen")
-    def test_post_to_telegram_error(self, mock_urlopen):
-        # Mock connection error
-        mock_urlopen.side_effect = Exception("conn error")
+    @patch("lendingbot.modules.Notify.requests.post")
+    def test_slack_http_error_raises(self, mock_post):
+        mock_post.return_value = _http_error_response()
+        with pytest.raises(requests.HTTPError):
+            Notify.post_to_slack("test", ["channel"], "token", "user")
+
+    @patch("lendingbot.modules.Notify.requests.post")
+    def test_telegram_http_error_wrapped(self, mock_post):
+        mock_post.return_value = _http_error_response()
         with pytest.raises(Notify.NotificationException) as exc:
             Notify.post_to_telegram("msg", ["123"], "botid")
         assert "probably configured incorrectly" in str(exc.value)
 
-    @patch("urllib.request.urlopen")
-    def test_post_to_pushbullet(self, mock_urlopen):
-        mock_response = MagicMock()
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+    @patch("lendingbot.modules.Notify.requests.post")
+    def test_post_to_telegram_error(self, mock_post):
+        # Mock connection error
+        mock_post.side_effect = Exception("conn error")
+        with pytest.raises(Notify.NotificationException) as exc:
+            Notify.post_to_telegram("msg", ["123"], "botid")
+        assert "probably configured incorrectly" in str(exc.value)
+
+    @patch("lendingbot.modules.Notify.requests.post")
+    def test_post_to_pushbullet(self, mock_post):
+        mock_post.return_value = _ok_response()
         Notify.post_to_pushbullet("msg", "token", "devid")
-        mock_urlopen.assert_called()
+        mock_post.assert_called()
 
     @patch("smtplib.SMTP")
     def test_send_email_error(self, mock_smtp):

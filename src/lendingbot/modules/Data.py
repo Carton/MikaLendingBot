@@ -7,6 +7,7 @@ from typing import Any
 
 import requests
 
+from . import Network
 from .Logger import Logger
 from .Utils import format_amount_currency, format_rate_pct
 
@@ -163,7 +164,7 @@ def update_conversion_rates(output_currency: str, json_output_enabled: bool) -> 
         url = f"https://blockchain.info/tobtc?currency={output_currency}&value=1"
         if not output_currency_found:  # fetch output currency rate from blockchain.info
             try:
-                r = requests.get(url, timeout=10)
+                r = requests.get(url, timeout=10, proxies=Network.get_proxies())
                 r.raise_for_status()
                 try:
                     highest_bid = r.json()
