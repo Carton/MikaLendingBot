@@ -5,6 +5,12 @@ export interface XDayThresholdEntry {
   days: number;
 }
 
+export interface CoinSettingsEntry {
+  frrdelta_min?: number;
+  frrdelta_max?: number;
+  xday_thresholds?: XDayThresholdEntry[];
+}
+
 export interface DashboardSettings {
   refreshRate?: number;
   timespanNames?: TimespanName[];
@@ -14,6 +20,12 @@ export interface DashboardSettings {
   frrdelta_max?: number;
   xday_thresholds?: XDayThresholdEntry[];
   recentSuccessfulLoans?: number;
+  /** Enabled currencies (api.all_currencies); drives the settings tabs. */
+  currencies?: string[];
+  /** Per-currency tab display values (TOML overlaid with saved overrides). */
+  coin_settings?: Record<string, CoinSettingsEntry>;
+  /** Explicitly saved per-currency overrides only (never derived values). */
+  coin_overrides?: Record<string, CoinSettingsEntry>;
 }
 
 export interface DashboardStatus {

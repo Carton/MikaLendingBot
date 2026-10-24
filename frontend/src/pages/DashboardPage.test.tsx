@@ -286,8 +286,300 @@ describe("DashboardPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "OK" }));
 
+    // Untouched strategy values are not resubmitted: they would otherwise be
+    // entity-ified into web overrides shadowing per-coin TOML config.
+    await waitFor(() => expect(onSaveSettings).toHaveBeenCalled());
+    const payload = onSaveSettings.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload).not.toHaveProperty("frrdelta_min");
+    expect(payload).not.toHaveProperty("frrdelta_max");
+  });
+
+  it("edits per-currency FRR and duration settings from coin tabs", async () => {
+    const onSaveSettings = vi.fn();
+    const coinState: DashboardStateResponse = {
+      ...baseState,
+      settings: {
+        ...baseState.settings,
+        currencies: ["USD", "USDt"],
+        coin_settings: {
+          USD: { frrdelta_min: -2, frrdelta_max: 4, xday_thresholds: [] },
+          USDt: { frrdelta_min: -1, frrdelta_max: 5, xday_thresholds: [{ rate: 0.03, days: 30 }] }
+        }
+      }
+    };
+    render(
+      <DashboardPage
+        state={coinState}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    // The default tab is active first and shows the global values.
+    expect(screen.getByRole("tab", { name: "Default" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "USDt" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "USDt" }));
+    expect(screen.getByText("Min -1%")).toBeInTheDocument();
+    expect(screen.getByText("Max 5%")).toBeInTheDocument();
+
+    const daysInput = screen.getByLabelText("Lending days");
+    await waitFor(() => expect(daysInput).toHaveValue("30"));
+    fireEvent.change(daysInput, { target: { value: "40" } });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    // Only the edited field becomes an explicit override; untouched coins
+    // (and untouched fields like the FRR range) keep inheriting.
     await waitFor(() =>
-      expect(onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({ frrdelta_min: -3, frrdelta_max: 9 }))
+      expect(onSaveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          coin_settings: {
+            USDt: { xday_thresholds: [{ rate: 0.03, days: 40 }] }
+          }
+        })
+      )
+    );
+  });
+
+  it("saving default-tab edits does not create coin overrides", async () => {
+    const onSaveSettings = vi.fn();
+    const coinState: DashboardStateResponse = {
+      ...baseState,
+      settings: {
+        ...baseState.settings,
+        currencies: ["USD", "USDt"],
+        frrdelta_min: -3,
+        frrdelta_max: 9,
+        coin_settings: {
+          USD: { frrdelta_min: -5, frrdelta_max: 5, xday_thresholds: [] },
+          USDt: { frrdelta_min: -3, frrdelta_max: 9, xday_thresholds: [] }
+        }
+      }
+    };
+    render(
+      <DashboardPage
+        state={coinState}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    const refreshInput = screen.getByLabelText("Refresh interval");
+    fireEvent.change(refreshInput, { target: { value: "45" } });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() =>
+      expect(onSaveSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ refreshRate: 45, coin_settings: {} })
+      )
+    );
+  });
+
+  it("preserves existing overrides of tabs the user never opened", async () => {
+    const onSaveSettings = vi.fn();
+    const usdtOverride = {
+      frrdelta_min: -1,
+      frrdelta_max: 5,
+      xday_thresholds: [{ rate: 0.03, days: 40 }]
+    };
+    const coinState: DashboardStateResponse = {
+      ...baseState,
+      settings: {
+        ...baseState.settings,
+        currencies: ["USD", "USDt"],
+        coin_settings: { USDt: usdtOverride },
+        coin_overrides: { USDt: usdtOverride }
+      }
+    };
+    render(
+      <DashboardPage
+        state={coinState}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    // Only touch the Default tab; the USDt tab is never opened.
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    const refreshInput = screen.getByLabelText("Refresh interval");
+    fireEvent.change(refreshInput, { target: { value: "45" } });
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() => expect(onSaveSettings).toHaveBeenCalled());
+    const payload = onSaveSettings.mock.calls[0][0] as { coin_settings?: unknown };
+    // The untouched override must survive byte-for-byte, not be wiped or
+    // partially rebuilt from unvisited-tab defaults.
+    expect(payload.coin_settings).toEqual({ USDt: usdtOverride });
+  });
+
+  it("preserves an existing override that exceeds the slider range", async () => {
+    const onSaveSettings = vi.fn();
+    const override = { frrdelta_min: -1, frrdelta_max: 55, xday_thresholds: [] };
+    const coinState: DashboardStateResponse = {
+      ...baseState,
+      settings: {
+        ...baseState.settings,
+        currencies: ["USDt"],
+        coin_settings: { USDt: override },
+        coin_overrides: { USDt: override }
+      }
+    };
+    render(
+      <DashboardPage
+        state={coinState}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    // The slider clamps the display to its max (50); the untouched override
+    // must still round-trip with its original value (55).
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    expect(screen.getByText("Max 50%")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() => expect(onSaveSettings).toHaveBeenCalled());
+    const payload = onSaveSettings.mock.calls[0][0] as {
+      coin_settings?: Record<string, { frrdelta_max?: number }>;
+    };
+    expect(payload.coin_settings?.USDt?.frrdelta_max).toBe(55);
+  });
+
+  it("keeps a pending reset across background settings refreshes", async () => {
+    const onSaveSettings = vi.fn();
+    const override = { frrdelta_min: -1, frrdelta_max: 5, xday_thresholds: [] };
+    const makeState = (): DashboardStateResponse => ({
+      ...baseState,
+      settings: {
+        ...baseState.settings,
+        currencies: ["USDt"],
+        coin_settings: { USDt: override },
+        coin_overrides: { USDt: override }
+      }
+    });
+    const { rerender } = render(
+      <DashboardPage
+        state={makeState()}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    fireEvent.click(screen.getByRole("tab", { name: "USDt" }));
+    fireEvent.click(screen.getByRole("button", { name: /reset overrides/i }));
+
+    // A poll delivers a new state object while the modal is open.
+    rerender(
+      <DashboardPage
+        state={makeState()}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() => expect(onSaveSettings).toHaveBeenCalled());
+    const payload = onSaveSettings.mock.calls[0][0] as { coin_settings?: unknown };
+    expect(payload.coin_settings).toEqual({});
+  });
+
+  it("does not resubmit stale values when settings change behind an open modal", async () => {
+    const onSaveSettings = vi.fn();
+    const stateA: DashboardStateResponse = {
+      ...baseState,
+      settings: {
+        ...baseState.settings,
+        currencies: ["USDt"],
+        coin_settings: { USDt: { frrdelta_min: -10, frrdelta_max: 10, xday_thresholds: [] } }
+      }
+    };
+    const { rerender } = render(
+      <DashboardPage
+        state={stateA}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    const refreshInput = screen.getByLabelText("Refresh interval");
+    fireEvent.change(refreshInput, { target: { value: "45" } });
+
+    // While the modal is open, another client saves a new global FRR range.
+    const stateB: DashboardStateResponse = {
+      ...baseState,
+      settings: {
+        ...baseState.settings,
+        currencies: ["USDt"],
+        frrdelta_min: -2,
+        frrdelta_max: 6,
+        coin_settings: { USDt: { frrdelta_min: -2, frrdelta_max: 6, xday_thresholds: [] } }
+      }
+    };
+    rerender(
+      <DashboardPage
+        state={stateB}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    // The stale -10/10 sitting in the form must be judged against the
+    // baseline captured at open time, not the refreshed -2/6.
+    await waitFor(() => expect(onSaveSettings).toHaveBeenCalled());
+    const payload = onSaveSettings.mock.calls[0][0] as Record<string, unknown>;
+    expect(payload.refreshRate).toBe(45);
+    expect(payload).not.toHaveProperty("frrdelta_min");
+    expect(payload).not.toHaveProperty("frrdelta_max");
+    expect(payload.coin_settings).toEqual({});
+  });
+
+  it("resets saved per-currency overrides from the coin tab", async () => {
+    const onSaveSettings = vi.fn();
+    const coinState: DashboardStateResponse = {
+      ...baseState,
+      settings: {
+        ...baseState.settings,
+        currencies: ["USDt"],
+        coin_settings: {
+          USDt: { frrdelta_min: -1, frrdelta_max: 5, xday_thresholds: [{ rate: 0.03, days: 30 }] }
+        },
+        coin_overrides: {
+          USDt: { frrdelta_min: -1, frrdelta_max: 5, xday_thresholds: [{ rate: 0.03, days: 30 }] }
+        }
+      }
+    };
+    render(
+      <DashboardPage
+        state={coinState}
+        loading={false}
+        onRefresh={() => undefined}
+        onSaveSettings={onSaveSettings}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /settings/i }));
+    fireEvent.click(screen.getByRole("tab", { name: "USDt" }));
+    expect(screen.getByText("Overridden")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /reset overrides/i }));
+    expect(screen.getByText(/Applies after saving/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "OK" }));
+
+    await waitFor(() =>
+      expect(onSaveSettings).toHaveBeenCalledWith(expect.objectContaining({ coin_settings: {} }))
     );
   });
 
