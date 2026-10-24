@@ -17,6 +17,11 @@ all_currencies = ["USD", "USDt"]
 # Optional dashboard/reporting plugins. Remove these if you do not want history stats/charts.
 plugins = ["AccountStats", "Charts"]
 
+# Optional HTTP(S) proxy for all outbound traffic (exchange APIs, currency
+# conversion lookups, notifications). Leave unset to keep library defaults;
+# HTTP(S)_PROXY environment variables still apply then.
+# proxy = "http://127.0.0.1:7890"
+
 # Currency used for dashboard earnings summary.
 output_currency = "USD"
 

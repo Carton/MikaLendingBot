@@ -22,6 +22,11 @@ period_inactive = 300
 request_timeout = 30
 api_debug_log = false
 
+# Optional HTTP(S) proxy for all outbound traffic (exchange APIs, currency
+# conversion lookups, Slack/Telegram/Pushbullet notifications).
+# Must be http:// or https://; SOCKS is not supported.
+# proxy = "http://127.0.0.1:7890"
+
 # Order handling behavior.
 keep_stuck_orders = true
 # Must be false for the FRR strategy below: with hide_coins = true the bot

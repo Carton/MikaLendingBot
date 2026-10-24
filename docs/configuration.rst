@@ -100,6 +100,21 @@ Timing
     period_inactive = 300
     request_timeout = 30
 
+Network
+-------
+
+- ``proxy`` is a proxy URL applied to all outbound HTTPS traffic: the exchange APIs, the blockchain.info currency conversion lookup and the HTTP notification services (Slack, Telegram, Pushbullet). Found in the ``[bot]`` section.
+
+    - Default value: Disabled
+    - Allowed values: ``http://`` or ``https://`` proxy URLs (HTTP CONNECT proxies, e.g. ``http://127.0.0.1:7890``). SOCKS proxies are not supported.
+    - When unset, library defaults apply, which still honor the standard ``HTTP_PROXY`` / ``HTTPS_PROXY`` / ``ALL_PROXY`` environment variables.
+    - Email (SMTP) and IRC notifications connect directly; they are not proxied.
+
+.. code-block:: toml
+
+    [bot]
+    proxy = "http://127.0.0.1:7890"
+
 Min and Max Rates
 -----------------
 
