@@ -10,9 +10,18 @@ from typing import Any
 import requests
 
 from . import Configuration, Network
-from .Bitfinex2Poloniex import Bitfinex2Poloniex
+from .Bitfinex2Poloniex import Bitfinex2Poloniex, api_to_config_currency
 from .ExchangeApi import ApiError, ExchangeApi
 from .Utils import format_amount_currency, format_rate_pct
+
+
+# Config/UI uses "USDt" but the API expects "UST" in request paths and
+# payloads; Bitfinex2Poloniex.API_TO_CONFIG_CURRENCY maps responses back.
+CONFIG_TO_API_CURRENCY = {"USDt": "UST"}
+
+
+def _api_currency(currency: str) -> str:
+    return CONFIG_TO_API_CURRENCY.get(currency, currency)
 
 
 class Bitfinex(ExchangeApi):
@@ -176,7 +185,7 @@ class Bitfinex(ExchangeApi):
         return resp
 
     def return_loan_orders(self, currency: str, limit: int = 0) -> dict[str, list[dict[str, Any]]]:
-        command = f"lendbook/{currency}?limit_asks={limit}&limit_bids={limit}"
+        command = f"lendbook/{_api_currency(currency)}?limit_asks={limit}&limit_bids={limit}"
         bfx_resp = self._get(command)
         resp = Bitfinex2Poloniex.convertLoanOrders(bfx_resp)
 
@@ -276,7 +285,8 @@ class Bitfinex(ExchangeApi):
             if bfx_resp["id"] == order_number:
                 success = 1
                 remaining_amount = float(bfx_resp["remaining_amount"])
-                message = f"Loan offer canceled ({format_amount_currency(bfx_resp['remaining_amount'], bfx_resp['currency'])} @ {format_rate_pct(float(bfx_resp['rate']) / 36500)})."
+                canceled_currency = api_to_config_currency(bfx_resp["currency"])
+                message = f"Loan offer canceled ({format_amount_currency(bfx_resp['remaining_amount'], canceled_currency)} @ {format_rate_pct(float(bfx_resp['rate']) / 36500)})."
         except Exception as e:
             message = f"Error canceling offer: {e}"
             success = 0
@@ -302,7 +312,7 @@ class Bitfinex(ExchangeApi):
         """
 
         payload = {
-            "currency": currency,
+            "currency": _api_currency(currency),
             "amount": str(amount),
             "rate": str(round(float(lending_rate), 10) * 36500),
             "period": int(duration),
@@ -377,7 +387,7 @@ class Bitfinex(ExchangeApi):
         """
         account_map = {"margin": "trading", "lending": "deposit", "exchange": "exchange"}
         payload = {
-            "currency": currency,
+            "currency": _api_currency(currency),
             "amount": amount,
             "walletfrom": account_map[from_account],
             "walletto": account_map[to_account],
@@ -403,7 +413,7 @@ class Bitfinex(ExchangeApi):
         all_currencies = self.cfg.api.all_currencies
         for curr in all_currencies:
             payload = {
-                "currency": curr,
+                "currency": _api_currency(curr),
                 "since": str(start),
                 "until": str(stop),
                 "limit": limit,
@@ -435,6 +445,6 @@ class Bitfinex(ExchangeApi):
         Retrieves the flash return rate for the given currency
         https://bitfinex.readme.io/v2/reference#rest-public-platform-status
         """
-        command = f"tickers?symbols=f{currency}"
+        command = f"tickers?symbols=f{_api_currency(currency)}"
         resp = self._get(command, "v2")
         return float(resp[0][1])

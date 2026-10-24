@@ -157,3 +157,27 @@ def test_convert_account_balances():
     assert "margin" in balances_margin
     assert "lending" not in balances_margin
     assert balances_margin["margin"]["ETH"] == "1.5"
+
+
+def test_api_currency_codes_map_to_config_codes():
+    # Bitfinex reports tether as "UST"; config/UI use "USDt".
+    balances = Bitfinex2Poloniex.convertAccountBalances(
+        [
+            {"type": "deposit", "currency": "UST", "amount": "285.0", "available": "285.0"},
+            {"type": "deposit", "currency": "USD", "amount": "10.0", "available": "10.0"},
+        ],
+        "lending",
+    )
+    assert set(balances["lending"].keys()) == {"USDt", "USD"}
+
+    loans = Bitfinex2Poloniex.convertActiveLoans(
+        [{"id": 1, "currency": "UST", "rate": "7.3", "amount": "1.0", "period": 2,
+          "timestamp": "1514764800"}]
+    )
+    assert loans["provided"][0]["currency"] == "USDt"
+
+    offers = Bitfinex2Poloniex.convertOpenLoanOffers(
+        [{"id": 2, "currency": "ust", "rate": "7.3", "remaining_amount": "1.0", "period": 2,
+          "direction": "lend", "timestamp": "1514764800"}]
+    )
+    assert "USDt" in offers

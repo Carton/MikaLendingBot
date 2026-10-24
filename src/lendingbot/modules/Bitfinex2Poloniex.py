@@ -6,6 +6,18 @@ import datetime
 from typing import Any
 
 
+# The Bitfinex API uses "UST" for tether everywhere (balances, offers,
+# credits), while the config and dashboard convention is "USDt". Map API
+# codes to config codes here so the rest of the bot only ever sees config
+# codes; Bitfinex.CONFIG_TO_API_CURRENCY does the reverse for requests.
+API_TO_CONFIG_CURRENCY = {"UST": "USDt"}
+
+
+def api_to_config_currency(currency: str) -> str:
+    normalized = currency.upper()
+    return API_TO_CONFIG_CURRENCY.get(normalized, normalized)
+
+
 class Bitfinex2Poloniex:
     @staticmethod
     def convertTimestamp(timestamp: str | float) -> str:
@@ -22,11 +34,12 @@ class Bitfinex2Poloniex:
         """
         plxOffers: dict[str, list[dict[str, Any]]] = {}
         for offer in bfxOffers:
-            if offer["currency"] not in plxOffers:
-                plxOffers[offer["currency"]] = []
+            curr = api_to_config_currency(offer["currency"])
+            if curr not in plxOffers:
+                plxOffers[curr] = []
 
             if offer["direction"] == "lend" and float(offer["remaining_amount"]) > 0:
-                plxOffers[offer["currency"]].append(
+                plxOffers[curr].append(
                     {
                         "id": offer["id"],
                         "rate": str(float(offer["rate"]) / 36500),
@@ -52,7 +65,7 @@ class Bitfinex2Poloniex:
             plxOffers["provided"].append(
                 {
                     "id": offer["id"],
-                    "currency": offer["currency"],
+                    "currency": api_to_config_currency(offer["currency"]),
                     "rate": str(float(offer["rate"]) / 36500),
                     "amount": offer["amount"],
                     "duration": offer["period"],
@@ -119,7 +132,7 @@ class Bitfinex2Poloniex:
             if (account == "" or account == accountMap[balance["type"]]) and float(
                 balance["amount"]
             ) > 0:
-                curr = balance["currency"].upper()
+                curr = api_to_config_currency(balance["currency"])
                 if account == "":
                     balances[accountMap[balance["type"]]][curr] = balance["available"]
                 else:
