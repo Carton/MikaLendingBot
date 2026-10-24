@@ -171,8 +171,8 @@ The bot supports different lending strategies. You can select the active strateg
     - Poloniex max lending period: 60 days
     - Bitfinex max lending period: 120 days
     - This feature allows you to lock in a better rate for a longer period of time.
-    - Only the ``[coin.default]`` thresholds take effect; per-coin overrides for this list are not applied.
-    - The list can also be edited in the web dashboard Settings dialog (see `lendingbot.html settings`_). Once saved there, the web value takes precedence over this TOML value.
+    - Thresholds are resolved per currency: a ``[coin.SYMBOL]`` list takes precedence over ``[coin.default]``.
+    - The list can also be edited per currency in the web dashboard Settings dialog (see `lendingbot.html settings`_). Once saved there, the web value takes precedence: a per-currency tab overrides that currency's TOML list, and the Default tab overrides the rest.
 
 .. code-block:: toml
 
@@ -510,6 +510,9 @@ lendingbot.html settings
 
 Dashboard options are configured through the Settings dialog and persisted to ``web_settings.json``.
 Current persisted web settings include refresh interval, output currency display mode, lending pause state, FRR adjustment range, and lending duration thresholds (``xday_thresholds``).
+The FRR adjustment range and the duration thresholds are edited on one tab per
+enabled currency (``api.all_currencies``) plus a Default tab used by currencies
+without their own tab values.
 The UI language is selected in the same Settings dialog but stored in browser local storage.
 
 Settings that also exist in ``config.toml`` (FRR adjustment range, lending duration
