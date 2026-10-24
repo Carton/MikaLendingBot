@@ -28,6 +28,7 @@ class MockEngine:
         self.has_web_frr_override: bool = False
         self.xday_thresholds: list[Any] = []
         self.has_web_xday_override: bool = False
+        self.web_coin_settings: dict[str, dict[str, Any]] = {}
         self.recent_successful_loans: dict[str, list[dict[str, str]]] = {
             "USD": [
                 {
@@ -165,6 +166,81 @@ async def test_get_settings(web_server: WebServer) -> None:
     data = response.json()
     assert data["refreshRate"] == web_server.config.bot.web.refresh_rate
     assert "effRateMode" not in data
+
+
+@pytest.mark.asyncio
+async def test_get_settings_prefills_coin_settings_from_toml(web_server: WebServer) -> None:
+    web_server.config.api.all_currencies = ["USD", "USDt"]
+    web_server.config.coin["USDt"] = CoinConfig(
+        frr_delta_min=Decimal("-1"),
+        frr_delta_max=Decimal("4"),
+        xday_thresholds=[XDayThreshold(rate=Decimal("0.03"), days=40)],
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/get_settings")
+
+    data = response.json()
+    assert data["currencies"] == ["USD", "USDt"]
+    usdt = data["coin_settings"]["USDt"]
+    assert usdt["frrdelta_min"] == -1.0
+    assert usdt["frrdelta_max"] == 4.0
+    assert usdt["xday_thresholds"] == [{"rate": 0.03, "days": 40}]
+    # USD has no TOML section, so its tab falls back to [coin.default].
+    assert data["coin_settings"]["USD"]["frrdelta_min"] == -10.0
+
+
+@pytest.mark.asyncio
+async def test_api_settings_applies_coin_settings(web_server: WebServer) -> None:
+    web_server.config.api.all_currencies = ["USD", "USDt"]
+    payload = {
+        "coin_settings": {
+            "USDt": {
+                "frrdelta_min": -2,
+                "frrdelta_max": 6,
+                "xday_thresholds": [
+                    {"rate": 0.03, "days": 40},
+                    {"rate": 0.04, "days": 80},
+                ],
+            }
+        }
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("/api/settings", json=payload)
+
+    assert response.status_code == 200
+    override = web_server.lending_engine.web_coin_settings["USDt"]
+    assert override["frr_min"] == Decimal("-2")
+    assert override["frr_max"] == Decimal("6")
+    assert [t.days for t in override["xday"]] == [40, 80]
+
+    # Persisted for the next startup.
+    with Path(web_server.web_settings_file).open("r", encoding="utf-8") as f:
+        persisted = json.load(f)
+    assert persisted["coin_settings"]["USDt"]["xday_thresholds"][0]["days"] == 40
+    assert "currencies" not in persisted
+
+
+@pytest.mark.asyncio
+async def test_api_settings_rejects_decreasing_coin_xday_days(web_server: WebServer) -> None:
+    web_server.config.api.all_currencies = ["USDt"]
+    payload = {
+        "coin_settings": {
+            "USDt": {"xday_thresholds": [{"rate": 0.03, "days": 90}, {"rate": 0.04, "days": 40}]}
+        }
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("/api/settings", json=payload)
+
+    assert response.status_code == 400
+    assert "USDt" in response.json()["error"]
+    assert web_server.lending_engine.web_coin_settings == {}
 
 
 @pytest.mark.asyncio
@@ -642,3 +718,136 @@ async def test_sse_stream(web_server: WebServer, live_web_server: str) -> None:
             assert test_msg in line
         except TimeoutError:
             pytest.fail("SSE stream timed out")
+
+
+@pytest.mark.asyncio
+async def test_partial_post_does_not_persist_derived_coin_defaults(web_server: WebServer) -> None:
+    web_server.config.api.all_currencies = ["USD", "USDt"]
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("/api/settings", json={"refreshRate": 45})
+
+    assert response.status_code == 200
+    with Path(web_server.web_settings_file).open("r", encoding="utf-8") as f:
+        persisted = json.load(f)
+    assert persisted["refreshRate"] == 45
+    assert "coin_settings" not in persisted
+    assert "coin_overrides" not in persisted
+    assert "currencies" not in persisted
+
+
+@pytest.mark.asyncio
+async def test_get_settings_merges_coin_overrides_field_level(web_server: WebServer) -> None:
+    web_server.config.api.all_currencies = ["USD", "USDt"]
+    web_server.config.coin["USDt"] = CoinConfig(
+        frr_delta_min=Decimal("-1"),
+        frr_delta_max=Decimal("4"),
+        xday_thresholds=[XDayThreshold(rate=Decimal("0.03"), days=40)],
+    )
+    Path(web_server.web_settings_file).write_text(
+        json.dumps({"coin_settings": {"USDt": {"xday_thresholds": []}}}), encoding="utf-8"
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/get_settings")
+
+    data = response.json()
+    usdt = data["coin_settings"]["USDt"]
+    # The xday override applies (explicit empty disables the curve) while the
+    # FRR fields keep the TOML values.
+    assert usdt["xday_thresholds"] == []
+    assert usdt["frrdelta_min"] == -1.0
+    assert data["coin_overrides"] == {"USDt": {"xday_thresholds": []}}
+
+
+@pytest.mark.asyncio
+async def test_coin_settings_drops_non_finite_frr_values(web_server: WebServer) -> None:
+    web_server.config.api.all_currencies = ["USDt"]
+    payload = {
+        "coin_settings": {
+            "USDt": {
+                "frrdelta_min": -2,
+                "frrdelta_max": "NaN",
+                "xday_thresholds": [{"rate": 0.03, "days": 40}],
+            }
+        }
+    }
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post("/api/settings", json=payload)
+
+    assert response.status_code == 200
+    override = web_server.lending_engine.web_coin_settings["USDt"]
+    assert "frr_min" not in override
+    assert [t.days for t in override["xday"]] == [40]
+    with Path(web_server.web_settings_file).open("r", encoding="utf-8") as f:
+        persisted = json.load(f)
+    assert "frrdelta_min" not in persisted["coin_settings"]["USDt"]
+
+
+@pytest.mark.asyncio
+async def test_coin_settings_explicit_empty_xday_overrides_toml(web_server: WebServer) -> None:
+    web_server.config.api.all_currencies = ["USDt"]
+    web_server.config.coin["USDt"] = CoinConfig(
+        xday_thresholds=[XDayThreshold(rate=Decimal("0.03"), days=40)]
+    )
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post(
+            "/api/settings", json={"coin_settings": {"USDt": {"xday_thresholds": []}}}
+        )
+
+    assert response.status_code == 200
+    assert web_server.lending_engine.web_coin_settings["USDt"]["xday"] == []
+
+
+@pytest.mark.asyncio
+async def test_get_settings_display_applies_global_web_overrides(web_server: WebServer) -> None:
+    web_server.config.api.all_currencies = ["USD", "USDt"]
+    web_server.config.coin["USDt"] = CoinConfig(
+        xday_thresholds=[XDayThreshold(rate=Decimal("0.03"), days=40)]
+    )
+    # A global web curve (90 days) saved earlier must show on coins whose only
+    # curve source would otherwise be TOML; a coin-level override still wins.
+    Path(web_server.web_settings_file).write_text(
+        json.dumps(
+            {
+                "xday_thresholds": [{"rate": 0.03, "days": 90}],
+                "coin_settings": {"USD": {"xday_thresholds": [{"rate": 0.03, "days": 30}]}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.get("/get_settings")
+
+    data = response.json()
+    assert data["coin_settings"]["USDt"]["xday_thresholds"] == [{"rate": 0.03, "days": 90}]
+    assert data["coin_settings"]["USD"]["xday_thresholds"] == [{"rate": 0.03, "days": 30}]
+
+
+@pytest.mark.asyncio
+async def test_non_finite_global_frr_drops_pair_but_saves_rest(web_server: WebServer) -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=web_server.app), base_url="http://test"
+    ) as ac:
+        response = await ac.post(
+            "/api/settings",
+            json={"refreshRate": 45, "frrdelta_min": -2, "frrdelta_max": "NaN"},
+        )
+
+    assert response.status_code == 200
+    assert web_server.lending_engine.has_web_frr_override is False
+    with Path(web_server.web_settings_file).open("r", encoding="utf-8") as f:
+        persisted = json.load(f)
+    assert persisted["refreshRate"] == 45
+    assert "frrdelta_min" not in persisted
+    assert "frrdelta_max" not in persisted

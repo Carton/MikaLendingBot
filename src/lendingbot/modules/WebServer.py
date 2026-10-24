@@ -275,7 +275,20 @@ class WebServer:
     # Web Settings methods
     def get_web_settings(self) -> dict[str, Any]:
         default_coin_cfg = self.config.get_coin_config("default")
-        default_settings = {
+        # Per-currency tab display values: TOML coin config overlaid with the
+        # explicitly saved per-field overrides. Only explicit overrides are
+        # persisted; these display values never are.
+        coin_settings_display: dict[str, Any] = {}
+        for cur in self.config.api.all_currencies:
+            cc = self.config.get_coin_config(cur)
+            coin_settings_display[cur] = {
+                "frrdelta_min": float(cc.frr_delta_min),
+                "frrdelta_max": float(cc.frr_delta_max),
+                "xday_thresholds": [
+                    {"rate": float(t.rate), "days": t.days} for t in cc.xday_thresholds
+                ],
+            }
+        default_settings: dict[str, Any] = {
             "refreshRate": self.config.bot.web.refresh_rate,
             "timespanNames": ["Year", "Month", "Week", "Day", "Hour"],
             "btcDisplayUnit": "BTC",
@@ -286,6 +299,9 @@ class WebServer:
                 {"rate": float(t.rate), "days": t.days} for t in default_coin_cfg.xday_thresholds
             ],
             "recentSuccessfulLoans": self.config.bot.web.recent_successful_loans,
+            "currencies": list(self.config.api.all_currencies),
+            "coin_settings": coin_settings_display,
+            "coin_overrides": {},
         }
         default_settings = sanitize_web_settings(default_settings)
         if not Path(self.web_settings_file).exists():
@@ -298,22 +314,77 @@ class WebServer:
                     settings = default_settings | data
                     settings.pop("effRateMode", None)
                     settings["recentSuccessfulLoans"] = default_settings["recentSuccessfulLoans"]
+                    settings["currencies"] = default_settings["currencies"]
                     if not settings.get("timespanNames"):
                         settings["timespanNames"] = default_settings["timespanNames"]
                     settings = sanitize_web_settings(settings)
                     # Re-apply the TOML default when the persisted value was malformed.
                     if "xday_thresholds" not in settings:
                         settings["xday_thresholds"] = default_settings["xday_thresholds"]
+                    overrides = _sanitize_coin_settings(data.get("coin_settings"))
+                    settings["coin_overrides"] = overrides
+                    # Display mirrors the engine's resolution order: coin
+                    # override > global web override (from this same file) >
+                    # TOML coin config.
+                    global_frr_overridden = (
+                        "frrdelta_min" in data and "frrdelta_max" in data
+                    )
+                    global_xday_overridden = "xday_thresholds" in data
+                    merged_display: dict[str, Any] = {}
+                    for cur, display in coin_settings_display.items():
+                        entry = dict(display)
+                        coin_override = overrides.get(cur, {})
+                        if (
+                            global_frr_overridden
+                            and "frrdelta_min" not in coin_override
+                            and "frrdelta_min" in settings
+                        ):
+                            entry["frrdelta_min"] = settings["frrdelta_min"]
+                            entry["frrdelta_max"] = settings["frrdelta_max"]
+                        if (
+                            global_xday_overridden
+                            and "xday_thresholds" not in coin_override
+                            and "xday_thresholds" in settings
+                        ):
+                            entry["xday_thresholds"] = settings["xday_thresholds"]
+                        entry.update(coin_override)
+                        merged_display[cur] = entry
+                    # Keep override entries for currencies no longer enabled.
+                    for cur, entry in overrides.items():
+                        if cur not in merged_display:
+                            merged_display[cur] = entry
+                    settings["coin_settings"] = merged_display
                     return settings
                 return default_settings
         except Exception:
             return default_settings
 
+    def _read_persisted_settings(self) -> dict[str, Any]:
+        """Reads the raw persisted settings file without derived defaults."""
+        if not Path(self.web_settings_file).exists():
+            return {}
+        try:
+            with Path(self.web_settings_file).open("r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return sanitize_web_settings(data)
+        except Exception:
+            pass
+        return {}
+
     def save_web_settings(self, settings: dict[str, Any]) -> None:
-        current = self.get_web_settings()
+        # Merge into the raw persisted file, NOT into get_web_settings():
+        # the GET payload contains derived display values (currencies,
+        # coin_overrides) that must never be written back as explicit overrides.
+        current = self._read_persisted_settings()
         current.update(settings)
         current.pop("effRateMode", None)
         current.pop("recentSuccessfulLoans", None)
+        # Derived on every read; never persist them. Note: "coin_settings" is
+        # the persisted override map itself (submitted by the settings form),
+        # so it must NOT be stripped here.
+        current.pop("currencies", None)
+        current.pop("coin_overrides", None)
         current = sanitize_web_settings(current)
         try:
             with Path(self.web_settings_file).open("w", encoding="utf-8") as f:
@@ -356,10 +427,65 @@ class WebServer:
                     },
                 )
 
+        # Validate per-currency settings with the same rule before mutating.
+        coin_settings_submitted = "coin_settings" in config_data
+        coin_overrides: dict[str, dict[str, Any]] | None = None
+        if coin_settings_submitted:
+            coin_overrides = {}
+            for cur, entry in (config_data.get("coin_settings") or {}).items():
+                if not isinstance(cur, str) or not isinstance(entry, dict):
+                    continue
+                override: dict[str, Any] = {}
+                if "frrdelta_min" in entry and "frrdelta_max" in entry:
+                    try:
+                        frr_min = Decimal(str(entry["frrdelta_min"]))
+                        frr_max = Decimal(str(entry["frrdelta_max"]))
+                        if not (frr_min.is_finite() and frr_max.is_finite()):
+                            raise ValueError("FRR delta values must be finite numbers")
+                        override["frr_min"] = frr_min
+                        override["frr_max"] = frr_max
+                    except (ValueError, TypeError, InvalidOperation) as e:
+                        return JSONResponse(
+                            status_code=400,
+                            content={"success": False, "error": f"{cur}: {e}"},
+                        )
+                if "xday_thresholds" in entry:
+                    thresholds = normalize_xday_thresholds(entry["xday_thresholds"])
+                    if thresholds is None:
+                        return JSONResponse(
+                            status_code=400,
+                            content={
+                                "success": False,
+                                "error": f"{cur}: xday_thresholds must be a list of "
+                                "{rate, days} entries",
+                            },
+                        )
+                    if any(
+                        later.days < earlier.days
+                        for earlier, later in itertools.pairwise(thresholds)
+                    ):
+                        return JSONResponse(
+                            status_code=400,
+                            content={
+                                "success": False,
+                                "error": f"{cur}: xday_thresholds days must not decrease "
+                                "as the rate increases",
+                            },
+                        )
+                    # An explicit empty list is a valid override: it disables
+                    # the duration curve for this currency.
+                    override["xday"] = thresholds
+                if override:
+                    coin_overrides[cur] = override
+
         if "frrdelta_min" in config_data and "frrdelta_max" in config_data:
             try:
-                self.lending_engine.frrdelta_min = Decimal(str(config_data["frrdelta_min"]))
-                self.lending_engine.frrdelta_max = Decimal(str(config_data["frrdelta_max"]))
+                global_frr_min = Decimal(str(config_data["frrdelta_min"]))
+                global_frr_max = Decimal(str(config_data["frrdelta_max"]))
+                if not (global_frr_min.is_finite() and global_frr_max.is_finite()):
+                    raise ValueError("FRR delta values must be finite numbers")
+                self.lending_engine.frrdelta_min = global_frr_min
+                self.lending_engine.frrdelta_max = global_frr_max
                 self.lending_engine.has_web_frr_override = True
                 self.log.log(
                     f"Settings updated by user: FRR Delta Min={self.lending_engine.frrdelta_min}%, Max={self.lending_engine.frrdelta_max}%"
@@ -381,6 +507,16 @@ class WebServer:
             applied["xday_thresholds"] = [
                 {"rate": float(t.rate), "days": t.days} for t in xday_thresholds
             ]
+
+        if coin_overrides is not None:
+            # The settings form submits every tab, so replace the whole map.
+            self.lending_engine.web_coin_settings = coin_overrides
+            summary = ", ".join(
+                f"{cur}: FRR {v['frr_min']}..{v['frr_max']}%" if "frr_min" in v else f"{cur}: xday"
+                for cur, v in sorted(coin_overrides.items())
+            )
+            self.log.log(f"Settings updated by user: per-currency overrides [{summary}]")
+            applied["coin_settings"] = config_data.get("coin_settings")
 
         try:
             self.save_web_settings(config_data)
@@ -444,17 +580,60 @@ def sanitize_web_settings(settings: dict[str, Any]) -> dict[str, Any]:
             sanitized["xday_thresholds"] = [
                 {"rate": float(t.rate), "days": t.days} for t in thresholds
             ]
+    if "coin_settings" in sanitized:
+        sanitized["coin_settings"] = _sanitize_coin_settings(sanitized["coin_settings"])
     if "frrdelta_min" not in sanitized:
         return sanitized
 
     try:
         frrdelta_min = Decimal(str(sanitized["frrdelta_min"]))
+        frrdelta_max = (
+            Decimal(str(sanitized["frrdelta_max"])) if "frrdelta_max" in sanitized else None
+        )
     except (ValueError, TypeError, InvalidOperation):
+        return sanitized
+
+    if not frrdelta_min.is_finite() or (
+        frrdelta_max is not None and not frrdelta_max.is_finite()
+    ):
+        # NaN/Infinity must never reach the engine or the persisted file;
+        # drop the pair so the remaining valid settings still save.
+        sanitized.pop("frrdelta_min", None)
+        sanitized.pop("frrdelta_max", None)
         return sanitized
 
     if frrdelta_min < FRR_DELTA_MIN_LIMIT:
         sanitized["frrdelta_min"] = float(FRR_DELTA_MIN_LIMIT)
     return sanitized
+
+
+def _sanitize_coin_settings(raw: Any) -> dict[str, Any]:
+    """Keeps well-formed per-currency entries; drops anything malformed."""
+    if not isinstance(raw, dict):
+        return {}
+    clean: dict[str, Any] = {}
+    for cur, entry in raw.items():
+        if not isinstance(cur, str) or not isinstance(entry, dict):
+            continue
+        item: dict[str, Any] = {}
+        if "frrdelta_min" in entry and "frrdelta_max" in entry:
+            try:
+                frr_min = Decimal(str(entry["frrdelta_min"]))
+                frr_max = Decimal(str(entry["frrdelta_max"]))
+                if frr_min.is_finite() and frr_max.is_finite():
+                    item["frrdelta_min"] = float(max(frr_min, FRR_DELTA_MIN_LIMIT))
+                    item["frrdelta_max"] = float(frr_max)
+            except (ValueError, TypeError, InvalidOperation):
+                pass
+        if "xday_thresholds" in entry:
+            thresholds = normalize_xday_thresholds(entry["xday_thresholds"])
+            if thresholds is not None:
+                item["xday_thresholds"] = [
+                    {"rate": float(t.rate), "days": t.days} for t in thresholds
+                ]
+        if item:
+            clean[cur] = item
+    return clean
 
 
 def read_web_settings() -> dict[str, Any]:

@@ -6,7 +6,7 @@ import threading
 import time
 from dataclasses import dataclass
 from decimal import ROUND_DOWN, Decimal, InvalidOperation
-from typing import Any
+from typing import Any, cast
 
 from . import Configuration
 from .ExchangeApi import ExchangeApi
@@ -92,6 +92,11 @@ class LendingEngine:
         self.frrdelta_cur_step: int = 0
         self.frrdelta_min: Decimal = Decimal(0)
         self.frrdelta_max: Decimal = Decimal(0)
+        # Per-currency web overrides: {cur: {"frr_min": Decimal, "frr_max":
+        # Decimal, "xday": list[XDayThreshold]}}. Takes precedence over the
+        # global web values and over TOML coin configs; set by the settings
+        # API and at startup from web_settings.json.
+        self.web_coin_settings: dict[str, dict[str, Any]] = {}
         self.debug_on: bool = False
         self.lending_paused: bool = False
         self.last_lending_status: bool | None = None
@@ -212,6 +217,10 @@ class LendingEngine:
             else:
                 self.has_web_xday_override = False
 
+            self.web_coin_settings = self._parse_web_coin_settings(
+                web_settings.get("coin_settings")
+            )
+
             if "lending_paused" in web_settings:
                 self.lending_paused = bool(web_settings["lending_paused"])
                 if self.log:
@@ -241,18 +250,21 @@ class LendingEngine:
             return rate - 0.000001
         return rate
 
-    def _calculate_duration(self, rate: float, requested_days: str) -> str:
+    def _calculate_duration(self, rate: float, requested_days: str, currency: str = "") -> str:
         """
         Calculates the duration (days) based on rate thresholds and end_date.
         """
         days = requested_days
+        thresholds_for_cur = (
+            self.xday_thresholds_for(currency) if currency else self.xday_thresholds
+        )
 
-        if days == "2" and self.xday_thresholds:
+        if days == "2" and thresholds_for_cur:
             # Threshold rates are daily percentages. Convert the offer rate (a
             # daily fraction) through its decimal repr so a rate that visually
             # matches a threshold maps onto it exactly despite float rounding.
             offer_rate = Decimal(str(rate)) * 100
-            thresholds = sorted(self.xday_thresholds, key=lambda t: t.rate)
+            thresholds = sorted(thresholds_for_cur, key=lambda t: t.rate)
             rates = [t.rate for t in thresholds]
             xdays = [t.days for t in thresholds]
             # map rate to xdays, use interpolation if rate is not in the list
@@ -294,7 +306,7 @@ class LendingEngine:
         rate_f = self._adjust_rate_for_competition(original_rate)
         amt_s = f"{Decimal(amt):.8f}"
 
-        days = self._calculate_duration(rate_f, days)
+        days = self._calculate_duration(rate_f, days, currency)
 
         print(
             f"Lending {format_amount_currency(amt_s, currency)} by rate {format_rate_pct(rate_f)} for {days} days"
@@ -302,9 +314,10 @@ class LendingEngine:
 
         if not self.dry_run:
             msg = self.api.create_loan_offer(currency, float(amt_s), int(days), 0, float(rate_f))
+            currency_thresholds = self.xday_thresholds_for(currency)
             if (
-                self.xday_thresholds
-                and int(days) == self.xday_thresholds[-1].days
+                currency_thresholds
+                and int(days) == currency_thresholds[-1].days
                 and self.config.notifications.notify_xday_threshold
             ):
                 text = f"{format_amount_currency(amt_s, currency)} loan placed for {days} days at a rate of {format_rate_pct(rate_f)}"
@@ -353,6 +366,63 @@ class LendingEngine:
         # offer. A persist failure stops further offers this cycle by raising.
         self.offer_registry.persist()
 
+    def _parse_web_coin_settings(self, raw: Any) -> dict[str, dict[str, Any]]:
+        """Parses the per-currency web settings map into engine overrides.
+
+        Entries are field-level: a saved entry may override only the FRR
+        window or only the duration curve. An explicit empty xday list is a
+        valid override (it disables the curve for that currency).
+        """
+        from . import WebServer
+
+        parsed: dict[str, dict[str, Any]] = {}
+        if not isinstance(raw, dict):
+            return parsed
+        for cur, entry in raw.items():
+            if cur not in self.coin_cfg or not isinstance(entry, dict):
+                continue
+            override: dict[str, Any] = {}
+            try:
+                if "frrdelta_min" in entry and "frrdelta_max" in entry:
+                    frr_min = Decimal(str(entry["frrdelta_min"]))
+                    frr_max = Decimal(str(entry["frrdelta_max"]))
+                    if frr_min.is_finite() and frr_max.is_finite():
+                        override["frr_min"] = frr_min
+                        override["frr_max"] = frr_max
+            except (ValueError, TypeError, InvalidOperation):
+                pass
+            if "xday_thresholds" in entry:
+                thresholds = WebServer.normalize_xday_thresholds(entry["xday_thresholds"])
+                if thresholds is not None:
+                    override["xday"] = thresholds
+            if override:
+                parsed[cur] = override
+        return parsed
+
+    def _frr_deltas_for(self, cur: str) -> tuple[Decimal, Decimal]:
+        """FRR delta window for cur: coin web > global web > TOML coin config."""
+        override = self.web_coin_settings.get(cur, {})
+        if "frr_min" in override and "frr_max" in override:
+            return override["frr_min"], override["frr_max"]
+        if getattr(self, "has_web_frr_override", False):
+            return self.frrdelta_min, self.frrdelta_max
+        cfg = self.coin_cfg.get(cur, self.default_coin_cfg)
+        # Config values are percentages (e.g., -10 means -10%)
+        return cfg.frr_delta_min, cfg.frr_delta_max
+
+    def xday_thresholds_for(self, cur: str) -> list[Configuration.XDayThreshold]:
+        """Duration curve for cur: coin web > global web > coin TOML > default TOML."""
+        override = self.web_coin_settings.get(cur, {})
+        if "xday" in override:
+            return cast("list[Configuration.XDayThreshold]", override["xday"])
+        if getattr(self, "has_web_xday_override", False):
+            # Explicit web value, possibly an empty list that disables the curve.
+            return self.xday_thresholds
+        cfg = self.coin_cfg.get(cur)
+        if cfg is not None and cfg.xday_thresholds:
+            return list(cfg.xday_thresholds)
+        return self.xday_thresholds
+
     def get_frr_or_min_daily_rate(self, cur: str) -> RateCalcInfo:
         """
         Checks the Flash Return Rate of cur against the min daily rate and returns
@@ -361,19 +431,10 @@ class LendingEngine:
         if cfg := self.coin_cfg.get(cur):
             min_rate = cfg.min_daily_rate
             frr_as_min = cfg.strategy == Configuration.LendingStrategy.FRR
-            # If overridden by web settings, use the global min/max instead of coin specific
-            if getattr(self, "has_web_frr_override", False):
-                frr_d_min = self.frrdelta_min
-                frr_d_max = self.frrdelta_max
-            else:
-                # Config values are now percentages (e.g., -10 means -10%)
-                frr_d_min = cfg.frr_delta_min
-                frr_d_max = cfg.frr_delta_max
         else:
             min_rate = self.default_coin_cfg.min_daily_rate
             frr_as_min = self.default_coin_cfg.strategy == Configuration.LendingStrategy.FRR
-            frr_d_min = self.frrdelta_min
-            frr_d_max = self.frrdelta_max
+        frr_d_min, frr_d_max = self._frr_deltas_for(cur)
 
         if frr_d_min > frr_d_max:
             frr_d_min, frr_d_max = frr_d_max, frr_d_min
