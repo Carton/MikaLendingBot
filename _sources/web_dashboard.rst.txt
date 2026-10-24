@@ -74,9 +74,14 @@ The React dashboard uses a small number of consolidated endpoints:
   plugin.
 * ``POST /api/settings`` saves backend web settings such as refresh interval,
   output currency display mode, FRR adjustment range, and lending duration
-  thresholds (``xday_thresholds``). Values are applied to the live lending
-  engine and persisted to ``web_settings.json``; invalid entries are dropped and
-  thresholds whose days decrease as the rate increases are rejected.
+  thresholds (``xday_thresholds``). ``coin_settings`` carries per-currency
+  overrides of the FRR range and duration thresholds; entries are field-level
+  (an entry may override only the curve or only the FRR range) and an explicit
+  empty ``xday_thresholds`` list disables the curve for that currency. A
+  submission replaces the whole override map. Values are applied to the live
+  lending engine and persisted to ``web_settings.json``; non-finite numbers
+  are dropped and thresholds whose days decrease as the rate increases are
+  rejected.
 * ``POST /api/lending/pause`` and ``POST /api/lending/resume`` update the live
   lending pause state.
 
